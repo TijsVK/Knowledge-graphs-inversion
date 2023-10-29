@@ -1,0 +1,3 @@
+[submodule "Implementation/morph-kgc"]
+	path = Implementation/morph-kgc
+	url = https://github.com/TijsVK/morph-kgc.git

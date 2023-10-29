@@ -12,13 +12,15 @@ outputfilename = "output.nq"
 
 with open(metadatapath, "r") as file:
     df:pd.DataFrame = pd.read_csv(file)
-    
+
 print(f"Total tests: {len(df.index)}")
 
 table_tests = df[df["data format"] == "table"]
 csv_style_tests = df[df["reference formulation"] == "CSV"]
+csv_tests = df[df["data format"] == "CSV"]
 print(f"Table tests: {len(table_tests.index)}")
 print(f"CSV-style tests: {len(csv_style_tests.index)}")
+print(f"CSV tests: {len(csv_tests.index)}")
 
 table_tests_with_output = table_tests[table_tests["error expected?"] == False]
 csv_style_tests_with_output = csv_style_tests[csv_style_tests["error expected?"] == False]
