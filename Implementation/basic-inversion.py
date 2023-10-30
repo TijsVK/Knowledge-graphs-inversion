@@ -11,7 +11,7 @@ import sys
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-sys.stdout = open("outmappingreader.txt", "w")
+sys.stdout = open("outbasic-inversion.txt", "w")
 
 metadatapath = pathlib.Path("Implementation/rml-test-cases/metadata.csv")
 assert metadatapath.exists(), "File \"Implementation/rml-test-cases/metadata.csv\" does not exist"

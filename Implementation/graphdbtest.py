@@ -28,7 +28,7 @@ for _, row in table_tests_with_output.iterrows():
         with open(outputfilename, "r") as file:
             fileContents = file.read()
             rdf4jconnector.add_data_to_repo(row["better RML id"], fileContents, "text/x-nquads")
-        rdf4jconnector.drop_repository(row["better RML id"])
+        # rdf4jconnector.drop_repository(row["better RML id"])
     except Exception as e:
         print("Even though we filter the tests with error expected? == False, some tests still expectedly fail somehow.")
         print(type(e), e)
