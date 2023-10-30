@@ -34,8 +34,7 @@ counts = {0: 0,
           3: 0}
 for _, row in df.iterrows():
     directory = row["RML id"]
-    if directory == "RMLTC0019b-CSV":
-        print(row["RML id"], row["title"], row["purpose"])
+    print(row["RML id"], row["better RML id"], row["title"], row["purpose"])
     with open(testcasesbasepath / directory / mappingfilename, "r") as file:
         mapping = file.read()
         TriplesMapCount = mapping.count("a rr:TriplesMap;")
