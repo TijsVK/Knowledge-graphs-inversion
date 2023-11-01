@@ -8,6 +8,12 @@ import time
 import warnings
 import os
 import sys
+import pyrdf4j.rdf4j
+import pyrdf4j.errors
+from SPARQLWrapper import SPARQLWrapper, JSON
+import re
+
+rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -18,6 +24,14 @@ assert metadatapath.exists(), "File \"Implementation/rml-test-cases/metadata.csv
 testcasesbasepath = pathlib.Path("Implementation/rml-test-cases/test-cases")
 assert testcasesbasepath.exists(), "Directory \"Implementation/rml-test-cases/test-cases\" does not exist"
 mappingfilename = "mapping.ttl"
+outputfilename = "output.nq"
+
+get_all_subjects_query = """
+SELECT DISTINCT ?s
+WHERE {
+    ?s ?p ?o
+}
+"""
 
 with open(metadatapath, "r") as file:
     testsDf:pd.DataFrame = pd.read_csv(file)
@@ -59,17 +73,38 @@ for _, row in table_tests_with_output.iterrows():
     
     # print(loaded_config.__dict__)
     try:
+        rdf4jconnector.create_repository(row["better RML id"], accept_existing=True) # normal RML id
         loaded_config = load_config_from_argument(config)
-        rml_df, fnml_df = retrieve_mappings(loaded_config)
+        rules_df, fnml_df = retrieve_mappings(loaded_config)
         with open(mappingfilename, "r") as file:
             print(file.read())
-        for _, row in rml_df.iterrows():
-            for key, value in row.items():
+        rule_subjects_regex_list = []
+        for _, r in rules_df.iterrows():
+            base = r["subject_map_value"]
+            base = base.replace('/', '\/').replace('.', '\.')
+            regexed = re.sub('{[^{]*}', '([^\/]*)', base) + '$'
+            print(regexed)
+            for key, value in r.items():
                 print(f"{key}: {value}")
-        graph = morph_kgc.materialize(config)
-        print(graph.serialize(format="ntriples"))
+            print()
+        with open(outputfilename, "r") as file:
+            fileContents = file.read()
+            print(fileContents)
+            rdf4jconnector.add_data_to_repo(row["better RML id"], fileContents, "text/x-nquads")
+        sparql = SPARQLWrapper(f"http://DESKTOP-IV4QGIH:7200/repositories/{row['better RML id']}")
+        sparql.setReturnFormat(JSON)
+        sparql.setQuery(get_all_subjects_query)
+        subjects_dict = sparql.query().convert()["results"]["bindings"]
+        subjects = [x["s"]["value"] for x in subjects_dict]
+        
+        print(json.dumps(subjects, indent=4))
+    except pyrdf4j.errors.DataBaseNotReachable as e:
+        print("You need to start a triplestore first.")
+        quit()
     except Exception as e:
         print("Even though we filter the tests with error expected? == False, some tests still expectedly fail somehow.")
+        print(type(e))
         print(e)
+    rdf4jconnector.drop_repository(row["better RML id"], accept_not_exist=True)
     print('\n' * 5)
     os.chdir("..")
