@@ -75,14 +75,38 @@ for _, row in table_tests_with_output.iterrows():
     try:
         rdf4jconnector.create_repository(row["better RML id"], accept_existing=True) # normal RML id
         loaded_config = load_config_from_argument(config)
+        rules_df:pd.DataFrame
         rules_df, fnml_df = retrieve_mappings(loaded_config)
         with open(mappingfilename, "r") as file:
             print(file.read())
-        rule_subjects_regex_list = []
+        rules_df.insert(8, "subject_reference_count", 0)
+        rules_df.insert(12, "predicate_reference_count", 0)
+        rules_df.insert(15, "object_reference_count", 0)
         for _, r in rules_df.iterrows():
-            base = r["subject_map_value"]
-            base = base.replace('/', '\/').replace('.', '\.')
-            regexed = re.sub('{[^{]*}', '([^\/]*)', base) + '$'
+            if r["subject_map_type"] == "http://w3id.org/rml/constant":
+                r["subject_reference_count"] = 0
+            elif r["subject_map_type"] == "http://w3id.org/rml/reference":
+                r["subject_reference_count"] = 1
+            elif r["subject_map_type"] == "http://w3id.org/rml/template":
+                r["subject_reference_count"] = r["subject_map_value"].count("{")
+                
+            if r["predicate_map_type"] == "http://w3id.org/rml/constant":
+                r["predicate_reference_count"] = 0
+            elif r["predicate_map_type"] == "http://w3id.org/rml/reference":
+                r["predicate_reference_count"] = 1
+            elif r["predicate_map_type"] == "http://w3id.org/rml/template":
+                r["predicate_reference_count"] = r["predicate_map_value"].count("{")
+                
+            if r["object_map_type"] == "http://w3id.org/rml/constant":
+                r["object_reference_count"] = 0
+            elif r["object_map_type"] == "http://w3id.org/rml/reference":
+                r["object_reference_count"] = 1
+            elif r["object_map_type"] == "http://w3id.org/rml/template":
+                r["object_reference_count"] = r["object_map_value"].count("{")
+
+            subject_map_value = r["subject_map_value"]
+            subject_map_value = subject_map_value.replace('/', '\/').replace('.', '\.')
+            regexed = re.sub('{[^{]*}', '([^\/]*)', subject_map_value) + '$'
             print(regexed)
             for key, value in r.items():
                 print(f"{key}: {value}")
@@ -102,7 +126,7 @@ for _, row in table_tests_with_output.iterrows():
         print("You need to start a triplestore first.")
         quit()
     except Exception as e:
-        print("Even though we filter the tests with error expected? == False, some tests still expectedly fail somehow.")
+        print("Even though we filter the tests with error expected? == False, some tests still expectedly fail. Morhp-KGC isnt able to handle all the tests either, so those error too sometimes.")
         print(type(e))
         print(e)
     rdf4jconnector.drop_repository(row["better RML id"], accept_not_exist=True)
