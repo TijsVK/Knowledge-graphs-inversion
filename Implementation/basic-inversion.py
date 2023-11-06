@@ -13,11 +13,14 @@ import pyrdf4j.errors
 from SPARQLWrapper import SPARQLWrapper, JSON
 import re
 
+FAST_TEST = False
+
 rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-sys.stdout = open("outbasic-inversion.txt", "w")
+if(not FAST_TEST):
+    sys.stdout = open("outbasic-inversion.txt", "w")
 
 metadatapath = pathlib.Path("Implementation/rml-test-cases/metadata.csv")
 assert metadatapath.exists(), "File \"Implementation/rml-test-cases/metadata.csv\" does not exist"
@@ -79,31 +82,61 @@ for _, row in table_tests_with_output.iterrows():
         rules_df, fnml_df = retrieve_mappings(loaded_config)
         with open(mappingfilename, "r") as file:
             print(file.read())
-        rules_df.insert(8, "subject_reference_count", 0)
-        rules_df.insert(12, "predicate_reference_count", 0)
-        rules_df.insert(15, "object_reference_count", 0)
-        for _, r in rules_df.iterrows():
-            if r["subject_map_type"] == "http://w3id.org/rml/constant":
-                r["subject_reference_count"] = 0
-            elif r["subject_map_type"] == "http://w3id.org/rml/reference":
-                r["subject_reference_count"] = 1
-            elif r["subject_map_type"] == "http://w3id.org/rml/template":
-                r["subject_reference_count"] = r["subject_map_value"].count("{")
+            
+        # add columns to end of dataframe, probably faster than inserting them in the middle but worse for overview
+        # rules_df["subject_references"] = [[] for _ in range(rules_df.shape[0])]
+        # rules_df["subject_reference_count"] = 0
+        # rules_df["predicate_references"] = [[] for _ in range(rules_df.shape[0])]
+        # rules_df["predicate_reference_count"] = 0
+        # rules_df["object_references"] = [[] for _ in range(rules_df.shape[0])]
+        # rules_df["object_reference_count"] = 0
+        
+        # add columns to dataframe at specific index, probably slower than adding them to the end but better for overview when printing rows
+        rules_df.insert(rules_df.columns.get_loc('subject_map_value') + 1, "subject_references",  [[] for _ in range(rules_df.shape[0])])
+        rules_df.insert(rules_df.columns.get_loc('subject_references') + 1, "subject_reference_count", 0)
+        rules_df.insert(rules_df.columns.get_loc('predicate_map_value') + 1, "predicate_references", [[] for _ in range(rules_df.shape[0])])
+        rules_df.insert(rules_df.columns.get_loc('predicate_references') + 1, "predicate_reference_count", 0)
+        rules_df.insert(rules_df.columns.get_loc('object_map_value') + 1, "object_references", [[] for _ in range(rules_df.shape[0])])
+        rules_df.insert(rules_df.columns.get_loc('object_references') + 1, "object_reference_count", 0)
+        
+        for index in rules_df.index:
+            if rules_df.at[index, "subject_map_type"] == "http://w3id.org/rml/constant":
+                rules_df.at[index, "subject_references"] = []
+                rules_df.at[index, "subject_reference_count"] = 0
+            elif rules_df.at[index, "subject_map_type"] == "http://w3id.org/rml/reference":
+                rules_df.at[index, "subject_references"] = [rules_df.at[index, "subject_map_value"]]
+                rules_df.at[index, "subject_reference_count"] = 1
+            elif rules_df.at[index, "subject_map_type"] == "http://w3id.org/rml/template":
+                referencesList = re.findall("{([^{]*)}", rules_df.at[index, "subject_map_value"])
+                rules_df.at[index, "subject_references"] = referencesList
+                rules_df.at[index, "subject_reference_count"] = len(referencesList)
                 
-            if r["predicate_map_type"] == "http://w3id.org/rml/constant":
-                r["predicate_reference_count"] = 0
-            elif r["predicate_map_type"] == "http://w3id.org/rml/reference":
-                r["predicate_reference_count"] = 1
-            elif r["predicate_map_type"] == "http://w3id.org/rml/template":
-                r["predicate_reference_count"] = r["predicate_map_value"].count("{")
+            if rules_df.at[index, "predicate_map_type"] == "http://w3id.org/rml/constant":
+                rules_df.at[index, "predicate_references"] = []
+                rules_df.at[index, "predicate_reference_count"] = 0
+            elif rules_df.at[index, "predicate_map_type"] == "http://w3id.org/rml/reference":
+                rules_df.at[index, "predicate_references"] = [rules_df.at[index, "predicate_map_value"]]
+                rules_df.at[index, "predicate_reference_count"] = 1
+            elif rules_df.at[index, "predicate_map_type"] == "http://w3id.org/rml/template":
+                referencesList = re.findall("{([^{]*)}", rules_df.at[index, "predicate_map_value"])
+                rules_df.at[index, "predicate_references"] = referencesList
+                rules_df.at[index, "predicate_reference_count"] = len(referencesList)
                 
-            if r["object_map_type"] == "http://w3id.org/rml/constant":
-                r["object_reference_count"] = 0
-            elif r["object_map_type"] == "http://w3id.org/rml/reference":
-                r["object_reference_count"] = 1
-            elif r["object_map_type"] == "http://w3id.org/rml/template":
-                r["object_reference_count"] = r["object_map_value"].count("{")
-
+            if rules_df.at[index, "object_map_type"] == "http://w3id.org/rml/constant":
+                rules_df.at[index, "object_references"] = []
+                rules_df.at[index, "object_reference_count"] = 0
+            elif rules_df.at[index, "object_map_type"] == "http://w3id.org/rml/reference":
+                rules_df.at[index, "object_references"] = [rules_df.at[index, "object_map_value"]]
+                rules_df.at[index, "object_reference_count"] = 1
+            elif rules_df.at[index, "object_map_type"] == "http://w3id.org/rml/template":
+                referencesList = re.findall("{([^{]*)}", rules_df.at[index, "object_map_value"])
+                rules_df.at[index, "object_references"] = referencesList
+                rules_df.at[index, "object_reference_count"] = len(referencesList)
+            elif rules_df.at[index, "object_map_type"] == "http://w3id.org/rml/parentTriplesMap":
+                rules_df.at[index, "object_references"] = [list(json.loads(rules_df.at[index, "object_join_conditions"].replace("'", '"')).values())[0]['child_value']]
+                rules_df.at[index, "object_reference_count"] = 1
+        
+        for index, r in rules_df.iterrows():
             subject_map_value = r["subject_map_value"]
             subject_map_value = subject_map_value.replace('/', '\/').replace('.', '\.')
             regexed = re.sub('{[^{]*}', '([^\/]*)', subject_map_value) + '$'
@@ -111,6 +144,23 @@ for _, row in table_tests_with_output.iterrows():
             for key, value in r.items():
                 print(f"{key}: {value}")
             print()
+        
+        for source, rules in rules_df.groupby("logical_source_value"):
+            print(f"{source}: {len(rules)} mapping(s)")
+            sourceReferences = set()
+            for _, rule in rules.iterrows():
+                for reference in rule["subject_references"]:
+                    sourceReferences.add(reference)
+                for reference in rule["predicate_references"]:
+                    sourceReferences.add(reference)
+                for reference in rule["object_references"]:
+                    sourceReferences.add(reference)
+            print(f"{source}: {len(sourceReferences)} reference(s): {sourceReferences}")
+            
+            for subject, subjectRules in rules.groupby("subject_map_value"):
+                print(f"{subject}: {len(subjectRules)} mapping(s)")
+            
+            
         with open(outputfilename, "r") as file:
             fileContents = file.read()
             print(fileContents)
@@ -125,10 +175,15 @@ for _, row in table_tests_with_output.iterrows():
     except pyrdf4j.errors.DataBaseNotReachable as e:
         print("You need to start a triplestore first.")
         quit()
-    except Exception as e:
+    except ValueError as e:
         print("Even though we filter the tests with error expected? == False, some tests still expectedly fail. Morhp-KGC isnt able to handle all the tests either, so those error too sometimes.")
         print(type(e))
         print(e)
+        if str(e) != "Found an invalid graph termtype. Found values {'http://w3id.org/rml/BlankNode'}. Graph maps must be http://w3id.org/rml/IRI.":
+            # morph-kgc uses build-in python errors, but catching all ValueErrors is not a good idea as it also catches errors that are not related to morph-kgc
+            raise
     rdf4jconnector.drop_repository(row["better RML id"], accept_not_exist=True)
     print('\n' * 5)
     os.chdir("..")
+    if(FAST_TEST):
+        break
