@@ -25,3 +25,5 @@ python -m build ./Implementation/pyrdf4j
 pip install ./Implementation/pyrdf4j/dist/pyrdf4j-0.1.0-py3-none-any.whl
 ```
 
+
+Additionally a triplestore implementing the [rdf4j API](https://rdf4j.org/documentation/reference/rest-api/) is required. This comes down to implementing both a [SPARQL endpoint](https://www.w3.org/TR/sparql11-protocol/) and the [SPARQL Graph Store HTTP Protocol](https://www.w3.org/TR/sparql11-http-rdf-update/). For this project [GraphDB](https://graphdb.ontotext.com/) was used, but any triplestore implementing these protocols, like blazegraph, should work. For now, the triplestore is assumed to be running on localhost:7200, in later versions this will be configurable.
