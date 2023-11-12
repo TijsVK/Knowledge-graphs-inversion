@@ -1,0 +1,4 @@
+morph_kgc
+pandas
+build
+requests
