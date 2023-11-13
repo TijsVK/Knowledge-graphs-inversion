@@ -109,7 +109,7 @@ def main():
                 fileContents = file.read()
                 print(fileContents)
                 rdf4jconnector.add_data_to_repo(row["better RML id"], fileContents, "text/x-nquads")
-            sparql = SPARQLWrapper(f"http://DESKTOP-IV4QGIH:7200/repositories/{row['better RML id']}")
+            sparql = SPARQLWrapper(f"http://localhost:7200/repositories/{row['better RML id']}")
             sparql.setReturnFormat(JSON)
             loaded_config = load_config_from_argument(config)
             rules_df:pd.DataFrame
