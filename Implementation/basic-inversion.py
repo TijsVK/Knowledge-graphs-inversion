@@ -32,10 +32,40 @@ def compare_dfs(df1:pd.DataFrame, df2:pd.DataFrame):
             raise ValueError(f"Row {row} from df1 not found in df2")
 
 get_all_subjects_query = """
-    SELECT DISTINCT ?s
-    WHERE {
-        ?s ?p ?o
+SELECT DISTINCT ?s
+WHERE {
+    ?s ?p ?o
+}
+"""
+
+get_all_subjects_and_ids_query = """
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+select  distinct ?s ?id
+where {
+    ?s ?p ?o.
+    optional{
+        ?s <http://www.ontotext.com/owlim/entity#id> ?id.
     }
+}
+"""
+
+def get_all_data_for_subject_query(subject):
+    #subject = urllib.parse.quote(subject)
+    return f"""
+        SELECT ?p ?o
+        WHERE {{
+            <{subject}> ?p ?o
+        }}
+    """
+    
+def get_all_data_for_id_query(id):
+    #subject = urllib.parse.quote(subject)
+    return f"""
+SELECT ?s ?p ?o
+WHERE {{
+    ?s ?p ?o.
+    ?s <http://www.ontotext.com/owlim/entity#id> {id}.
+}}
 """
 
 def get_all_data_for_subject_query(subject):
@@ -53,6 +83,9 @@ def main():
     warnings.simplefilter(action='ignore', category=FutureWarning)
 
     if(not FAST_TEST):
+        with open("basic-inversion-output.txt", "r") as file:
+            with open("basic-inversion-old-output.txt", "w") as oldfile:
+                oldfile.write(file.read())
         sys.stdout = open("basic-inversion-output.txt", "w")
 
     thisFilePath = pathlib.Path(__file__).resolve()
@@ -73,7 +106,7 @@ def main():
     os.chdir(testcasesbasepath)
     for _, row in table_tests_with_output.iterrows():
         os.chdir(row["RML id"])
-        print(row["RML id"], row["title"], row["purpose"], row["error expected?"])
+        print(row["RML id"], row["title"], row["purpose"], row["error expected?"], f"({row['better RML id']})")
         config = f"""
                 [CONFIGURATION]
                 # INPUT
@@ -104,13 +137,20 @@ def main():
         
         # print(loaded_config.__dict__)
         try:
-            rdf4jconnector.create_repository(row["better RML id"], accept_existing=True) # normal RML id
+            rdf4jconnector.create_repository(row["better RML id"], accept_existing=True, repo_type='graphdb') # normal RML id
+            sparql = SPARQLWrapper(f"http://localhost:7200/repositories/{row['better RML id']}")
+            sparql.setReturnFormat(JSON)
+            sparql.setQuery(get_all_subjects_and_ids_query)
+            id_query_result = sparql.query().convert()["results"]["bindings"]
+            orig_ids = [result["id"]["value"] for result in id_query_result]
+            print(f"Original ids: {orig_ids}")
             with open(outputfilename, "r") as file:
                 fileContents = file.read()
                 print(fileContents)
                 rdf4jconnector.add_data_to_repo(row["better RML id"], fileContents, "text/x-nquads")
-            sparql = SPARQLWrapper(f"http://localhost:7200/repositories/{row['better RML id']}")
-            sparql.setReturnFormat(JSON)
+                data_ids = [result["id"]["value"] for result in sparql.query().convert()["results"]["bindings"] if result["id"]["value"] not in orig_ids]
+                print(f"Data ids: {data_ids}")
+                            
             loaded_config = load_config_from_argument(config)
             rules_df:pd.DataFrame
             rules_df, fnml_df = retrieve_mappings(loaded_config)
@@ -127,10 +167,13 @@ def main():
             
             # add columns to dataframe at specific index, probably slower than adding them to the end but better for overview when printing rows
             rules_df.insert(rules_df.columns.get_loc('subject_map_value') + 1, "subject_references",  [[] for _ in range(rules_df.shape[0])])
+            rules_df.insert(rules_df.columns.get_loc('subject_map_value') + 1, "subject_references_template", None)
             rules_df.insert(rules_df.columns.get_loc('subject_references') + 1, "subject_reference_count", 0)
             rules_df.insert(rules_df.columns.get_loc('predicate_map_value') + 1, "predicate_references", [[] for _ in range(rules_df.shape[0])])
+            rules_df.insert(rules_df.columns.get_loc('predicate_map_value') + 1, "predicate_references_template", None)
             rules_df.insert(rules_df.columns.get_loc('predicate_references') + 1, "predicate_reference_count", 0)
             rules_df.insert(rules_df.columns.get_loc('object_map_value') + 1, "object_references", [[] for _ in range(rules_df.shape[0])])
+            rules_df.insert(rules_df.columns.get_loc('object_map_value') + 1, "object_references_template", None)
             rules_df.insert(rules_df.columns.get_loc('object_references') + 1, "object_reference_count", 0)
             
             for index in rules_df.index:
@@ -146,6 +189,7 @@ def main():
                     referencesList = re.findall("{([^{]*)}", rules_df.at[index, "subject_map_value"])
                     rules_df.at[index, "subject_references"] = referencesList
                     rules_df.at[index, "subject_reference_count"] = len(referencesList)
+                    rules_df.at[index, "subject_references_template"] = re.sub('{[^{]*}', '([^\/]*)', rules_df.at[index, "subject_map_value"]) + '$'
                     
                 if rules_df.at[index, "predicate_map_type"] == "http://w3id.org/rml/constant":
                     rules_df.at[index, "predicate_references"] = []
@@ -159,6 +203,7 @@ def main():
                     referencesList = re.findall("{([^{]*)}", rules_df.at[index, "predicate_map_value"])
                     rules_df.at[index, "predicate_references"] = referencesList
                     rules_df.at[index, "predicate_reference_count"] = len(referencesList)
+                    rules_df.at[index, "predicate_references_template"] = re.sub('{[^{]*}', '([^\/]*)', rules_df.at[index, "predicate_map_value"]) + '$'
                   
                     
                 if rules_df.at[index, "object_map_type"] == "http://w3id.org/rml/constant":
@@ -173,6 +218,7 @@ def main():
                     referencesList = re.findall("{([^{]*)}", rules_df.at[index, "object_map_value"])
                     rules_df.at[index, "object_references"] = referencesList
                     rules_df.at[index, "object_reference_count"] = len(referencesList)
+                    rules_df.at[index, "object_references_template"] = re.sub('{[^{]*}', '([^\/]*)', rules_df.at[index, "object_map_value"]) + '$'
                     
                 elif rules_df.at[index, "object_map_type"] == "http://w3id.org/rml/parentTriplesMap":
                     rules_df.at[index, "object_references"] = [list(json.loads(rules_df.at[index, "object_join_conditions"].replace("'", '"')).values())[0]['child_value']]
@@ -192,50 +238,84 @@ def main():
                         sourceReferences.add(reference)
                 print(f"{source}: {len(sourceReferences)} reference(s): {sourceReferences}")
                 
-                sparql.setQuery(get_all_subjects_query)
-                subjects_dict = sparql.query().convert()["results"]["bindings"]
-                subjects = [x["s"]["value"] for x in subjects_dict]
-                print(json.dumps(subjects, indent=4))
+                sparql.setQuery(get_all_subjects_and_ids_query)
+                query_result = sparql.query().convert()
+                subjects_ids_dict = query_result["results"]["bindings"]
+                subjects_id_tuples = [(x["s"]["value"], x["id"]["value"]) for x in subjects_ids_dict if x["id"]["value"] not in orig_ids]
+                print(json.dumps(subjects_id_tuples, indent=4))
                 
                 originalSourceDf = pd.read_csv(io.StringIO(originalSource))
                 originalSourceDf.sort_index(axis=1, inplace=True)
                 outputSourceDf = pd.DataFrame(columns=list(sourceReferences))
                 outputSourceDf.sort_index(axis=1, inplace=True)
                 
+                
+                
                 for subjectTemplate, subjectRules in rules.groupby("subject_map_value"):
-                    subjectType = subjectRules.at[subjectRules.index[0], "subject_map_type"]
-                    subjectTermType = subjectRules.at[subjectRules.index[0], "subject_termtype"]
-                    if subjectTermType == "http://w3id.org/rml/BlankNode":
-                        print(f"BlankNode subjects are not supported yet.")
-                        continue
-                    if subjectType == "http://w3id.org/rml/template":
-                        matchingSubjects = []
-                        object_map_value = rules_df.at[index, "subject_map_value"]
-                        template = re.sub('{[^{]*}', '([^\/]*)', object_map_value) + '$'
-                        for s in subjects:
-                            if re.match(template, s):
-                                matchingSubjects.append(s)
-                        print(f"{subjectTemplate}[{template}]: {len(matchingSubjects)} matching subject(s): {json.dumps(matchingSubjects, indent=4)}")
-                    elif subjectType == "http://w3id.org/rml/reference":
-                        print(f"Reference based subjects are not supported yet.")
-                        continue
-                    elif subjectType == "http://w3id.org/rml/constant":
-                        print(f"Constant subjects are not supported yet.")
-                        continue
-                    
-                    for subject in matchingSubjects:
-                        # print(get_all_data_for_subject_query(subject))
-                        sparql.setQuery(get_all_data_for_subject_query(subject))
-                        data_dict = sparql.query().convert()["results"]["bindings"]
-                        data = {x["p"]["value"]: x["o"]["value"] for x in data_dict}
-                        print(f"{subjectTemplate}: {len(data)} data piece(s): {json.dumps(data, indent=4)}")
-                    
                     print(f"{subjectTemplate}: {len(subjectRules)} mapping(s)")
                     print(f"Rules:")
                     for _, rule in subjectRules.iterrows():
                         for key, value in rule.items():
                             print(f"\t{key}: {value}")
                         print()
+                    subjectType = subjectRules.at[subjectRules.index[0], "subject_map_type"]
+                    subjectTermType = subjectRules.at[subjectRules.index[0], "subject_termtype"]
+                    if subjectTermType == "http://w3id.org/rml/BlankNode":
+                        print(f"BlankNode subjects are not supported yet.")
+                        continue
+                    if subjectType == "http://w3id.org/rml/reference":
+                        print(f"Reference based subjects are not supported yet.")
+                        continue
+                    elif subjectType == "http://w3id.org/rml/constant":
+                        print(f"Constant subjects are not supported yet.")
+                        continue
+                    
+                for subject, id in subjects_id_tuples:
+                    sparql.setQuery(get_all_data_for_id_query(id))
+                    data_dict = sparql.query().convert()["results"]["bindings"]
+                    subjectPOs = {x["p"]["value"]: x["o"]["value"] for x in data_dict}
+                    print()
+                    print(f"{subject}: {len(subjectPOs)} P-O pair(s): {json.dumps(subjectPOs, indent=4)}")
+                    
+                    matchingTemplates = set()
+                    for subjectTemplate, subjectRules in rules.groupby("subject_map_value"):
+                        if subjectRules.at[subjectRules.index[0], "subject_map_type"] == "http://w3id.org/rml/template":
+                            if re.match(subjectRules.at[subjectRules.index[0], "subject_references_template"], subject):
+                                matchingTemplates.add(subjectTemplate)
+                        else:
+                            print(f"Only templates are supported for subjects.(for now)")
+                            continue
+                    print(f"{subject}: {len(matchingTemplates)} matching template(s): {list(matchingTemplates)}")
+                    if len(matchingTemplates) == 0:
+                        continue
+                    elif len(matchingTemplates) > 1:
+                        print(f"Multiple templates match the subject. Trying to eliminate based on properties.")
+                        for subjectTemplate in matchingTemplates:
+                            subjectRules = rules[rules["subject_map_value"] == subjectTemplate]
+                            for i, rule in rules.iterrows():
+                                if rule["predicate_map_type"] == "http://w3id.org/rml/constant":
+                                    if rule["predicate_map_value"] in subjectPOs.keys():
+                                        print(f"Predicate {rule['predicate_map_value']} found in subject predicates.")
+                                        if rule["object_map_type"] == "http://w3id.org/rml/constant":
+                                            if rule["object_map_value"] == subjectPOs[rule["predicate_map_value"]]:
+                                                print(f"Constant object {rule['object_map_value']} matches subject {subjectTemplate} - predicate {rule['predicate_map_value']} - object {subjectPOs[rule['predicate_map_value']]}")
+                                            else:
+                                                print(f"Object value {rule['object_map_value']} does not match subject {subjectTemplate} - predicate {rule['predicate_map_value']} - object {subjectPOs[rule['predicate_map_value']]}")
+                                    else:
+                                        print(f"Predicate {rule['predicate_map_value']} not found in subject {subjectTemplate}.")
+                                        matchingTemplates.remove(subjectTemplate) # for now, we assume that if a predicate is not found, the template is not a match. Later we can add a check to see if the predicate is optional or not.
+                    
+                    
+                    
+                    # for s, id in subjects_id_tuples:
+                    #     if re.match(template, s):
+                    #         matchingSubjects.append(s)
+                    # print(f"{subjectTemplate}[{template}]: {len(matchingSubjects)} matching subject(s): {json.dumps(matchingSubjects, indent=4)}")
+                        
+                    # select all matching rules
+                    
+                    
+                    
                     
                     
 
