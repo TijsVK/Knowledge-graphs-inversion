@@ -37,6 +37,11 @@
 \usepackage{rotating}
 \setlist{nosep}
 %\usetikzlibrary{external}
+\usepackage[acronym]{glossaries}
+\usepackage{algpseudocode}
+
+\input{abreviations.tex}
+
 
 \allsectionsfont{\sffamily}
 \chapterfont{\raggedleft\sffamily}
@@ -92,7 +97,6 @@
 \forenameA{ }
 \surnameA{ }
 
-
 \forenameB{Tijs}
 \surnameB{Van Kampen}
 
@@ -106,6 +110,9 @@
 \selectlanguage{english} % For the English version
 \preface
 
+
+%\addcontentsline{toc}{chapter}{List of abbreviations} % As this doesnt work, I'll leave it commented out for now
+% \printglossary[title=List of abbreviations, type=\acronymtype]
 \input{chapter_1_introduction}
 \input{chapter_2_related_work}
 \input{chapter_3_implementation}
@@ -122,7 +129,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\appendix
 \input{bijlage_1}
-
 
 \end{document}
 
