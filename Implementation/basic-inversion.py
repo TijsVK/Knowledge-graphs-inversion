@@ -249,8 +249,6 @@ def main():
                 outputSourceDf = pd.DataFrame(columns=list(sourceReferences))
                 outputSourceDf.sort_index(axis=1, inplace=True)
                 
-                
-                
                 for subjectTemplate, subjectRules in rules.groupby("subject_map_value"):
                     print(f"{subjectTemplate}: {len(subjectRules)} mapping(s)")
                     print(f"Rules:")
@@ -301,6 +299,7 @@ def main():
                                                 print(f"Constant object {rule['object_map_value']} matches subject {subjectTemplate} - predicate {rule['predicate_map_value']} - object {subjectPOs[rule['predicate_map_value']]}")
                                             else:
                                                 print(f"Object value {rule['object_map_value']} does not match subject {subjectTemplate} - predicate {rule['predicate_map_value']} - object {subjectPOs[rule['predicate_map_value']]}")
+                                                matchingTemplates.remove(subjectTemplate)
                                     else:
                                         print(f"Predicate {rule['predicate_map_value']} not found in subject {subjectTemplate}.")
                                         matchingTemplates.remove(subjectTemplate) # for now, we assume that if a predicate is not found, the template is not a match. Later we can add a check to see if the predicate is optional or not.
@@ -313,11 +312,6 @@ def main():
                     # print(f"{subjectTemplate}[{template}]: {len(matchingSubjects)} matching subject(s): {json.dumps(matchingSubjects, indent=4)}")
                         
                     # select all matching rules
-                    
-                    
-                    
-                    
-                    
 
                 print(outputSourceDf.head())
                 print(f"Source: {source}")

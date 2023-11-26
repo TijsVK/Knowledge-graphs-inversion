@@ -6,8 +6,13 @@ Paper/thesis.bbl
 Paper/thesis.aux
 Paper/thesis.synctex.gz
 Paper/thesis.toc
-Implementation/.venv/*
+Paper/thesis.acn
+Paper/thesis.glo
+Paper/thesis.glsdefs
+Paper/thesis.ist
+Paper/thesis.blg
 
+Implementation/.venv/*
 Implementation/compose.yaml
 Implementation/RMLStreamer-v2.5.0.jar
 meeting_notes.md
