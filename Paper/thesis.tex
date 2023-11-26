@@ -15,7 +15,7 @@
 \usepackage{graphicx}
 %\usepackage[latin1]{inputenc}           % om niet ascii karakters rechtstreeks te kunnen inputten
 \usepackage[utf8]{inputenc}            % commentarieer deze regel uit als je utf8 encoded files gebruikt in plaats van latin1
-\usepackage[numbers]{natbib}
+\usepackage[authoryear, round]{natbib}
 \usepackage{listings}             		% voor het weergeven van broncode
 \usepackage{verbatim}					% weergeven van code, commando's, ...
 \usepackage[hidelinks]{hyperref}		% maak PDF van de thesis navigeerbaar without boxes
@@ -105,6 +105,8 @@
 \promotorA[Promotor]{Prof dr. ir. Anastasia Dimou}
 \promotorB[Co-Promotor]{}
 
+
+
 \begin{document}
 %\selectlanguage{dutch} %due to incompatible syntax with the English style library and the extended features of the dutch library, I'll be modifying the dutch library to be English
 \selectlanguage{english} % For the English version
@@ -118,17 +120,19 @@
 \input{chapter_3_implementation}
 \input{chapter_4_evaluation}
 \input{chapter_5_conclusion}
-% Bibliografie: referenties. De items zitten in bibliografie.bib
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Indien je ook de niet geciteerde werken in je bibliografie wil opnemen, commentarieer dan onderstaande regel uit!
-%\nocite{*}
-\bibliographystyle{plainnat}
-%\bibliography{bibliografie}
+
 
 % Eventueel enkele appendices
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\appendix
 \input{bijlage_1}
+
+% Bibliografie: referenties. De items zitten in bibliografie.bib
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Indien je ook de niet geciteerde werken in je bibliografie wil opnemen, commentarieer dan onderstaande regel uit!
+\nocite{*}
+\bibliographystyle{apalike}
+\bibliography{bibliografie}
 
 \end{document}
 
