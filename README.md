@@ -18,6 +18,14 @@ Install the base requirements.
 pip install -r ./Implementation/requirements.txt
 ```
 
+Run initialization.py (which adds some config files to pyrdf4j).
+
+This should be distributed as part of the pyrdf4j package, but for now, it is not as it deviates from the original package. This will be changed in the future.
+
+```bash
+python ./Implementation/initialise.py
+```
+
 Build the pyrdf4j package and install it. Additionally, a triplestore implementing the [rdf4j API](https://rdf4j.org/documentation/reference/rest-api/) is required. This comes down to implementing both a [SPARQL endpoint](https://www.w3.org/TR/sparql11-protocol/) and the [SPARQL Graph Store HTTP Protocol](https://www.w3.org/TR/sparql11-http-rdf-update/). For this project, [GraphDB](https://graphdb.ontotext.com/) was used, but any triplestore implementing these protocols, ~~like blazegraph~~[deprecated], should work. For now, the triplestore is assumed to be running on localhost:7200, in later versions this will be configurable.
 
 
