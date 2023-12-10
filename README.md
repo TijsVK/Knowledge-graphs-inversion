@@ -37,6 +37,11 @@ Build the pyrdf4j package and install it. Additionally, a triplestore implementi
 - [ ] Mapping the graph 
   - [ ] For smarter data extraction
   - [ ] For join conditions
+- [ ] Remote sources
+- [ ] Preview of single collumn or row (or for different source types different previews)
+- [ ] Smarter querying
+  - [ ] Only get required subjects matching the mapping (using triple patterns)
+  - [ ] Direct data extraction via SPARQL functions (if possible)
 
 ## Paper
 - [ ] Create general structure
