@@ -10,15 +10,124 @@
 Introduction text providing an overview of the related work
 
 \section{Semantic Web}
-Text about the Semantic Web, explaining its history, purpose, technologies, etc.
+Tim Berneers-Lee didn't stop at creating the world wide web. He envisioned a version of the web that would also be understandable by machines, and thus the semantic web was born. It is not designed as a separate entity to the normal web, but instead as an extension, mostly hidden for normal humans. It is designed with mostly existing technologies like \acrshort{xml}(including HTML, being a superset of it), \acrfull{uri} and \acrfull{rdf}. Even ontologies, a key component of the semantic web, are not a new concept, but rather co-opted from the field of philosophy. \citep{thesemanticweb}
 
 \section{RDF}
+\acrfull{rdf} was originally designed as a data model for metadata, but has been extended to be a general purpose framework for graph data. RDF is a directed graph, where the nodes represent entities, and the edges represent relations between these entities. This graph is build up from triples, which connect a subject and an object using a predicate as shown in figure \ref{fig:rdf_triple}. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{Chapter2/SPO}
+    \caption{An RDF triple}
+    \label{fig:rdf_triple}
+\end{figure}
+
+The subject must always be an entity, which can either be represented by an \acrshort{uri} or be a blank node. The predicate must be an \acrshort{uri}, and the object can be either an \acrshort{uri}, a blank node or a literal. \citep{rdfprimer}
+
+\begin{figure}[]
+    \begin{tabular}{lll}
+        \textbf{Subject}             & \textbf{Predicate}           & \textbf{Object}                           \\
+        http://example.com/De\_Nayer & https://schema.org/location  & http://example.com/Sint\_Katelijne\_Waver \\
+        http://example.com/r0785695  & https://schema.org/givenName & "Tijs"
+    \end{tabular}
+    \caption{Example of RDF triples}
+    \label{fig:rdf_triples_table}
+\end{figure}
+
+An \acrshort{uri} is a unique identifier for a resource on the web. Unlike a normal \acrshort{url}, it does not have to point to a network location, but can also be used to identify a person, a location, a concept, etc. \citep{rdfprimer}. In \acrshort{rdf} the \acrshort{uri} is purely used for identifying resources. As such, unlike in HTML where certain conventions are expected, there are no conventions for \acrshortpl{uri} in \acrshort{rdf}. An example of this can be seen in figure \ref{fig:rdf_triples_table}, the example subjects share the same domain but this does not imply that they are closely related, or even related at all. \acrshortpl{uri} are extended to \acrshortpl{iri} to allow for a wider range of characters. Except for allowing unicode characters, \acrshortpl{iri} are identical to \acrshortpl{uri} so little distinction is made between the two in this thesis.
+
+A blank node is a node that is not identified by a \acrshort{uri}. It is used to represent an anonymous resource that can't be or has no reason to be uniquely identified. For example the address of student r0785695 in figure \ref{fig:blank_node} is only pertinent to the student, and thus does not need to be uniquely identified. A blank node is serialized as \texttt{\_:name}, where name is a unique identifier for the blank node. This identifier is only unique within the document, and thus can't be used to refer to the blank node from outside the document. \citep{rdfprimer}
+
+\begin{figure}[]
+    \begin{tabular}{lll}
+    \textbf{Subject} & \textbf{Predicate} & \textbf{Object} \\
+    ex:student/r0785695 & schema:address & \_:addrr0785695 \\
+    \_:addrr0785695 & schema:postalCode & 2800 \\
+    \_:addrr0785695 & schema:streetAddress & "Gentsesteenweg 2705"
+    \end{tabular}
+    \caption{Example of a blank node and prefix notation}
+    \label{fig:blank_node}
+\end{figure}
+
+A literal is a value, e.g. a string, integer or date. This value can be typed, e.g. a string can be typed as a date, or untyped. A literal can also have a language tag, which is used to indicate the language of the literal.
+
+RDF is only a framework, and as such does not define any serialization syntax. There are however a few common serialization standards like RDF/XML, Turtle, N-Triples and JSON-LD. 
+
+\textit{Could do some subsections on the different serialization formats, but its not really relevant to the task as we rely on graph databases to handle this. On the other hand this could easily fill a few pages if more length is needed.}
 
 \section{SPARQL}
+\acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data, and is similar to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature rich, with support for aggregation, subqueries, negation, etc. It also supports different return types, federated queries, entailment, etc. \citep{SPARQL1.1QL} Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}. \textit{We could go into more detail here on each or any of these features, but getting any decent overview would take pages and pages. We dont really use any of these fancy features in our work anyways, if that changes we will add more detail here.}
+
+\begin{lstlisting}[language=SPARQL, caption={Example of a basic \acrshort{sparql} SELECT query}, label={lst:sparql_select_query}, captionpos=b]
+    PREFIX schema: <https://schema.org/>
+    SELECT ?name ?address
+    WHERE {
+        ?student schema:givenName ?name .
+        ?student schema:address ?address .
+    }
+\end{lstlisting}
 
 \section{Mapping languages}
+Mapping languages are used to define a mapping between a source and a target. The target in the context of linked data is of course \acrshort{rdf}, with the source being any structured data source. Some mapping languages exist for a single source, e.g. \acrfull{r2rml} for relational databases, \acrfull{xsparql} for \acrshort{xml}, etc. Others are more general purpose, e.g. \acrfull{rml} and \acrfull{d2rml}. 
+We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as both of these are \acrshort{w3c} recommended. \acrshort{rml} we will discuss because it is one of the more feature rich general mapping languages, and it is the mapping language we will use in our implementation. \acrshort{r2rml} we discuss because it is the most widely used mapping language, as it supports virtualization ontop of databases. \textit{i wonder if people will get the pun in the previous sentence} Most \acrshort{rml} implementations also support \acrshort{r2rml}, as \acrshort{rml} is a nearly superset of \acrshort{r2rml}. 
 
-\subsection{R2RML}
-\subsection{RML}
+\subsection{\acrshort{r2rml}}
+\acrfull{r2rml} is a mapping language for mapping relational databases to \acrshort{rdf}. As opposed to \acrfull{dm}, which results in a direct mapping from the relational database to \acrshort{rdf} without any changes to structure or naming, \acrshort{r2rml} allows for more flexibility. R2RML mappings consist of zero or more TriplesMaps, which are used to map a table to \acrshort{rdf}. A TriplesMap consists of a logical table, a subject map, and one or more \acrfullpl{pom}. 
+
+The logical table is used to define the table that is being mapped, with each row in the table being mapped to a subject and it's corresponding \acrshortpl{pom}. It is possible to create a view of a table by using a SQL query, and then map this view. This allows for more complex mappings, e.g. mapping a join of two tables or a computed column. 
+% Could add this, but as we dont actually use R2RML in our implementation for now this is not really relevant
+% An example of this can be seen in listing \ref{lst:r2rml_mapping_view}.
+
+% \begin{lstlisting}[caption={Example of an \acrshort{r2rml} mapping with a view. Snippet from \citep{r2rml}}, label={lst:r2rml_mapping_view}, captionpos=b] 
+%     <#TriplesMap1>
+%     rr:logicalTable [ rr:sqlQuery """
+%         SELECT EMP.*, (CASE JOB
+%             WHEN 'CLERK' THEN 'general-office'
+%             WHEN 'NIGHTGUARD' THEN 'security'
+%             WHEN 'ENGINEER' THEN 'engineering'
+%         END) ROLE FROM EMP
+%         """ ];
+%     rr:subjectMap [
+%         rr:template "http://data.example.com/employee/{EMPNO}";
+%     ];
+%     rr:predicateObjectMap [
+%         rr:predicate ex:role;
+%         rr:objectMap [ rr:template "http://data.example.com/roles/{ROLE}" ];
+%     ].
+% \end{lstlisting}
+
+Each of the SubjectMap, PredicateMap, ObjectMap, (and GraphMap) is a subclass of TermMap, which is a function that generates an \acrshort{rdf} term. The map type can be constant, template, or column. The resulting term is then used as the subject, predicate, object, or graph of the triple. The termType of the map determines the type of the term, which can be \acrshort{iri}, blank node or literal. If the termType is literal, optionally the datatype or language can be added. In accordance with the \acrshort{rdf} specification, not all combinations of termType and map are possible, this is shown in table \ref{tab:termType_map_combinations}. The object map has an additional subclass, a reference object map, in which we refer to another TriplesMap. Using a reference map we can map a foreign key to the subject of another TriplesMap, with a join condition. \citep{r2rml}
+
+\begin{table}[h]
+    \begin{tabular}{|l|l|l|l|l|}
+        \hline
+        \textbf{TermType} & \textbf{Subject} & \textbf{Predicate} & \textbf{Object} & \textbf{Graph} \\ \hline
+        IRI               & \cmark           & \cmark             & \cmark          & \cmark         \\ \hline
+        Blank node        & \cmark           & \xmark             & \cmark          & \cmark         \\ \hline
+        Literal           & \xmark           & \xmark             & \cmark          & \xmark         \\ \hline
+    \end{tabular}
+    \caption{Possible combinations of TermType and Map type}
+    \label{tab:termType_map_combinations}
+\end{table}
+
+A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template is a string with placeholders, which are replaced by values from the logical row. A column is the value of a column in the logical row. 
+
+\begin{lstlisting}[language=XML, caption={Example of an \acrshort{r2rml} mapping}, label={lst:r2rml_mapping}, captionpos=b]
+    @prefix rr: <http://www.w3.org/ns/r2rml#>.
+@prefix ex: <http://example.com/ns#>.
+
+<#TriplesMap1>
+    rr:logicalTable [ rr:tableName "EMP" ];
+    rr:subjectMap [
+        rr:template "http://data.example.com/employee/{EMPNO}";
+        rr:class ex:Employee;
+    ];
+    rr:predicateObjectMap [
+        rr:predicate ex:id;
+        rr:objectMap [ rr:column "EMPNO"; rr:datatype xsd:positiveInteger ].
+    ].
+\end{lstlisting}
+
+\subsection{\acrshort{rml}}
 
 \section{if meaningful: provenance}
