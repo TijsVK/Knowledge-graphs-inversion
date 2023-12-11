@@ -69,13 +69,13 @@ RDF is only a framework, and as such does not define any serialization syntax. T
 
 \section{Mapping languages}
 Mapping languages are used to define a mapping between a source and a target. The target in the context of linked data is of course \acrshort{rdf}, with the source being any structured data source. Some mapping languages exist for a single source, e.g. \acrfull{r2rml} for relational databases, \acrfull{xsparql} for \acrshort{xml}, etc. Others are more general purpose, e.g. \acrfull{rml} and \acrfull{d2rml}. 
-We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as both of these are \acrshort{w3c} recommended. \acrshort{rml} we will discuss because it is one of the more feature rich general mapping languages, and it is the mapping language we will use in our implementation. \acrshort{r2rml} we discuss because it is the most widely used mapping language, as it supports virtualization ontop of databases. \textit{i wonder if people will get the pun in the previous sentence} Most \acrshort{rml} implementations also support \acrshort{r2rml}, as \acrshort{rml} is a nearly superset of \acrshort{r2rml}. 
+We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as one extends the other. \acrshort{rml} we will discuss because it is one of the more feature rich general mapping languages, and it is the mapping language we will use in our implementation. \acrshort{r2rml} we discuss because it is the most widely used mapping language, as it supports virtualization ontop of databases. \textit{i wonder if people will get the pun in the previous sentence} Most \acrshort{rml} implementations also support \acrshort{r2rml}, as \acrshort{rml} is a nearly superset of \acrshort{r2rml}. 
 
 \subsection{\acrshort{r2rml}}
 \acrfull{r2rml} is a mapping language for mapping relational databases to \acrshort{rdf}. As opposed to \acrfull{dm}, which results in a direct mapping from the relational database to \acrshort{rdf} without any changes to structure or naming, \acrshort{r2rml} allows for more flexibility. R2RML mappings consist of zero or more TriplesMaps, which are used to map a table to \acrshort{rdf}. A TriplesMap consists of a logical table, a subject map, and one or more \acrfullpl{pom}. 
 
 The logical table is used to define the table that is being mapped, with each row in the table being mapped to a subject and it's corresponding \acrshortpl{pom}. It is possible to create a view of a table by using a SQL query, and then map this view. This allows for more complex mappings, e.g. mapping a join of two tables or a computed column. 
-% Could add this, but as we dont actually use R2RML in our implementation for now this is not really relevant
+% Could add this, but as we dont actually support R2RML in our implementation for now this is not really relevant
 % An example of this can be seen in listing \ref{lst:r2rml_mapping_view}.
 
 % \begin{lstlisting}[caption={Example of an \acrshort{r2rml} mapping with a view. Snippet from \citep{r2rml}}, label={lst:r2rml_mapping_view}, captionpos=b] 
@@ -129,5 +129,23 @@ A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template
 \end{lstlisting}
 
 \subsection{\acrshort{rml}}
+\acrfull{rml} is a mapping language for mapping any (semi-)structured data source to \acrshort{rdf}. It is a generalization of \acrshort{r2rml}, and as such supports all the features of \acrshort{r2rml}. It extends \acrshort{r2rml} by extending database specific features to make them more general. The differences in usage can be seen in table \ref{tab:r2rml_rml_differences}. \citep{rml}
 
-\section{if meaningful: provenance}
+\begin{table}[]
+    \begin{tabular}{|ll|ll|}
+    \hline
+    \multicolumn{2}{|c|}{R2RML}                           & \multicolumn{2}{c|}{RML}                                            \\ \hline
+    Logical Table (relational database) & rr:logicalTable & Logical Source                           & rml:logicalSource        \\ \hline
+    Table Name                          & rr:tablename    & URI (pointing to the source)             & rml:source               \\ \hline
+    column                              & rr:column       & reference                                & rml:reference            \\ \hline
+    (SQL)                               & rr:SQLQuery     & Reference Formulation                    & rml:referenceFormulation \\ \hline
+    per row iteration                   &                 & defined iterator                         & rml:iterator             \\ \hline
+    \end{tabular}
+    \caption{Differences between \acrshort{r2rml} and \acrshort{rml}}
+    \label{tab:r2rml_rml_differences}
+\end{table}
+
+\acrshort{rml} uses the same structure as \acrshort{r2rml}, with TriplesMaps consisting of a logical source, a subject map, and zero or more \acrshortpl{pom}. The changes it has all relate to the logical source. Whereas in \acrshort{r2rml} the source is always a database, from which we select a table or view, in \acrshort{rml} the source can be one of many different source types like \acrshort{xml}, \acrshort{json}, \acrshort{csv}, etc. Where in \acrshort{r2rml} we simply iterate over the rows of a table, in \acrshort{rml} we can have a source without an explicit iteration pattern and as such we need to define an iterator. 
+
+% \section{if meaningful: provenance}
+% provenance could be interesting, but is not mainstream enough to use on a larger scale. (yet?, maybe in future work add a reference)
