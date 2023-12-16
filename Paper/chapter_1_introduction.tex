@@ -28,14 +28,12 @@ Retrieving data from a knowledge graph, for consumption by other programs, is do
 
 We can not convert the knowledge graph back to the original data format using the same rules we created it with. As such any changes we make to the data are hard to propagate back to the original data. We can not update, expand or improve the original data using e.g. knowledge graph refining. Nor can we apply changes to a virtual knowledge graph to change the original data. 
 
-We aim to improve this situation by extending an existing system implementation with the ability to invert the mapping rules, i.e. mapping the RDF knowledge graph back to raw data (\textit{RQ2}). We choose to extend the Morph-KGC implementation \citep{arenas2022morph} of RML \citep{dimou_ldow_2014} as its end-to-end characteristics make it a good candidate for this task. 
-We also explore how we can leverage RML to construct raw data from heterogeneous data (\textit{RQ1, but this is pretty vague, I could do with a more detailed explanation of what exactly the end goal of this RQ is}). 
-
+In thesis we seek to answer the question: \textit{How can we extend an existing system like RML or create a new system to construct
+raw data from knowledge graphs?} We choose to extend the Morph-KGC implementation \citep{arenas2022morph} of \acrshort{rml} \citep{dimou_ldow_2014} as \acrshort{rml}'s end-to-end (from file to knowledge graph) characteristics make it a good candidate for this task. To answer the main research question we need to answer the following sub-questions:
+\begin{itemize}
+    \item[\textit{RQ1}] \textit{How can we construct the schema of the original data from the mapping rules?}
+    \item[\textit{RQ2}] \textit{How can we populate the schema with data from the knowledge graph?}
+\end{itemize}
 
 \section{Thesis outline}
 This thesis aims to explore the possibility of inverting knowledge graphs back to their original data format using RML mapping rules. To achieve this we will first look at the current state of the art in chapter \ref{chapter:related_work}. We will take a closer look at the technologies used like RDF, SPARQL, and RML. We will also look at the current state of the art for inverting knowledge graphs. In chapter \ref{chapter:implementation} we will look at our implementation of the inversion algorithm. We will look at the algorithm itself, and the implementation details. In chapter \ref{chapter:evaluation} we will evaluate our implementation using various benchmarks. For basic testing we use a subset of the rml test cases, which are designed to test the conformance of tools to the RML specification. For more advanced testing we will use various benchmarks simulating real-life use cases like LUBM4OBDA, GTFS-Madrid-Bench and SDM-Genomic-dataset. Finally in chapter \ref{chapter:conclusion} we will conclude this thesis, and look at possible future work.
-
-% generate schema of input data
-% references into schema(-templates)
-
-% populate schema with data
