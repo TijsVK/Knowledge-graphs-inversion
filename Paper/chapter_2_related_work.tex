@@ -53,7 +53,49 @@ A literal is a value, e.g. a string, integer or date. This value can be typed, e
 
 RDF is only a framework, and as such does not define any serialization syntax. There are however a few common serialization standards like for example RDF/XML, Turtle, N-Triples and JSON-LD. 
 
-\textit{TODO: add turtle serialization section (relevant)}
+\subsection{Turtle}
+Turtle, or Terse RDF Triple Language, is a human-readable serialization format for \acrshort{rdf}. It is the most used serialization format for \acrshort{rdf}, and is used in many tools and specifications. 
+In its simplest form turtle consists of triple statements, sequences of subject-predicate-object separated by spaces and terminated by a dot. An example of this can be seen in listing \ref{lst:basic_turtle_example}. This is very verbose, but turtle offers many features to make it more concise. Below is a list of some of these features and, if possible, how they can be used to make the example more concise.
+\begin{itemize}
+    \item \textbf{Prefix notation} allows us to shorten \acrshortpl{uri} by defining a prefix.
+    \begin{itemize}
+        \item Using \texttt{@prefix schema: <https://schema.org/>} allows us to shorten \break\texttt{https://schema.org/Person} to \texttt{schema:Person}
+    \end{itemize}
+    \item \textbf{Base prefix} allows us to shorten \acrshortpl{uri} by defining a base \acrshort{uri}.
+    \begin{itemize}
+        \item Using \texttt{@base <http://example.com/>} allows us to shorten \break\texttt{http://example.com/r0785695} to \texttt{r0785695}
+    \end{itemize}
+    \item \textbf{Predicate lists} allow us to shorten multiple triples with the same subject to a list of predicates.
+    \begin{itemize}
+        \item All our triples in the example are about r0785695, so we can split the predicates with \texttt{;} instead of repeating the subject.
+    \end{itemize}
+    \item \textbf{Object lists} allow us to shorten multiple triples with the same subject and predicate to a list of objects.
+    \begin{itemize}
+        \item r0785695 is both a Person and a Student, so we can split the objects with \texttt{,} instead of repeating the subject and predicate.
+    \end{itemize}
+    \item \textbf{Literals} allow indentify values, e.g. strings, integers, dates, etc. with a datatype or language tag.
+    \item \textbf{Blank nodes} allow us to define anonymous resources by using the \texttt{\_:} prefix.
+    \item \textbf{Unlabeled blank nodes} allow us to define anonymous resources without a unique identifier by using the [] notation instead of \texttt{\_:name}.
+    \item \textbf{Collections} allow us to define a list of blank nodes by using the () notation.
+\end{itemize}
+The example in listing \ref{lst:basic_turtle_example} can be rewritten using these features, as shown in listing \ref{lst:basic_turtle_example_concise}.
+
+
+\begin{lstlisting}[caption={Basic naive turtle document}, label={lst:basic_turtle_example}, captionpos=b, breaklines=true]
+    <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .
+    <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Student> .
+    <http://example.com/r0785695> <http://schema.org/givenName> "Tijs" .
+    <http://example.com/r0785695> <http://schema.org/familyName> "Van Kampen" .
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Basic turtle document using turtle features}, label={lst:basic_turtle_example_concise}, captionpos=b, breaklines=true]
+    @prefix schema: <https://schema.org/> .
+    @base <http://example.com/> .
+    <r0785695> a schema:Person, schema:Student ;
+        schema:givenName "Tijs" ;
+        schema:familyName "Van Kampen" .
+\end{lstlisting}
+
 
 \section{SPARQL}
 \acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data, and is similar to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature rich, with support for aggregation, subqueries, negation, etc. It also supports different return types, federated queries, entailment, etc. \citep{SPARQL1.1QL} Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}. \textit{We could go into more detail here on each or any of these features, but getting any decent overview would take pages and pages. We dont really use any of these fancy features in our work anyways, if that changes we will add more detail here.}
