@@ -5,3 +5,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Implementation}
 \label{chapter:implementation}
+This chapter is split into three sections. In the first section we go over a high level overview of the algorithm. In the second and third section we go into detail into the two sub-research questions: how to construct the schema and how to populate the schema. 
+
+% At this time we only have a PoC implementation, as such many details havent been worked out yet. For example the section on creating the schema is limited, as we only handle CSV files which require little to no schema. 
+
+For the implementation we assume that the mapping rules never map to a superset of the knowledge graph. 
+
+The implementation is written in Python. As we seek to extend Morph-KGC, we make use of internal functions from it. As Morph-KGC uses pandas, and it is a very useful library for data manipulation, we also use it. For querying the knowledge graph we use SPARQLWrapper.
