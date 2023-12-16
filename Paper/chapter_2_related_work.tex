@@ -10,10 +10,10 @@
 Introduction text providing an overview of the related work
 
 \section{Semantic Web}
-Tim Berneers-Lee didn't stop at creating the world wide web. He envisioned a version of the web that would also be understandable by machines, and thus the semantic web was born. It is not designed as a separate entity to the normal web, but instead as an extension, mostly hidden for normal humans. It is designed with mostly existing technologies like \acrshort{xml}(including HTML, being a superset of it), \acrfull{uri} and \acrfull{rdf}. Even ontologies, a key component of the semantic web, are not a new concept, but rather co-opted from the field of philosophy. \citep{thesemanticweb}
+Tim Berneers-Lee envisioned a version of the web that would also be understandable by machines, and thus the semantic web was born. It is not designed as a separate entity to the web, but instead as an extension, mostly hidden for normal humans. It is designed with mostly existing technologies like \acrshort{xml}(including HTML, being a superset of it), \acrshort{uri} and \acrshort{rdf}. Even ontologies, a key component of the semantic web, are not a new concept, but rather co-opted from the field of philosophy. \citep{thesemanticweb}
 
 \section{RDF}
-\acrfull{rdf} was originally designed as a data model for metadata, but has been extended to be a general purpose framework for graph data. RDF is a directed graph, where the nodes represent entities, and the edges represent relations between these entities. This graph is build up from triples, which connect a subject and an object using a predicate as shown in figure \ref{fig:rdf_triple}. 
+\acrshort{rdf} was originally designed as a data model for metadata, but has been extended to be a general purpose framework for graph data. RDF is a directed graph, where the nodes represent entities, and the edges represent relations between these entities. This graph is build up from triples, which connect a subject and an object using a predicate as shown in figure \ref{fig:rdf_triple}. 
 
 \begin{figure}
     \centering
@@ -28,7 +28,7 @@ The subject must always be an entity, which can either be represented by an \acr
     \begin{tabular}{lll}
         \textbf{Subject}             & \textbf{Predicate}           & \textbf{Object}                           \\
         http://example.com/De\_Nayer & https://schema.org/location  & http://example.com/Sint\_Katelijne\_Waver \\
-        http://example.com/r0785695  & https://schema.org/givenName & "Tijs"
+        http://example.com/r0785695  & https://schema.org/givenName & ``Tijs"
     \end{tabular}
     \caption{Example of RDF triples}
     \label{fig:rdf_triples_table}
@@ -42,18 +42,18 @@ A blank node is a node that is not identified by a \acrshort{uri}. It is used to
     \begin{tabular}{lll}
     \textbf{Subject} & \textbf{Predicate} & \textbf{Object} \\
     ex:student/r0785695 & schema:address & \_:addrr0785695 \\
-    \_:addrr0785695 & schema:postalCode & 2800 \\
-    \_:addrr0785695 & schema:streetAddress & "Gentsesteenweg 2705"
+    \_:addrr0785695 & schema:postalCode & "2800"\textasciicircum \textasciicircum xsd:integer \\
+    \_:addrr0785695 & schema:streetAddress & "Gentsesteenweg 2705"@nl
     \end{tabular}
     \caption{Example of a blank node and prefix notation}
     \label{fig:blank_node}
 \end{figure}
 
-A literal is a value, e.g. a string, integer or date. This value can be typed, e.g. a string can be typed as a date, or untyped. A literal can also have a language tag, which is used to indicate the language of the literal.
+A literal is a value, e.g. a string, integer or date. This value can be typed, e.g. a string can be typed as a date, or untyped. A string can also have a language tag, which is used to indicate the language of the literal.
 
-RDF is only a framework, and as such does not define any serialization syntax. There are however a few common serialization standards like RDF/XML, Turtle, N-Triples and JSON-LD. 
+RDF is only a framework, and as such does not define any serialization syntax. There are however a few common serialization standards like for example RDF/XML, Turtle, N-Triples and JSON-LD. 
 
-\textit{Could do some subsections on the different serialization formats, but its not really relevant to the task as we rely on graph databases to handle this. On the other hand this could easily fill a few pages if more length is needed.}
+\textit{TODO: add turtle serialization section (relevant)}
 
 \section{SPARQL}
 \acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data, and is similar to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature rich, with support for aggregation, subqueries, negation, etc. It also supports different return types, federated queries, entailment, etc. \citep{SPARQL1.1QL} Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}. \textit{We could go into more detail here on each or any of these features, but getting any decent overview would take pages and pages. We dont really use any of these fancy features in our work anyways, if that changes we will add more detail here.}
