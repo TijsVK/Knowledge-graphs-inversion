@@ -43,7 +43,7 @@ A blank node is a node that is not identified by a \acrshort{uri}. It is used to
     \textbf{Subject} & \textbf{Predicate} & \textbf{Object} \\
     ex:student/r0785695 & schema:address & \_:addrr0785695 \\
     \_:addrr0785695 & schema:postalCode & "2800"\textasciicircum \textasciicircum xsd:integer \\
-    \_:addrr0785695 & schema:streetAddress & "Gentsesteenweg 2705"@nl
+    \_:addrr0785695 & schema:streetAddress & "Gentsesteenweg XXXX"@nl
     \end{tabular}
     \caption{Example of a blank node and prefix notation}
     \label{fig:blank_node}
@@ -71,29 +71,47 @@ In its simplest form turtle consists of triple statements, sequences of subject-
     \end{itemize}
     \item \textbf{Object lists} allow us to shorten multiple triples with the same subject and predicate to a list of objects.
     \begin{itemize}
-        \item r0785695 is both a Person and a Student, so we can split the objects with \texttt{,} instead of repeating the subject and predicate.
+        \item \texttt{r0785695} is both a Person and a Student, so we can split the objects with \texttt{,} instead of repeating the subject and predicate.
     \end{itemize}
     \item \textbf{Literals} allow indentify values, e.g. strings, integers, dates, etc. with a datatype or language tag.
     \item \textbf{Blank nodes} allow us to define anonymous resources by using the \texttt{\_:} prefix.
+    \begin{itemize}
+        \item The address of \texttt{r0785695} is only relevant to \texttt{r0785695}, so we can define it as a blank node instead of a \acrshort{uri}, this shortens \texttt{<http://example.com/addrr0785695>} to \texttt{\_:addrr0785695}. 
+    \end{itemize}
     \item \textbf{Unlabeled blank nodes} allow us to define anonymous resources without a unique identifier by using the [] notation instead of \texttt{\_:name}.
+    \begin {itemize}
+        \item As we do not need to refer to the address of \texttt{r0785695} from outside \texttt{r0785695}, we can use an unlabeled blank node instead of a labeled blank node.
+    \end{itemize}
     \item \textbf{Collections} allow us to define a list of blank nodes by using the () notation.
 \end{itemize}
 The example in listing \ref{lst:basic_turtle_example} can be rewritten using these features, as shown in listing \ref{lst:basic_turtle_example_concise}.
 
 
-\begin{lstlisting}[caption={Basic naive turtle document}, label={lst:basic_turtle_example}, captionpos=b, breaklines=true]
+\begin{lstlisting}[caption={Basic naive turtle document}, label={lst:basic_turtle_example}, captionpos=b, breaklines=true, basicstyle=\small]
     <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .
     <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Student> .
     <http://example.com/r0785695> <http://schema.org/givenName> "Tijs" .
     <http://example.com/r0785695> <http://schema.org/familyName> "Van Kampen" .
+    <http://example.com/r0785695> <http://schema.org/address> <http://example.com/addrr0785695> .
+    <http://example.com/addrr0785695> <http://schema.org/postalCode> "2800"^^<http://www.w3.org/2001/XMLSchema#integer> .
+    <http://example.com/addrr0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/PostalAddress> .
+    <http://example.com/addrr0785695> <http://schema.org/streetAddress> "Gentsesteenweg XXXX"@nl .
+    <http://example.com/addrr0785695> <http://schema.org/addressCountry> "Belgium" .
 \end{lstlisting}
 
 \begin{lstlisting}[caption={Basic turtle document using turtle features}, label={lst:basic_turtle_example_concise}, captionpos=b, breaklines=true]
     @prefix schema: <https://schema.org/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
     @base <http://example.com/> .
     <r0785695> a schema:Person, schema:Student ;
         schema:givenName "Tijs" ;
-        schema:familyName "Van Kampen" .
+        schema:familyName "Van Kampen" ;
+        schema:address [
+            a schema:PostalAddress ;
+            schema:postalCode "2800"^^xsd:integer ;
+            schema:streetAddress "Gentsesteenweg XXXX"@nl ;
+            schema:addressCountry "Belgium"
+        ] .
 \end{lstlisting}
 
 
@@ -155,7 +173,7 @@ Each of the SubjectMap, PredicateMap, ObjectMap, (and GraphMap) is a subclass of
 A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template is a string with placeholders, which are replaced by values from the logical row. A column is the value of a column in the logical row. 
 
 \begin{lstlisting}[language=XML, caption={Example of an \acrshort{r2rml} mapping}, label={lst:r2rml_mapping}, captionpos=b]
-    @prefix rr: <http://www.w3.org/ns/r2rml#>.
+@prefix rr: <http://www.w3.org/ns/r2rml#>.
 @prefix ex: <http://example.com/ns#>.
 
 <#TriplesMap1>
