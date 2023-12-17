@@ -10,10 +10,10 @@
 Introduction text providing an overview of the related work
 
 \section{Semantic Web}
-Tim Berneers-Lee envisioned a version of the web that would also be understandable by machines, and thus the semantic web was born. It is not designed as a separate entity to the web, but instead as an extension, mostly hidden for normal humans. It is designed with mostly existing technologies like \acrshort{xml}(including HTML, being a superset of it), \acrshort{uri} and \acrshort{rdf}. Even ontologies, a key component of the semantic web, are not a new concept, but rather co-opted from the field of philosophy. \citep{thesemanticweb}
+Tim Berneers-Lee envisioned a version of the web that would also be understandable by machines, and thus the semantic web was born. It is not designed as a separate entity to the web, but instead as an extension, mostly hidden for normal humans. It is designed with mostly existing technologies like \acrshort{xml}(including HTML, being a superset of it), \acrshort{uri} and \acrshort{rdf}. Even ontologies, a key component of the semantic web, are not a new concept but rather co-opted from the field of philosophy. \citep{thesemanticweb}
 
 \section{RDF}
-\acrshort{rdf} was originally designed as a data model for metadata, but has been extended to be a general purpose framework for graph data. RDF is a directed graph, where the nodes represent entities, and the edges represent relations between these entities. This graph is build up from triples, which connect a subject and an object using a predicate as shown in figure \ref{fig:rdf_triple}. 
+\acrshort{rdf} was originally designed as a data model for metadata but has been extended to be a general-purpose framework for graph data. RDF is a directed graph, where the nodes represent entities, and the edges represent relations between these entities. This graph is built up from triples, which connect a subject and an object using a predicate as shown in figure \ref{fig:rdf_triple}. 
 
 \begin{figure}
     \centering
@@ -22,7 +22,7 @@ Tim Berneers-Lee envisioned a version of the web that would also be understandab
     \label{fig:rdf_triple}
 \end{figure}
 
-The subject must always be an entity, which can either be represented by an \acrshort{uri} or be a blank node. The predicate must be an \acrshort{uri}, and the object can be either an \acrshort{uri}, a blank node or a literal. \citep{rdfprimer}
+The subject must always be an entity, which can either be represented by an \acrshort{uri} or be a blank node. The predicate must be an \acrshort{uri}, and the object can be either an \acrshort{uri}, a blank node, or a literal. \citep{rdfprimer}
 
 \begin{figure}[]
     \begin{tabular}{lll}
@@ -34,9 +34,9 @@ The subject must always be an entity, which can either be represented by an \acr
     \label{fig:rdf_triples_table}
 \end{figure}
 
-An \acrshort{uri} is a unique identifier for a resource on the web. Unlike a normal \acrshort{url}, it does not have to point to a network location, but can also be used to identify a person, a location, a concept, etc. \citep{rdfprimer}. In \acrshort{rdf} the \acrshort{uri} is purely used for identifying resources. As such, unlike in HTML where certain conventions are expected, there are no conventions for \acrshortpl{uri} in \acrshort{rdf}. An example of this can be seen in figure \ref{fig:rdf_triples_table}, the example subjects share the same domain but this does not imply that they are closely related, or even related at all. \acrshortpl{uri} are extended to \acrshortpl{iri} to allow for a wider range of characters. Except for allowing unicode characters, \acrshortpl{iri} are identical to \acrshortpl{uri} so little distinction is made between the two in this thesis.
+An \acrshort{uri} is a unique identifier for a resource on the web. Unlike a normal \acrshort{url}, it does not have to point to a network location, but can also be used to identify a person, a location, a concept, etc. \citep{rdfprimer}. In \acrshort{rdf} the \acrshort{uri} is purely used for identifying resources. As such, unlike in HTML where certain conventions are expected, there are no conventions for \acrshortpl{uri} in \acrshort{rdf}. An example of this can be seen in figure \ref{fig:rdf_triples_table}, the example subjects share the same domain but this does not imply that they are closely related, or even related at all. \acrshortpl{uri} are extended to \acrshortpl{iri} to allow for a wider range of characters. Except for allowing Unicode characters, \acrshortpl{iri} are identical to \acrshortpl{uri} so little distinction is made between the two in this thesis.
 
-A blank node is a node that is not identified by a \acrshort{uri}. It is used to represent an anonymous resource that can't be or has no reason to be uniquely identified. For example the address of student r0785695 in figure \ref{fig:blank_node} is only pertinent to the student, and thus does not need to be uniquely identified. A blank node is serialized as \texttt{\_:name}, where name is a unique identifier for the blank node. This identifier is only unique within the document, and thus can't be used to refer to the blank node from outside the document. \citep{rdfprimer}
+A blank node is a node that is not identified by a \acrshort{uri}. It is used to represent an anonymous resource that can't be or has no reason to be uniquely identified. For example, the address of student r0785695 in figure \ref{fig:blank_node} is only pertinent to the student and thus does not need to be uniquely identified. A blank node is serialized as \texttt{\_:name}, where name is a unique identifier for the blank node. This identifier is unique within the document, and thus can't be used to refer to the blank node from outside the document. \citep{rdfprimer}
 
 \begin{figure}[]
     \begin{tabular}{lll}
@@ -49,13 +49,13 @@ A blank node is a node that is not identified by a \acrshort{uri}. It is used to
     \label{fig:blank_node}
 \end{figure}
 
-A literal is a value, e.g. a string, integer or date. This value can be typed, e.g. a string can be typed as a date, or untyped. A string can also have a language tag, which is used to indicate the language of the literal.
+A literal is a value, e.g. a string, integer, or date. This value can be typed, e.g. a string can be typed as a date, or untyped. A string can also have a language tag, which is used to indicate the language of the literal.
 
-RDF is only a framework, and as such does not define any serialization syntax. There are however a few common serialization standards like for example RDF/XML, Turtle, N-Triples and JSON-LD. 
+RDF is only a framework, and as such does not define any serialization syntax. There are however a few common serialization standards for example RDF/XML, Turtle, N-Triples, and JSON-LD. 
 
 \subsection{Turtle}
 Turtle, or Terse RDF Triple Language, is a human-readable serialization format for \acrshort{rdf}. It is the most used serialization format for \acrshort{rdf}, and is used in many tools and specifications. 
-In its simplest form turtle consists of triple statements, sequences of subject-predicate-object separated by spaces and terminated by a dot. An example of this can be seen in listing \ref{lst:basic_turtle_example}. This is very verbose, but turtle offers many features to make it more concise. Below is a list of some of these features and, if possible, how they can be used to make the example more concise.
+In its simplest form turtle consists of triple statements, sequences of subject-predicate-object separated by spaces and terminated by a dot. An example of this can be seen in listing \ref{lst:basic_turtle_example}. This is very verbose, but Turtle offers many features to make it more concise. Below is a list of some of these features and, if possible, how they can be used to make the example more concise.
 \begin{itemize}
     \item \textbf{Prefix notation} allows us to shorten \acrshortpl{uri} by defining a prefix.
     \begin{itemize}
@@ -73,7 +73,7 @@ In its simplest form turtle consists of triple statements, sequences of subject-
     \begin{itemize}
         \item \texttt{r0785695} is both a Person and a Student, so we can split the objects with \texttt{,} instead of repeating the subject and predicate.
     \end{itemize}
-    \item \textbf{Literals} allow indentify values, e.g. strings, integers, dates, etc. with a datatype or language tag.
+    \item \textbf{Literals} allow identifying values, e.g. strings, integers, dates, etc. with a datatype or language tag.
     \item \textbf{Blank nodes} allow us to define anonymous resources by using the \texttt{\_:} prefix.
     \begin{itemize}
         \item The address of \texttt{r0785695} is only relevant to \texttt{r0785695}, so we can define it as a blank node instead of a \acrshort{uri}, this shortens \texttt{<http://example.com/addrr0785695>} to \texttt{\_:addrr0785695}. 
@@ -116,7 +116,7 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
 
 
 \section{SPARQL}
-\acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data, and is similar to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature rich, with support for aggregation, subqueries, negation, etc. It also supports different return types, federated queries, entailment, etc. \citep{SPARQL1.1QL} Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}. \textit{We could go into more detail here on each or any of these features, but getting any decent overview would take pages and pages. We dont really use any of these fancy features in our work anyways, if that changes we will add more detail here.}
+\acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data and is similar to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature-rich, with support for aggregation, subqueries, negation, etc. It also supports different return types, federated queries, entailment, etc. \citep{SPARQL1.1QL} Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}. 
 
 \begin{lstlisting}[language=SPARQL, caption={Example of a basic \acrshort{sparql} SELECT query}, label={lst:sparql_select_query}, captionpos=b]
     PREFIX schema: <https://schema.org/>
@@ -129,13 +129,14 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
 
 \section{Mapping languages}
 Mapping languages are used to define a mapping between a source and a target. The target in the context of linked data is of course \acrshort{rdf}, with the source being any structured data source. Some mapping languages exist for a single source, e.g. \acrfull{r2rml} for relational databases, \acrfull{xsparql} for \acrshort{xml}, etc. Others are more general purpose, e.g. \acrfull{rml} and \acrfull{d2rml}. 
-We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as one extends the other. \acrshort{rml} we will discuss because it is one of the more feature rich general mapping languages, and it is the mapping language we will use in our implementation. \acrshort{r2rml} we discuss because it is the most widely used mapping language, as it supports virtualization ontop of databases. \textit{i wonder if people will get the pun in the previous sentence} Most \acrshort{rml} implementations also support \acrshort{r2rml}, as \acrshort{rml} is a nearly superset of \acrshort{r2rml}. 
+We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as one extends the other. \acrshort{rml} we will discuss because it is one of the more feature-rich general mapping languages, and it is the mapping language we will use in our implementation. \acrshort{r2rml} we discuss because it is the most widely used mapping language, as it supports virtualization \textit{ontop} of databases. % ontop is a tool that allows virtualization
+Most \acrshort{rml} implementations also support \acrshort{r2rml}, as \acrshort{rml} is a nearly superset of \acrshort{r2rml}. 
 
 \subsection{\acrshort{r2rml}}
 \acrfull{r2rml} is a mapping language for mapping relational databases to \acrshort{rdf}. As opposed to \acrfull{dm}, which results in a direct mapping from the relational database to \acrshort{rdf} without any changes to structure or naming, \acrshort{r2rml} allows for more flexibility. R2RML mappings consist of zero or more TriplesMaps, which are used to map a table to \acrshort{rdf}. A TriplesMap consists of a logical table, a subject map, and one or more \acrfullpl{pom}. 
 
-The logical table is used to define the table that is being mapped, with each row in the table being mapped to a subject and it's corresponding \acrshortpl{pom}. It is possible to create a view of a table by using a SQL query, and then map this view. This allows for more complex mappings, e.g. mapping a join of two tables or a computed column. 
-% Could add this, but as we dont actually support R2RML in our implementation for now this is not really relevant
+The logical table is used to define the table that is being mapped, with each row in the table being mapped to a subject and its corresponding \acrshortpl{pom}. It is possible to create a view of a table by using a SQL query, and then map this view. This allows for more complex mappings, e.g. mapping a join of two tables or a computed column. 
+% Could add this, but as we don't actually support R2RML in our implementation for now this is not really relevant
 % An example of this can be seen in listing \ref{lst:r2rml_mapping_view}.
 
 % \begin{lstlisting}[caption={Example of an \acrshort{r2rml} mapping with a view. Snippet from \citep{r2rml}}, label={lst:r2rml_mapping_view}, captionpos=b] 
@@ -156,7 +157,7 @@ The logical table is used to define the table that is being mapped, with each ro
 %     ].
 % \end{lstlisting}
 
-Each of the SubjectMap, PredicateMap, ObjectMap, (and GraphMap) is a subclass of TermMap, which is a function that generates an \acrshort{rdf} term. The map type can be constant, template, or column. The resulting term is then used as the subject, predicate, object, or graph of the triple. The termType of the map determines the type of the term, which can be \acrshort{iri}, blank node or literal. If the termType is literal, optionally the datatype or language can be added. In accordance with the \acrshort{rdf} specification, not all combinations of termType and map are possible, this is shown in table \ref{tab:termType_map_combinations}. The object map has an additional subclass, a reference object map, in which we refer to another TriplesMap. Using a reference map we can map a foreign key to the subject of another TriplesMap, with a join condition. \citep{r2rml}
+Each of the SubjectMap, PredicateMap, ObjectMap, (and GraphMap) is a subclass of TermMap, which is a function that generates an \acrshort{rdf} term. The map type can be constant, template, or column. The resulting term is then used as the subject, predicate, object, or graph of the triple. The termType of the map determines the type of the term, which can be \acrshort{iri}, blank node, or literal. If the termType is literal, optionally the datatype or language can be added. Following the \acrshort{rdf} specification, not all combinations of termType and map are possible, this is shown in table \ref{tab:termType_map_combinations}. The object map has an additional subclass, a reference object map, in which we refer to another TriplesMap. Using a reference map we can map a foreign key to the subject of another TriplesMap, with a join condition. \citep{r2rml}
 
 \begin{table}[h]
     \begin{tabular}{|l|l|l|l|l|}
@@ -189,7 +190,7 @@ A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template
 \end{lstlisting}
 
 \subsection{\acrshort{rml}}
-\acrfull{rml} is a mapping language for mapping any (semi-)structured data source to \acrshort{rdf}. It is a generalization of \acrshort{r2rml}, and as such supports all the features of \acrshort{r2rml}. It extends \acrshort{r2rml} by extending database specific features to make them more general. The differences in usage can be seen in table \ref{tab:r2rml_rml_differences}. \citep{rml}
+\acrfull{rml} is a mapping language for mapping any (semi-)structured data source to \acrshort{rdf}. It is a generalization of \acrshort{r2rml} and as such supports all the features of \acrshort{r2rml}. It extends \acrshort{r2rml} by extending database-specific features to make them more general. The differences in usage can be seen in table \ref{tab:r2rml_rml_differences}. \citep{rml}
 
 \begin{table}[]
     \begin{tabular}{|ll|ll|}
@@ -205,7 +206,7 @@ A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template
     \label{tab:r2rml_rml_differences}
 \end{table}
 
-\acrshort{rml} uses the same structure as \acrshort{r2rml}, with TriplesMaps consisting of a logical source, a subject map, and zero or more \acrshortpl{pom}. The changes it has all relate to the logical source. Whereas in \acrshort{r2rml} the source is always a database, from which we select a table or view, in \acrshort{rml} the source can be one of many different source types like \acrshort{xml}, \acrshort{json}, \acrshort{csv}, etc. Where in \acrshort{r2rml} we simply iterate over the rows of a table, in \acrshort{rml} we can have a source without an explicit iteration pattern and as such we need to define an iterator. 
+\acrshort{rml} uses the same structure as \acrshort{r2rml}, with TriplesMaps consisting of a logical source, a subject map, and zero or more \acrshortpl{pom}. The changes it has all relate to the logical source. Whereas in \acrshort{r2rml} the source is always a database, from which we select a table or view, in \acrshort{rml} the source can be one of many different source types like \acrshort{xml}, \acrshort{json}, \acrshort{csv}, etc. Where in \acrshort{r2rml} we simply iterate over the rows of a table, in \acrshort{rml} we can have a source without an explicit iteration pattern, and as such we need to define an iterator. 
 
 % \section{if meaningful: provenance}
-% provenance could be interesting, but is not mainstream enough to use on a larger scale. (yet?, maybe in future work add a reference)
+% provenance could be interesting but is not mainstream enough to use on a larger scale. (-yet? Maybe in future work add a reference)
