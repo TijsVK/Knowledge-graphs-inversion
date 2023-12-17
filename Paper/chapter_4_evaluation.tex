@@ -5,10 +5,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Evaluation}
 \label{chapter:evaluation}
-In this chapter we will evaluate our implementation. We will do this by testing it again various datasets, comparing the expected results with the actual results. For each dataset we will go over our testing methodology and its results. 
+In this chapter we will evaluate our implementation. We will do this by testing it again various datasets, comparing the expected results with the actual results. For each dataset we will go over our testing methodology and its results. For the PoC implementation we only test the RML test cases.
+
 \section{RML test cases}
 \label{section:rml_test_cases}
-The RML test cases are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. Tests that error do not produce a result, so we start by filtering those out. 
+The RML test cases are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, making them a good set of test cases to test a mapper. Using them to test inversion, however, is stretching their purpose a bit. As such we have to filter out test cases that are expected to fail, as they do not produce a result. As the reading of the mappings is handled by Morph-KGC, some test cases that test things like alternative syntax look the same to us, providing little value.
 
 % TODO: add description of the test cases
 % TODO: make it more beautiful
