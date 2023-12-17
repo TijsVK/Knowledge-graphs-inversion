@@ -79,3 +79,32 @@ The mappings are returned as a pandas DataFrame. As the pandas library has the f
 
 \section{Contructing the schema}
 \label{section:constructing_schema}
+Constructing the schema is done by reversing the mapping rules' source. We do this using the iterator and the mapping rule's references. \acrshort{rml} supports many different types of sources and referenceFormulations. We will implement the CSV, xPath, and JSONPath referenceFormulations. Not every source is a file, so for query-based sources, we will generate the query output. In a later stage, we could look into taking it a step further, generating the actual source behind those intermediate results.
+
+As each referenceFormulation has its reference syntax, we will have to tailor the implementation to each referenceFormulation. For the PoC, we only implement the CSV referenceFormulation. 
+
+\subsection{CSV}
+\label{subsection:csv}
+The CSV referenceFormulation is the simplest of the three as it describes a simple two-dimensional table, with columns having the names of the references and rows being the iterated values. The example TriplesMap in listing \ref{lst:csv_file_mapping} results in the CSV template in listing \ref{lst:csv_file}. Unlike the other referenceFormulations, CSV has no uncertainty in terms of structure.
+
+\begin{lstlisting}[caption={Example mapping for a CSV file}, label={lst:csv_file_mapping}, captionpos=b, basicstyle=\small]
+<TriplesMap1> a rr:TriplesMap;
+
+rml:logicalSource [ 
+    rml:source "student.csv";
+    rml:referenceFormulation ql:CSV
+];
+
+rr:subjectMap [ 
+    rr:template "http://example.com/Student/{ID}/{Name}";
+    rr:graph ex:PersonGraph ;
+    rr:class foaf:Person
+];
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small]
+ID,Name
+<id>,<name>
+\end{lstlisting}
+
+\section{Retrieving the data}
