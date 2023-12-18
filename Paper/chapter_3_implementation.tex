@@ -36,11 +36,8 @@ The algorithm consists of 4 main parts: setting up, creating the schema, retriev
         \EndFor
         \ForAll{$source, source\_rules \in mapping\_rules.groupby('source')$}
             \ForAll{$iterator, iterator\_rules \in source\_rules.groupby('iterator')$}
-                \State $selected\_rules \gets get\_optimal\_rules(iterator\_rules)$
-                \ForAll{$subject, subject\_rules \in selected\_rules.groupby('subject')$}
-                    \State $query \gets generate\_query(subject\_rules)$
-                    \State $values[iterator] \gets graph.query(query)$
-                \EndFor
+                \State $query \gets generate\_query(iterator\_rules)$
+                \State $values[iterator] \gets graph.query(query)$
             \EndFor
             \State $templates \gets generate\_templates(source\_rules)$
             \State $source\_output \gets apply\_templates(templates, values)$
@@ -100,12 +97,157 @@ rr:subjectMap [
     rr:graph ex:PersonGraph ;
     rr:class foaf:Person
 ];
+
+rr:predicateObjectMap [ 
+    rr:predicate ex:id ; 
+    rr:objectMap [ rml:reference "ID" ]
+];
+
+rr:predicateObjectMap [ 
+    rr:predicate foaf:name ; 
+    rr:objectMap [ rml:reference "Name" ]
+].
 \end{lstlisting}
 
 \begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small]
 ID,Name
-<id>,<name>
+<ID>,<Name>
 \end{lstlisting}
 
 \section{Retrieving the data}
-TODO: add this section
+\label{section:retrieving_data}
+Retrieving the data is done by querying the knowledge graph. We do this by generating SPARQL queries matching the mapping rules. We then execute these queries and store the results. Mappings sharing the same iterator are executed together, as they have been generated in the same iteration. 
+
+\subsection{Generating the queries}
+\label{subsection:generating_queries}
+We generate the queries by translating the mapping rules into triple patterns. 
+For each of the three map types, constant, reference, and template, we adapt our approach. 
+For the constant map type, we know that it will always be present with a constant value, so we can simply add it as a triple pattern like \texttt{?s a foaf:Person .}. 
+Both reference and template map types will not generate a triple during materialization if any of the references are not present during the iteration. As such, they are wrapped in an optional block. 
+Reference maps are the easiest to work with as they directly translate back to the source. There is an exception to this, as a reference map can be used for a subject map. In this case, the value is either an \acrshort{uri} or appended to the base \acrshort{uri}. Sadly Morph-KGC does not support the latter, so we can not take this into account. An example of a basic query using constant and reference maps can be found in listing \ref{lst:simple_query_example}.
+
+\begin{lstlisting}[caption={Simple query example}, label={lst:simple_query_example}, captionpos=b]
+SELECT DISTINCT ?Name ?ID
+WHERE {
+    ?s a foaf:Person .
+
+    optional{
+        ?s foaf:name ?Name .
+    }
+    optional{
+        ?s ex:id ?ID .
+    }
+}
+\end{lstlisting}    
+
+Template maps are the most complex to work with as their structure can wildly vary. The simplest step we can take is to confirm the mapped value matches with the map template like \break
+\texttt{FILTER(regex(str(?s), "http://example.com/([\textasciicircum\textbackslash\textbackslash/]*)/([\textasciicircum\textbackslash\textbackslash/]*)\$"))}. Taking this further we can use string manipulation to split the variable into the different references. An example of this can be found in listing \ref{lst:template_query_example}.
+
+\begin{lstlisting}[caption={Template query example}, label={lst:template_query_example}, captionpos=b]
+SELECT DISTINCT ?Name ?ID
+WHERE {
+    ?s a foaf:Person .
+    FILTER(regex(str(?s), "http://example\\.com/([^\\/]*)/([^\\/]*)$")) .
+    BIND(STRAFTER(str(?s), "http://example.com/") as ?temp) .
+    BIND(STRBEFORE(str(?temp), "/") as ?ID)
+    BIND(STRAFTER(?temp, "/") as ?Name)
+
+    optional{
+        ?s foaf:name ?Name .
+    }
+    optional{
+        ?s ex:id ?ID .
+    }
+}
+\end{lstlisting}
+
+We generate a single query for each iterator. This query can contain multiple subjects. This can, however, lead to issues when the subjects share no references. The effect we get is not unlike joining two tables in SQL without join conditions. For example, using the mapping listed in listing \ref{lst:bad_join_example} we get the query in listing \ref{lst:bad_join_query}. When applied to the knowledge graph in listing \ref{lst:bad_join_kg} we get the result in listing \ref{lst:bad_join_result}. Instead of the original source in listing \ref{lst:bad_join_expected_result}. When using the mappings to convert the bad source back to the knowledge graph, we do get the same knowledge graph as the original as the duplicate data is ignored. The amount of duplicate data increases exponentially with the number of subjects so even though ignoring it would be a valid solution, it is not viable with larger datasets. The only solution to this problem is updating the mapping rules to either split the source or add shared references. The user is ultimately responsible for this, but we could generate a warning to notify the user. 
+
+\begin{listing}
+    \refstepcounter{lstlisting}
+    \noindent\begin{minipage}[b]{.45\textwidth}
+        \begin{lstlisting}[basicstyle=\small]
+<TriplesMap1> a rr:TriplesMap;
+rml:logicalSource [ 
+    rml:source "student_sport.csv";
+    rml:referenceFormulation ql:CSV
+];
+rr:subjectMap [ 
+    rr:template "http://example.com/{Student}";
+    rr:class ex:Student
+];
+rr:predicateObjectMap [ 
+    rr:predicate foaf:name ; 
+    rr:objectMap [ 
+        rml:reference "Student"
+    ]
+].
+        \end{lstlisting}      
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{.45\textwidth}
+        \begin{lstlisting}[basicstyle=\small]
+<TriplesMap2> a rr:TriplesMap;
+rml:logicalSource [ 
+    rml:source "student_sport.csv";
+    rml:referenceFormulation ql:CSV
+];
+rr:subjectMap [ 
+    rr:template "http://example.com/{Sport}";
+    rr:class ex:Sport
+];
+rr:predicateObjectMap [ 
+    rr:predicate foaf:name ; 
+    rr:objectMap [ 
+        rml:reference "Sport"
+    ]
+].
+        \end{lstlisting}
+    \end{minipage}
+    \addtocounter{listing}{5}
+    \caption{Bad join mapping}
+    \label{lst:bad_join_example}
+\end{listing}
+
+\begin{lstlisting}[caption={Bad join query (trimmed)}, label={lst:bad_join_query}, captionpos=b, basicstyle=\small]
+SELECT DISTINCT ?Student_name ?Sport
+WHERE {
+    ?s1 a ex:Student .
+    optional{
+        ?s1 foaf:name ?Student_name .
+    }
+
+    ?s2 a ex:Sport .
+    optional{
+        ?s2 foaf:name ?Sport .
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Bad join knowledge graph}, label={lst:bad_join_kg}, captionpos=b, basicstyle=\small]
+@prefix ex: <http://example.com/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+ex:Venus a ex:Student ;
+    foaf:name "Venus" .
+ex:Tom a ex:Student ;
+    foaf:name "Tom" .
+ex:Tennis a ex:Sport ;
+    foaf:name "Tennis" .
+ex:Football a ex:Sport ;
+    foaf:name "Football" .
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Bad join result}, label={lst:bad_join_result}, captionpos=b, basicstyle=\small]
+Student,Sport
+Venus,Tennis
+Venus,Football
+Tom,Tennis
+Tom,Football
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Bad join original source}, label={lst:bad_join_expected_result}, captionpos=b]
+Student,Sport
+Venus,Tennis
+Tom,Football
+\end{lstlisting}
