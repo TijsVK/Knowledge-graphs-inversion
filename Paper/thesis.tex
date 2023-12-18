@@ -28,7 +28,7 @@
 \usepackage{sectsty}					% aanpassen van de fonts van sections en chapters
 %\usepackage[nottoc,numbib]{tocbibind}	% Bibliography mee in de ToC
 \usepackage{tikz}
-\usepackage{xcolor}
+\usepackage[table,xcdraw]{xcolor}
 \usepackage{standalone}
 \usepackage{enumitem}
 \usepackage{multirow}
@@ -36,6 +36,10 @@
 \usepackage[svgpath=fig/]{svg}
 % \usepackage{pdflscape}
 \usepackage{rotating}
+\usepackage{newfloat}
+\usepackage{subcaption}
+\DeclareFloatingEnvironment[fileext=frm,placement={!ht},name=Listing,within=chapter]{listing}
+
 \setlist{nosep}
 %\usetikzlibrary{external}
 \usepackage[acronym]{glossaries}
