@@ -3,6 +3,23 @@
 %                            CHAPTER                              %
 %                                                                 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
-\chapter{Conclusion}
+\chapter{Roadmap}
 \label{chapter:conclusion}
-Placeholder chapter for refering to the conclusion chapter. This should be removed in the intermediate report.
+This thesis is far from done, as such no conclusion can be made for now. Here we discuss what will be done in the second semester.
+
+\section{Implementation}
+We will improve the implementation in various ways:
+\begin{itemize}
+    \item Support for more referenceFormulations:
+    \begin{itemize}
+        \item \acrshort{json}-path
+        \item XPath
+    \end{itemize}
+    \item Joins
+    \item More robustness
+    \item More in-depth hybrid approach between SPARQL and local processing
+    \item Inverting query-based sources further by inverting the query.
+\end{itemize}
+
+\section{Evaluation}
+The number of benchmarks used will be expanded to include: LUBM4OBDA, GTFS-Madrid-Bench, SDM-Genomic-dataset, and any other benchmark that has RML (or R2RML) mappings available. We will also look into creating a version of the RML test cases for inversion, as the ones designed to test the conformance of RML processors are not ideal for testing the inversion algorithm.
