@@ -11,28 +11,28 @@ Please note that the implementation for the results uses an earlier version of t
 
 \section{RML test cases}
 \label{section:rml_test_cases}
-The RML test cases are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, making them a good set of test cases to test a mapper. Using them to test inversion, however, is stretching their purpose a bit. As such we have to filter out test cases that are expected to fail, as they do not produce a result. As the reading of the mappings is handled by Morph-KGC, some test cases that test things like alternative syntax look the same to us, providing little value.
+The RML test cases \citep{rml-test-cases} are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, making them a good set of test cases to test a mapper. Using them to test inversion, however, is stretching their purpose a bit. As such we have to filter out test cases that are expected to fail, as they do not produce a result. As the reading of the mappings is handled by Morph-KGC, some test cases that test things like alternative syntax look the same to us, providing little value.
 
-In table \ref{tab:rml_test_cases} the results of the RML test cases can be found. The failed tests are divided into categories with colours according to the reason they failed. The red failures are caused by solvable issues in the implementation. The orange failure is caused by disconnected subjects in a single iterator, as such no solution is planned for this. The light-red failures are because of limitations of the Morph-KGC library. 
+In table \ref{tab:rml_test_cases} the results of the RML test cases can be found. The failed tests are divided into categories with colors according to the reason they failed. The red failures are caused by solvable issues in the implementation. Tests marked orange are flawed but solvable in some cases, \texttt{0002b-CSV} has disconnected mappings as discussed in section \ref{section:retrieving_data}, it only passes the test because only a single row of data is mapped. In the other orange test, \texttt{0004a-CSV} the data would only be retrievable from a blank node identifier. The light-red failures are because of the limitations of the Morph-KGC library as it does not support reference-type subjects. Finally, the blue failures are impossible, by their design. Many blue tests contain duplicated data, which gets removed when materializing.
 
 \begin{table}[]
     \centering
     \begin{tabular}{ll
     >{\columncolor[HTML]{FFFFFF}}l ll}
     Test                              & Status                         & {\color[HTML]{000000} } & Test                              & Status                         \\
-    \cellcolor[HTML]{00FF00}0000-CSV  & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FF00}0008a-CSV & \cellcolor[HTML]{00FF00}\cmark \\
+    \cellcolor[HTML]{00FF00}0000-CSV  & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0008a-CSV & \cellcolor[HTML]{FF0000}\xmark \\
     \cellcolor[HTML]{00FF00}0001a-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0008b-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FF00}0001b-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0008c-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
+    \cellcolor[HTML]{00FF00}0001b-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0008c-CSV & \cellcolor[HTML]{FF0000}\xmark \\
     \cellcolor[HTML]{00FF00}0002a-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0009a-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FF00}0002b-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0009b-CSV & \cellcolor[HTML]{FF0000}\xmark \\
+    \cellcolor[HTML]{FF9900}0002b-CSV & \cellcolor[HTML]{FF9900}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0009b-CSV & \cellcolor[HTML]{FF0000}\xmark \\
     \cellcolor[HTML]{00FF00}0003c-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0010a-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
-    \cellcolor[HTML]{FF9900}0004a-CSV & \cellcolor[HTML]{FF9900}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0010b-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
+    \cellcolor[HTML]{FF9900}0004a-CSV & \cellcolor[HTML]{FF9900}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0010b-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
     \cellcolor[HTML]{00FFFF}0005a-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0010c-CSV & \cellcolor[HTML]{FF0000}\xmark \\
     \cellcolor[HTML]{00FFFF}0006a-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0011b-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
     \cellcolor[HTML]{00FFFF}0007a-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0012a-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
-    \cellcolor[HTML]{00FFFF}0007b-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0012b-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{FF0000}0007c-CSV & \cellcolor[HTML]{FF0000}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0015a-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{FF0000}0007d-CSV & \cellcolor[HTML]{FF0000}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{EA9999}0019a-CSV & \cellcolor[HTML]{EA9999}\xmark \\
+    \cellcolor[HTML]{00FFFF}0007b-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0012b-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
+    \cellcolor[HTML]{00FFFF}0007c-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0015a-CSV & \cellcolor[HTML]{FF0000}\xmark \\
+    \cellcolor[HTML]{00FFFF}0007d-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{EA9999}0019a-CSV & \cellcolor[HTML]{EA9999}\xmark \\
     \cellcolor[HTML]{00FF00}0007e-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{EA9999}0019b-CSV & \cellcolor[HTML]{EA9999}\xmark \\
     \cellcolor[HTML]{00FFFF}0007f-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FF00}0020a-CSV & \cellcolor[HTML]{00FF00}\cmark \\
     \cellcolor[HTML]{00FFFF}0007g-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{EA9999}0020b-CSV & \cellcolor[HTML]{EA9999}\xmark
