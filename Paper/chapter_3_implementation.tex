@@ -5,7 +5,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Implementation}
 \label{chapter:implementation}
-This chapter is split into three sections. In the first section, we go over the structure of the algorithm. In the second and third sections, we go into detail about the two sub-research questions: how to construct the schema and how to populate the schema. 
+This chapter is split into three sections. In the first section the structure of the algorithm is outlined. In the second and third sections, we go into detail about the two sub-research questions: how to construct the schema and how to populate the schema. 
 
 
 % At this time we only have a PoC implementation, as such many details haven't been worked out yet. For example, the section on creating the schema is limited, as we only handle CSV files which require little to no schema. 
@@ -32,7 +32,7 @@ The algorithm consists of 4 main parts: setting up, creating the schema, retriev
         \State $config \gets load_config(morph\_config)$
         \State $mapping\_rules \gets retrieve\_mappings(config)$
         \State $mapping\_rules \gets add\_helper\_columns(mapping\_rules)$
-        \State $graph\_location \gets config.get_output_file()$
+        \State $graph\_location \gets config.get\_output\_file()$
         \State $graph\_endpoint \gets load\_graph(graph\_location)$
         \ForAll{$source, source\_rules \in mapping\_rules.groupby('source')$}
             \ForAll{$iterator, iterator\_rules \in source\_rules.groupby('iterator')$}
@@ -92,31 +92,40 @@ The algorithm consists of 4 main parts: setting up, creating the schema, retriev
 
 \subsection{Loading the mapping rules}
 We start by loading the mapping rules from the mapping files. We use Morph-KGC's internal \texttt{retrieve\_mappings} function for this. This function takes a loaded config file (.ini format) as input, which specifies the location of the mapping files and various other settings for which we have little use as they are only used for the materialization process. When relevant later on we could add our settings to this config file.
-The mappings are returned as a pandas DataFrame. As the pandas library has the functionality to group by columns, we can easily group the mapping rules by source and iterator later. An example of a single mapping rule (row in the DataFrame) can be found in listing \ref{lst:mapping_rule}.
+The mappings are returned as a pandas DataFrame. As the pandas library has the functionality to group by columns, we can easily group the mapping rules by source and iterator later. An example of a single mapping rule (row in the DataFrame) can be found in listing \ref{lst:mapping_rule}. Marked in bold are the helper columns we add.
 
 \begin{lstlisting}[caption={Example of a mapping rule in Morph-KGC}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small]
-    source_name: DataSource1 
-    triples_map_id: #TM0
-    triples_map_type: http://w3id.org/rml/TriplesMap
-    logical_source_type: http://w3id.org/rml/source
-    logical_source_value: student.csv
-    iterator: nan
-    subject_map_type: http://w3id.org/rml/template
-    subject_map_value: http://example.com/{Name}
-    subject_termtype: http://w3id.org/rml/IRI
-    predicate_map_type: http://w3id.org/rml/constant
-    predicate_map_value: http://xmlns.com/foaf/0.1/name
-    object_map_type: http://w3id.org/rml/reference
-    object_map_value: Name
-    object_termtype: http://w3id.org/rml/Literal
-    object_datatype: nan
-    object_language: nan
-    graph_map_type: http://w3id.org/rml/constant
-    graph_map_value: http://w3id.org/rml/defaultGraph
-    subject_join_conditions: nan
-    object_join_conditions: nan
-    source_type: CSV
-    mapping_partition: 1-1-1-1
+source_name: DataSource1
+triples_map_id: #TM0
+triples_map_type: http://w3id.org/rml/TriplesMap
+logical_source_type: http://w3id.org/rml/source
+logical_source_value: student.csv
+iterator: nan
+subject_map_type: http://w3id.org/rml/template
+subject_map_value: http://example.com/{Name}
+[*subject_references_template: http://example.com/([^\/]*)$*]
+[*subject_references: ['Name']*]
+[*subject_reference_count: 1*]
+subject_termtype: http://w3id.org/rml/IRI
+predicate_map_type: http://w3id.org/rml/constant
+predicate_map_value: http://xmlns.com/foaf/0.1/name
+[*predicate_references_template: None
+predicate_references: []
+predicate_reference_count: 0*]
+object_map_type: http://w3id.org/rml/reference
+object_map_value: Name
+[*object_references_template: None
+object_references: ['Name']
+object_reference_count: 1*]
+object_termtype: http://w3id.org/rml/Literal
+object_datatype: nan
+object_language: nan
+graph_map_type: http://w3id.org/rml/constant
+graph_map_value: http://w3id.org/rml/defaultGraph
+subject_join_conditions: nan
+object_join_conditions: nan
+source_type: CSV
+mapping_partition: 1-1-1-1
 \end{lstlisting}
 
 \section{Contructing the schema}
@@ -155,7 +164,7 @@ rr:predicateObjectMap [
 \end{lstlisting}
 
 \begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small]
-ID,Name
+[*ID,Name*]
 <ID>,<Name>
 \end{lstlisting}
 
@@ -232,7 +241,9 @@ The algorithm for generating the queries can be found in algorithm \ref{alg:gene
     \end{algorithmic}
 \end{algorithm}
 
-We generate a single query for each iterator. This query can contain multiple subjects. This can, however, lead to issues when the subjects share no references. The effect we get is not unlike joining two tables in SQL without join conditions. For example, using the mapping listed in listing \ref{lst:bad_join_example} we get the query in listing \ref{lst:bad_join_query}. When applied to the knowledge graph in listing \ref{lst:bad_join_kg} we get the result in listing \ref{lst:bad_join_result} instead of the original source in listing \ref{lst:bad_join_expected_result}. When using the mappings to convert the bad source back to the knowledge graph, we do get the same knowledge graph as the original as the duplicate data is ignored. The amount of duplicate data increases exponentially with the number of subjects so even though ignoring it would be a valid solution, it is not viable with larger datasets. The only solution to this problem is updating the mapping rules to either split the source or add shared references. The user is ultimately responsible for this, but we could generate a warning to notify the user. 
+\subsection{Disjointed mappings}
+
+We generate a single query for each iterator. This query can contain multiple subjects. This can, however, lead to issues when the subjects share no references. The effect we get is not unlike joining two tables in SQL without join conditions. For example, using the mapping listed in listing \ref{lst:bad_join_example} we get the query in listing \ref{lst:bad_join_query}. When applied to the knowledge graph in listing \ref{lst:bad_join_kg} we get the result in listing \ref{lst:bad_join_result} instead of the original source in listing \ref{lst:bad_join_expected_result}. When converting the badly generated source back to the knowledge graph, we do get the same knowledge graph as the original as the duplicate data is ignored. The amount of duplicate data increases exponentially with the number of subjects so even though ignoring it would be a valid solution, it is not viable with larger datasets. The only solution to this problem is updating the mapping rules to either split the source or add shared references. The user is ultimately responsible for this, but we could generate a warning to notify the user. 
 
 \begin{listing}
     \refstepcounter{lstlisting}
@@ -325,7 +336,7 @@ Tom,Football
 
 \section{Applying the data to the schema}
 \label{section:applying_data}
-Generating the final output is done by iterating over the rows of the data and applying them to the schema. Each column of the data corresponds to a reference in the schema. A short version of the algorithm can be found in algorithm \ref{alg:apply_data}. For the PoC this approach is sufficient, even too complex as we can simply write the DataFrame to a CSV file. For more complex, possibly nested, sources we will have to adapt this algorithm to account for this.
+Generating the final output is done by iterating over the rows of the data and applying them to the schema. Each column of the data corresponds to a reference in the schema. A short version of the algorithm can be found in algorithm \ref{alg:apply_data}. For the PoC this approach is sufficient, even too complex as we can simply dump the query-result DataFrame to a CSV file. For more complex, possibly nested, sources we will have to adapt this algorithm.
 
 \begin{algorithm}
     \caption{Applying the data to a simple (non-nested) schema}

@@ -7,13 +7,13 @@
 \chapter{Related work}
 \label{chapter:related_work}
 
-Introduction text providing an overview of the related work
+In this chapter, we discuss the various technologies related to this thesis. We begin by discussing the semantic web and build from there to technologies used within its ecosystem like \acrshort{rdf}, \acrshort{sparql}, and mapping languages. 
 
 \section{Semantic Web}
-Tim Berneers-Lee envisioned a version of the web that would also be understandable by machines, and thus the semantic web was born. It is not designed as a separate entity to the web, but instead as an extension, mostly hidden for normal humans. It is designed with mostly existing technologies like \acrshort{xml}(including HTML, being a superset of it), \acrshort{uri} and \acrshort{rdf}. Even ontologies, a key component of the semantic web, are not a new concept but rather co-opted from the field of philosophy. \citep{thesemanticweb}
+Tim Berneers-Lee envisioned a version of the web that would also be understandable by machines, and thus the semantic web was born. It is not designed as a separate entity to the web, but instead as an extension, mostly hidden for normal humans. It is designed mostly with existing technologies like \acrshort{xml}(including HTML, being a superset of it), \acrshort{uri} and \acrshort{rdf}. Even ontologies, a key component of the semantic web, are not a new concept but rather co-opted from the field of philosophy. \citep{thesemanticweb}
 
 \section{RDF}
-\acrshort{rdf} was originally designed as a data model for metadata but has been extended to be a general-purpose framework for graph data. RDF is a directed graph, where the nodes represent entities, and the edges represent relations between these entities. This graph is built up from triples, which connect a subject and an object using a predicate as shown in figure \ref{fig:rdf_triple}. 
+\acrshort{rdf} was originally designed as a data model for metadata but has since been extended to be a general-purpose framework for graph data. RDF is a directed graph, where the nodes represent entities, and the edges represent relations between these entities. This graph is built up from triples, which connect a subject and an object using a predicate as shown in figure \ref{fig:rdf_triple}. 
 
 \begin{figure}
     \centering
@@ -36,7 +36,7 @@ The subject must always be an entity, which can either be represented by an \acr
 
 An \acrshort{uri} is a unique identifier for a resource on the web. Unlike a normal \acrshort{url}, it does not have to point to a network location, but can also be used to identify a person, a location, a concept, etc. \citep{rdfprimer}. In \acrshort{rdf} the \acrshort{uri} is purely used for identifying resources. As such, unlike in HTML where certain conventions are expected, there are no conventions for \acrshortpl{uri} in \acrshort{rdf}. An example of this can be seen in figure \ref{fig:rdf_triples_table}, the example subjects share the same domain but this does not imply that they are closely related, or even related at all. \acrshortpl{uri} are extended to \acrshortpl{iri} to allow for a wider range of characters. Except for allowing Unicode characters, \acrshortpl{iri} are identical to \acrshortpl{uri} so little distinction is made between the two in this thesis.
 
-A blank node is a node that is not identified by a \acrshort{uri}. It is used to represent an anonymous resource that can't be or has no reason to be uniquely identified. For example, the address of student r0785695 in figure \ref{fig:blank_node} is only pertinent to the student and thus does not need to be uniquely identified. A blank node is serialized as \texttt{\_:name}, where name is a unique identifier for the blank node. This identifier is unique within the document, and thus can't be used to refer to the blank node from outside the document. \citep{rdfprimer}
+A blank node is a node that is not identified by a \acrshort{uri}. It is used to represent an anonymous resource that can't be or has no reason to be uniquely identified. For example, the address of student r0785695 in figure \ref{fig:blank_node} is only pertinent to the student and thus does not need to be uniquely identified. A blank node is serialized as \texttt{\_:name}, where name is a unique identifier for the blank node. This identifier is only unique within the document, and thus can't be used to refer to the blank node from outside the document. \citep{rdfprimer}
 
 \begin{figure}[]
     \begin{tabular}{lll}
@@ -67,7 +67,7 @@ In its simplest form turtle consists of triple statements, sequences of subject-
     \end{itemize}
     \item \textbf{Predicate lists} allow us to shorten multiple triples with the same subject to a list of predicates.
     \begin{itemize}
-        \item All our triples in the example are about r0785695, so we can split the predicates with \texttt{;} instead of repeating the subject.
+        \item Our example only has two subjects, we can split their predicates with \texttt{;} instead of repeating the subject.
     \end{itemize}
     \item \textbf{Object lists} allow us to shorten multiple triples with the same subject and predicate to a list of objects.
     \begin{itemize}
@@ -76,11 +76,11 @@ In its simplest form turtle consists of triple statements, sequences of subject-
     \item \textbf{Literals} allow identifying values, e.g. strings, integers, dates, etc. with a datatype or language tag.
     \item \textbf{Blank nodes} allow us to define anonymous resources by using the \texttt{\_:} prefix.
     \begin{itemize}
-        \item The address of \texttt{r0785695} is only relevant to \texttt{r0785695}, so we can define it as a blank node instead of using a \acrshort{uri}, this shortens \texttt{<http://example.com/addrr0785695>} to \texttt{\_:addrr0785695}. While not the same, functionally it is equivalent as we do not expect addresses to be addressed outside of the context of a person.  
+        \item The address of \texttt{r0785695} is only relevant to \texttt{r0785695}, so we can define it as a blank node instead of using a \acrshort{uri}, this shortens \texttt{<http://example.com/addrr0785695>} to \texttt{\_:addrr0785695}. While not exactly the same, functionally it is equivalent as we do not expect addresses to be addressed outside of the context of a person.  
     \end{itemize}
     \item \textbf{Unlabeled blank nodes} allow us to define anonymous resources without a unique identifier by using the [] notation instead of \texttt{\_:name}.
     \begin {itemize}
-        \item As we do not need to refer to the address of \texttt{r0785695} from outside \texttt{r0785695}, we can use an unlabeled blank node instead of a labeled blank node.
+        \item As we do not need to refer to \texttt{\_:addrr0785695} from outside \texttt{r0785695}, we can use an unlabeled blank node and include it in \texttt{r0785695} instead of a labeled blank node.
     \end{itemize}
     \item \textbf{Collections} allow us to define a list of blank nodes by using the () notation.
 \end{itemize}
@@ -116,7 +116,7 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
 
 
 \section{SPARQL}
-\acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data and is similar to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature-rich, with support for aggregation, subqueries, negation, etc. It also supports different return types, federated queries, entailment, etc. \citep{SPARQL1.1QL} Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}. 
+\acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data and shows many similarities to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature-rich, with support for aggregation, subqueries, negation, regex, string manipulation, etc. It also supports different return types, federated queries, entailment, etc \citep{SPARQL1.1QL}. Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}. 
 
 \begin{lstlisting}[language=SPARQL, caption={Example of a basic \acrshort{sparql} SELECT query}, label={lst:sparql_select_query}, captionpos=b]
     PREFIX schema: <https://schema.org/>
