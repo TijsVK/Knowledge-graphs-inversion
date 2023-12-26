@@ -1,8 +1,9 @@
+from abc import ABC, abstractmethod
 import time
+from typing import Any
+from xml.dom.minidom import Document
 
-import sys
-sys.path.append("F:\\Github_repos\\Inversion_KG_to_raw_data\\Implementation\\morph-kgc\\src")
-
+import morph_kgc.config
 from morph_kgc.mapping.mapping_parser import retrieve_mappings
 from morph_kgc.args_parser import load_config_from_argument
 import pathlib
@@ -12,13 +13,13 @@ import warnings
 import os
 import pyrdf4j.rdf4j
 import pyrdf4j.errors
+import pyrdf4j.repo_types
 import rdflib
-from SPARQLWrapper import SPARQLWrapper, JSON, CSV
+from SPARQLWrapper import SPARQLWrapper, CSV
 import re
-import cProfile
-import validators
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 from io import StringIO
+import hashlib
 
 # region Setup
 pyrdf4j.repo_types.REPO_TYPES = pyrdf4j.repo_types.REPO_TYPES + ["graphdb"]  # add graphdb to the list of repo types
@@ -58,51 +59,113 @@ TEST_CASES_PATH = "F:\\Github_repos\\Inversion_KG_to_raw_data\\Implementation\\r
 
 # endregion
 
-def compare_dfs(df1: pd.DataFrame, df2: pd.DataFrame):
-    # sort both dataframes by columns
-    df1.sort_index(axis=1, inplace=True)
-    df1.sort_values(by=list(df1.columns), inplace=True)
-    df2.sort_index(axis=1, inplace=True)
-    df2.sort_values(by=list(df2.columns), inplace=True)
-    if df1.shape[0] != df2.shape[0]:
-        raise IndexError(f"DataFrames have different row counts: {df1.shape[0]} (should be {df2.shape[0]})")
-    elif df1.shape[1] != df2.shape[1]:
-        raise IndexError(
-            f"DataFrames have different column counts: {df1.shape[1]} vs {df2.shape[1]}, "
-            f"{df1.columns} != {df2.columns}")
-    # for each row in df1, check if it exists in df2
-    for row in df1.itertuples():
-        if row not in df2.itertuples():
-            raise ValueError(f"Row {row} from df1 not found in df2")
+# region classes
+
+class IdGenerator:
+    def __init__(self):
+        self._counter = 0
     
-    for row in df2.itertuples():
-        if row not in df1.itertuples():
-            raise ValueError(f"Row {row} from df2 not found in df1")
-        
-    return True
+    def get_id(self):
+        self._counter += 1
+        return self._counter
+
+    def reset(self):
+        self._counter = 0
+
+class QueryFragment(ABC):
+    def __init__(self):
+        pass
 
 
-def uri_validator(x) -> bool:
-    try:
-        result = urlparse(x)
-        return all([result.scheme, result.netloc])
-    except:
-        return False
+class Query:
+    def __init__(self):
+        self.fragments: list[QueryFragment] = []
+
+class Endpoint(ABC):
+    @abstractmethod
+    def query(self, query: str):
+        raise NotImplementedError
     
-def create_sparql_endpoint(knowledge_graph_path:str) -> SPARQLWrapper:
-    knowledge_graph = knowledge_graph_path.strip()
-    if uri_validator(knowledge_graph):
-        endpoint = SPARQLWrapper(knowledge_graph)
-    else:
+class RemoteEndpoint(Endpoint):
+    def __init__(self, url:str):
+        self._sparql = SPARQLWrapper(url)
+        self._sparql.setReturnFormat(CSV)
+    
+    def query(self, query: str):
+        self._sparql.setQuery(query)
+        return self._sparql.query().convert().decode("utf-8")
+    
+    def __repr__(self):
+        return f"RemoteSparqlEndpoint({self._sparql.endpoint})"
+
+class LocalSparqlGraphStore(Endpoint):
+    def __init__(self, url:str):
+        data = open(url, "r").read()
+        self._repoid = hashlib.md5(data.encode('utf-8')).hexdigest()
         rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
-        rdf4jconnector.empty_repository(REPO_ID)
-        rdf4jconnector.create_repository(REPO_ID, accept_existing=True, repo_type='graphdb')
-        data = open(knowledge_graph_path, "r").read()
-        rdf4jconnector.add_data_to_repo(REPO_ID, data, "text/x-nquads")
+        rdf4jconnector.empty_repository(self._repoid)
+        rdf4jconnector.create_repository(self._repoid, accept_existing=True, repo_type='graphdb')
+        rdf4jconnector.add_data_to_repo(self._repoid, data, "text/x-nquads")
+        self._sparql = SPARQLWrapper(f"http://localhost:7200/repositories/{self._repoid}")
+        self._sparql.setReturnFormat(CSV)
+    
+    def query(self, query: str) -> str:
+        self._sparql.setQuery(query)
+        query_result = self._sparql.query()
+        converted:Any = query_result.convert()
+        decoded = converted.decode("utf-8")
+        return decoded
+    
+    def __del__(self):
+        rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
+        rdf4jconnector.drop_repository(self._repoid)
+
+    def __repr__(self):
+        return f"LocalSparqlGraphStore({self._repoid})"
+
+class Validator:
+    @staticmethod
+    def url(x) -> bool:
+        try:
+            result:ParseResult = urlparse(x)
+            return all([result.scheme, result.netloc])
+        except:
+            return False
+    
+    @staticmethod
+    def df_equals(df1: pd.DataFrame, df2: pd.DataFrame) -> bool:
+        # pure function
+        df1 = df1.copy(deep=True)
+        df2 = df2.copy(deep=True)
+        # sort by columns and rows
+        df1.sort_index(axis=1, inplace=True)
+        df1.sort_values(by=list(df1.columns), inplace=True)
+        df2.sort_index(axis=1, inplace=True)
+        df2.sort_values(by=list(df2.columns), inplace=True)
+        if df1.shape != df2.shape:
+            return False
+        # for each row in df1, check if it exists in df2
+        for row in df1.itertuples():
+            if row not in df2.itertuples():
+                return False
         
-        endpoint = SPARQLWrapper(TRIPLESTORE_URL)
-    endpoint.setReturnFormat(CSV)
-    return endpoint
+        for row in df2.itertuples():
+            if row not in df1.itertuples():
+                return False
+            
+        return True
+        
+
+class EndpointFactory:
+    @staticmethod
+    def create(config:morph_kgc.config.Config):
+        url = config.get_output_file()
+        if Validator.url(url):
+            return RemoteEndpoint(url)
+        else:
+            return LocalSparqlGraphStore(url)
+
+# endregion
 
 def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
     if pure:
@@ -191,7 +254,7 @@ def get_references(rules:pd.DataFrame) -> set:
             references.add(reference)
     return references
 
-def generate_object_fragment(rule:pd.Series, subject_index:int) -> str:
+def generate_object_fragment(rule:pd.Series, subject_index:int) -> str|None:
     temp_index_counter = 0
     subject = f"?s{subject_index}"
     predicate = f"<{rule['predicate_map_value']}>" # technically this can be not constant, but we ignore that for now as it is very rare
@@ -231,8 +294,8 @@ def generate_object_fragment(rule:pd.Series, subject_index:int) -> str:
                     temp_index_counter += 1
 
             return "\n".join(lines)
-               
-def generate_subject_fragment(rule:pd.Series, subject_index:int) -> str:
+
+def generate_subject_fragment(rule:pd.Series, subject_index:int) -> str|None:
     if rule["subject_termtype"] == "http://w3id.org/rml/IRI":
         if rule["subject_map_type"] == "http://w3id.org/rml/template":
             temp_index_counter = 0
@@ -261,11 +324,12 @@ def generate_subject_fragment(rule:pd.Series, subject_index:int) -> str:
             return "\n".join(lines)
     return None
 
-def generate_query(iterator_rules:pd.DataFrame) -> str:
+def generate_query(iterator_rules:pd.DataFrame) -> str|None:
     references = get_references(iterator_rules)
     if len(references) == 0:
         return None
     lines = []
+    rule = iterator_rules.iloc[0]
     grouped_by_subject = iterator_rules.groupby("subject_map_value")
     for i, (subject, subject_rules) in enumerate(grouped_by_subject):
         for _, rule in subject_rules.iterrows():
@@ -285,12 +349,9 @@ def generate_query(iterator_rules:pd.DataFrame) -> str:
     else:
         return query.replace("\\", "\\\\")
 
-# SELECT ?ID ?FirstName ?LastName WHERE {
-#  ?s1 a <http://example.org/Person> .
-# }
 
-
-def invert_source(source_rules:pd.DataFrame, sparql:SPARQLWrapper):
+def invert_source(source_rules:pd.DataFrame, endpoint:Endpoint):
+    iterator_result = None
     for iterator, iterator_rules in source_rules.groupby('iterator', dropna=False):
         query = generate_query(iterator_rules)
         print(query)
@@ -298,26 +359,23 @@ def invert_source(source_rules:pd.DataFrame, sparql:SPARQLWrapper):
             print("No query generated (no references found)")
             iterator_result = None
         else:
-            sparql.setQuery(query)
-            iterator_result = sparql.query().convert().decode('utf-8')
+            iterator_result = endpoint.query(query)
     # generate template
     # fill template with values
     # we dont do any of this yet (PoC)
+    if iterator_result is None:
+        return None
     return iterator_result
-    
-
-    
     
 
 def inversion(config_file: str|pathlib.Path):
     config = load_config_from_argument(config_file)
     mappings, _ = retrieve_mappings(config)
     knowledge_graph_file = config.get_output_file()
-    sparql = create_sparql_endpoint(knowledge_graph_file)
+    sparql = EndpointFactory.create(config)
     insert_columns(mappings)
     for source, source_rules in mappings.groupby("logical_source_value"):
         generated_source = invert_source(source_rules, sparql)
-
 
         # after this should really be in its own function
         if generated_source is None:
@@ -326,22 +384,18 @@ def inversion(config_file: str|pathlib.Path):
             generated_df = pd.read_csv(StringIO(generated_source))     # this is only for csv files
         with open(source, "r") as file:
             expected_source = pd.read_csv(file)
-        try:
-            print("-" * os.get_terminal_size().columns)
-            print(generated_df)
-            print("-" * os.get_terminal_size().columns)
-            print(expected_source)
-            print("-" * os.get_terminal_size().columns)
-            compare_dfs(generated_df, expected_source)
-        except ValueError as e:
-            print(e)
-            print("Test failed")
-        except IndexError as e:
-            print(e)
-            print("Test failed")
-        else:
+
+        print("-" * os.get_terminal_size().columns)
+        print(generated_df)
+        print("-" * os.get_terminal_size().columns)
+        print(expected_source)
+        print("-" * os.get_terminal_size().columns)
+        if Validator.df_equals(generated_df, expected_source):
             print("Dataframes are equal")
             print("Test passed")
+        else:
+            print("Dataframes are not equal")
+            print("Test failed")
         print("+" * os.get_terminal_size().columns)
 def test_rml_test_cases():
     os.chdir(TEST_CASES_PATH)
