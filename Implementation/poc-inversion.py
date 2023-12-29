@@ -20,6 +20,7 @@ import re
 from urllib.parse import ParseResult, urlparse
 from io import StringIO
 import hashlib
+import logging
 
 # region Setup
 pyrdf4j.repo_types.REPO_TYPES = pyrdf4j.repo_types.REPO_TYPES + ["graphdb"]  # add graphdb to the list of repo types
@@ -57,29 +58,57 @@ TRIPLESTORE_URL = f"http://localhost:7200/repositories/{REPO_ID}"
 
 TEST_CASES_PATH = "F:\\Github_repos\\Inversion_KG_to_raw_data\\Implementation\\rml-test-cases\\test-cases"
 
+REF_TEMPLATE_REGEX = '{([^{}]*)}'
+
 # endregion
 
 # region classes
 
 class IdGenerator:
-    def __init__(self):
-        self._counter = 0
+    counter = 0
     
-    def get_id(self):
-        self._counter += 1
-        return self._counter
+    @classmethod
+    def get_id(cls):
+        cls.counter += 1
+        return cls.counter
 
-    def reset(self):
-        self._counter = 0
+    @classmethod
+    def reset(cls):
+        cls.counter = 0
 
-class QueryFragment(ABC):
+
+"""
+properties:
+    references: list[reference]
+"""
+class QueryFragment():
     def __init__(self):
         pass
+    
+    @property
+    def references(self) -> set[str]:
+        return set()
 
+class ConstantQueryFragment(QueryFragment):
+    def __init__(self, subject:str, predicate:str, object:str):
+        super().__init__()
 
 class Query:
     def __init__(self):
         self.fragments: list[QueryFragment] = []
+        
+    @property
+    def references(self) -> set[str]:
+        references = set()
+        for fragment in self.fragments:
+            references.update(fragment.references)
+        return references
+    
+    def hashed_references(self) -> dict[str, str]:
+        hashed_references = {}
+        for reference in self.references:
+            hashed_references[reference] = hashlib.md5(reference.encode('utf-8')).hexdigest()
+        return hashed_references
 
 class Endpoint(ABC):
     @abstractmethod
@@ -154,7 +183,6 @@ class Validator:
                 return False
             
         return True
-        
 
 class EndpointFactory:
     @staticmethod
@@ -166,6 +194,8 @@ class EndpointFactory:
             return LocalSparqlGraphStore(url)
 
 # endregion
+
+inversion_logger = logging.getLogger("inversion")
 
 def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
     if pure:
@@ -201,10 +231,10 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
                 df.at[index, "subject_reference_count"] = 1
 
             case "http://w3id.org/rml/template":
-                references_list = re.findall("{([^{]*)}", df.at[index, "subject_map_value"])
+                references_list = re.findall(REF_TEMPLATE_REGEX, df.at[index, "subject_map_value"])
                 df.at[index, "subject_references"] = references_list
                 df.at[index, "subject_reference_count"] = len(references_list)
-                df.at[index, "subject_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)', df.at[index, "subject_map_value"]) + '$'
+                df.at[index, "subject_references_template"] = re.sub(REF_TEMPLATE_REGEX, '([^\/]*)', df.at[index, "subject_map_value"]) + '$'
                 
         match df.at[index, "predicate_map_type"]:
             case "http://w3id.org/rml/constant":
@@ -216,10 +246,10 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
                 df.at[index, "predicate_reference_count"] = 1
 
             case "http://w3id.org/rml/template":
-                references_list = re.findall("{([^{]*)}", df.at[index, "predicate_map_value"])
+                references_list = re.findall(REF_TEMPLATE_REGEX, df.at[index, "predicate_map_value"])
                 df.at[index, "predicate_references"] = references_list
                 df.at[index, "predicate_reference_count"] = len(references_list)
-                df.at[index, "predicate_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)', df.at[index, "predicate_map_value"]) + '$'
+                df.at[index, "predicate_references_template"] = re.sub(REF_TEMPLATE_REGEX, '([^\/]*)', df.at[index, "predicate_map_value"]) + '$'
 
         match df.at[index, "object_map_type"]:
             case "http://w3id.org/rml/constant":
@@ -231,10 +261,10 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
                 df.at[index, "object_reference_count"] = 1
 
             case "http://w3id.org/rml/template":
-                references_list = re.findall("{([^{]*)}", df.at[index, "object_map_value"])
+                references_list = re.findall(REF_TEMPLATE_REGEX, df.at[index, "object_map_value"])
                 df.at[index, "object_references"] = references_list
                 df.at[index, "object_reference_count"] = len(references_list)
-                df.at[index, "object_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)', df.at[index, "object_map_value"]) + '$'
+                df.at[index, "object_references_template"] = re.sub(REF_TEMPLATE_REGEX, '([^\/]*)', df.at[index, "object_map_value"]) + '$'
 
             case "http://w3id.org/rml/parentTriplesMap":
                 df.at[index, "object_references"] = [
@@ -324,7 +354,7 @@ def generate_subject_fragment(rule:pd.Series, subject_index:int) -> str|None:
             return "\n".join(lines)
     return None
 
-def generate_query(iterator_rules:pd.DataFrame) -> str|None:
+def generate_query(mapping_rules, iterator_rules:pd.DataFrame) -> str|None:
     references = get_references(iterator_rules)
     if len(references) == 0:
         return None
@@ -349,14 +379,13 @@ def generate_query(iterator_rules:pd.DataFrame) -> str|None:
     else:
         return query.replace("\\", "\\\\")
 
-
-def invert_source(source_rules:pd.DataFrame, endpoint:Endpoint):
+def invert_source(mapping_rules:pd.DataFrame, source_rules:pd.DataFrame, endpoint:Endpoint):
     iterator_result = None
     for iterator, iterator_rules in source_rules.groupby('iterator', dropna=False):
-        query = generate_query(iterator_rules)
-        print(query)
+        query = generate_query(mapping_rules, iterator_rules)
+        inversion_logger.debug(query)
         if query is None:
-            print("No query generated (no references found)")
+            inversion_logger.warning("No query generated (no references found)")
             iterator_result = None
         else:
             iterator_result = endpoint.query(query)
@@ -370,12 +399,12 @@ def invert_source(source_rules:pd.DataFrame, endpoint:Endpoint):
 
 def inversion(config_file: str|pathlib.Path):
     config = load_config_from_argument(config_file)
-    mappings, _ = retrieve_mappings(config)
-    knowledge_graph_file = config.get_output_file()
-    sparql = EndpointFactory.create(config)
+    mappings:pd.DataFrame
+    mappings, _= retrieve_mappings(config)
+    endpoint = EndpointFactory.create(config)
     insert_columns(mappings)
     for source, source_rules in mappings.groupby("logical_source_value"):
-        generated_source = invert_source(source_rules, sparql)
+        generated_source = invert_source(mappings, source_rules, endpoint)
 
         # after this should really be in its own function
         if generated_source is None:
@@ -385,18 +414,14 @@ def inversion(config_file: str|pathlib.Path):
         with open(source, "r") as file:
             expected_source = pd.read_csv(file)
 
-        print("-" * os.get_terminal_size().columns)
-        print(generated_df)
-        print("-" * os.get_terminal_size().columns)
-        print(expected_source)
-        print("-" * os.get_terminal_size().columns)
+        inversion_logger.debug(generated_df)
+        inversion_logger.debug(expected_source)
         if Validator.df_equals(generated_df, expected_source):
-            print("Dataframes are equal")
-            print("Test passed")
+            inversion_logger.debug("Dataframes are equal")
+            inversion_logger.info("Test passed")
         else:
-            print("Dataframes are not equal")
-            print("Test failed")
-        print("+" * os.get_terminal_size().columns)
+            inversion_logger.debug("Dataframes are not equal")
+            inversion_logger.info("Test failed")
 def test_rml_test_cases():
     os.chdir(TEST_CASES_PATH)
     this_file_path = pathlib.Path(__file__).resolve()
@@ -412,18 +437,31 @@ def test_rml_test_cases():
     
     os.chdir(testcases_path)
     for _, row in table_tests_with_output.iterrows():
-        print(f'Running test {row["RML id"]}, ({row["better RML id"]})')
+        inversion_logger.info(f'Running test {row["RML id"]}, ({row["better RML id"]})')
         os.chdir(testcases_path / row["RML id"])
         try:
             inversion(MORPH_CONFIG)
         except Exception as e:
-            print(e)
-            print("Test failed")
+            inversion_logger.debug(e)
+            inversion_logger.info("Test failed (exception: %s)", type(e).__name__)
         
-        
-    
+
 
 def main():
+    if os.path.exists("inversion.log"):
+        os.remove("inversion.log")
+    inversion_logger.setLevel(logging.DEBUG)
+    inversion_logger.propagate = False
+    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    file_logger = logging.FileHandler("inversion.log")
+    file_logger.setLevel(logging.DEBUG)
+    file_logger.setFormatter(formatter)
+    consolelogger = logging.StreamHandler()
+    consolelogger.setLevel(logging.INFO)
+    consolelogger.setFormatter(formatter)
+    inversion_logger.addHandler(file_logger)
+    inversion_logger.addHandler(consolelogger)
+    # ignore morph_kgc logs
     warnings.simplefilter(action='ignore', category=FutureWarning)
     test_rml_test_cases()
     
