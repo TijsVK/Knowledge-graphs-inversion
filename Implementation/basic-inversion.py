@@ -62,7 +62,7 @@ MORPH_CONFIG = f"""
     na_values=,#N/A,N/A,#N/A N/A,n/a,NA,<NA>,#NA,NULL,null,NaN,nan,None
 
     # OUTPUT
-    output_file=knowledge-graph.nt
+    output_file=output.nt
     output_dir=
     output_format=N-TRIPLES
     only_printable_characters=no
@@ -119,69 +119,67 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
     # probably slower than adding them to the end but better for overview when printing rows
     if pure:
         df = df.copy(deep=True)  # do not modify original dataframe (pure function)
-    df.insert(df.columns.get_loc('subject_map_value') + 1, "subject_references",
-              [[] for _ in range(df.shape[0])])
+    df.insert(df.columns.get_loc('subject_map_value') + 1, "subject_references", [[] for _ in range(df.shape[0])])
     df.insert(df.columns.get_loc('subject_map_value') + 1, "subject_references_template", None)
     df.insert(df.columns.get_loc('subject_references') + 1, "subject_reference_count", 0)
-    df.insert(df.columns.get_loc('predicate_map_value') + 1, "predicate_references",
-              [[] for _ in range(df.shape[0])])
+    df.insert(df.columns.get_loc('predicate_map_value') + 1, "predicate_references", [[] for _ in range(df.shape[0])])
     df.insert(df.columns.get_loc('predicate_map_value') + 1, "predicate_references_template", None)
     df.insert(df.columns.get_loc('predicate_references') + 1, "predicate_reference_count", 0)
-    df.insert(df.columns.get_loc('object_map_value') + 1, "object_references",
-              [[] for _ in range(df.shape[0])])
+    df.insert(df.columns.get_loc('object_map_value') + 1, "object_references", [[] for _ in range(df.shape[0])])
     df.insert(df.columns.get_loc('object_map_value') + 1, "object_references_template", None)
     df.insert(df.columns.get_loc('object_references') + 1, "object_reference_count", 0)
 
     for index in df.index:
-        if df.at[index, "subject_map_type"] == "http://w3id.org/rml/constant":
-            df.at[index, "subject_references"] = []
-            df.at[index, "subject_reference_count"] = 0
+        match df.at[index, "subject_map_type"]:
+            case "http://w3id.org/rml/constant":
+                df.at[index, "subject_references"] = []
+                df.at[index, "subject_reference_count"] = 0
 
-        elif df.at[index, "subject_map_type"] == "http://w3id.org/rml/reference":
-            df.at[index, "subject_references"] = [df.at[index, "subject_map_value"]]
-            df.at[index, "subject_reference_count"] = 1
+            case "http://w3id.org/rml/reference":
+                df.at[index, "subject_references"] = [df.at[index, "subject_map_value"]]
+                df.at[index, "subject_reference_count"] = 1
 
-        elif df.at[index, "subject_map_type"] == "http://w3id.org/rml/template":
-            references_list = re.findall("{([^{]*)}", df.at[index, "subject_map_value"])
-            df.at[index, "subject_references"] = references_list
-            df.at[index, "subject_reference_count"] = len(references_list)
-            df.at[index, "subject_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)',
-                                                                 df.at[index, "subject_map_value"]) + '$'
+            case "http://w3id.org/rml/template":
+                references_list = re.findall("{([^{]*)}", df.at[index, "subject_map_value"])
+                df.at[index, "subject_references"] = references_list
+                df.at[index, "subject_reference_count"] = len(references_list)
+                df.at[index, "subject_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)', df.at[index, "subject_map_value"]) + '$'
+                
+        match df.at[index, "predicate_map_type"]:
+            case "http://w3id.org/rml/constant":
+                df.at[index, "predicate_references"] = []
+                df.at[index, "predicate_reference_count"] = 0
 
-        if df.at[index, "predicate_map_type"] == "http://w3id.org/rml/constant":
-            df.at[index, "predicate_references"] = []
-            df.at[index, "predicate_reference_count"] = 0
+            case "http://w3id.org/rml/reference":
+                df.at[index, "predicate_references"] = [df.at[index, "predicate_map_value"]]
+                df.at[index, "predicate_reference_count"] = 1
 
-        elif df.at[index, "predicate_map_type"] == "http://w3id.org/rml/reference":
-            df.at[index, "predicate_references"] = [df.at[index, "predicate_map_value"]]
-            df.at[index, "predicate_reference_count"] = 1
+            case "http://w3id.org/rml/template":
+                references_list = re.findall("{([^{]*)}", df.at[index, "predicate_map_value"])
+                df.at[index, "predicate_references"] = references_list
+                df.at[index, "predicate_reference_count"] = len(references_list)
+                df.at[index, "predicate_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)', df.at[index, "predicate_map_value"]) + '$'
 
-        elif df.at[index, "predicate_map_type"] == "http://w3id.org/rml/template":
-            references_list = re.findall("{([^{]*)}", df.at[index, "predicate_map_value"])
-            df.at[index, "predicate_references"] = references_list
-            df.at[index, "predicate_reference_count"] = len(references_list)
-            df.at[index, "predicate_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)',
-                                                                   df.at[index, "predicate_map_value"]) + '$'
+        match df.at[index, "object_map_type"]:
+            case "http://w3id.org/rml/constant":
+                df.at[index, "object_references"] = []
+                df.at[index, "object_reference_count"] = 0
 
-        if df.at[index, "object_map_type"] == "http://w3id.org/rml/constant":
-            df.at[index, "object_references"] = []
-            df.at[index, "object_reference_count"] = 0
+            case "http://w3id.org/rml/reference":
+                df.at[index, "object_references"] = [df.at[index, "object_map_value"]]
+                df.at[index, "object_reference_count"] = 1
 
-        elif df.at[index, "object_map_type"] == "http://w3id.org/rml/reference":
-            df.at[index, "object_references"] = [df.at[index, "object_map_value"]]
-            df.at[index, "object_reference_count"] = 1
+            case "http://w3id.org/rml/template":
+                references_list = re.findall("{([^{]*)}", df.at[index, "object_map_value"])
+                df.at[index, "object_references"] = references_list
+                df.at[index, "object_reference_count"] = len(references_list)
+                df.at[index, "object_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)', df.at[index, "object_map_value"]) + '$'
 
-        elif df.at[index, "object_map_type"] == "http://w3id.org/rml/template":
-            references_list = re.findall("{([^{]*)}", df.at[index, "object_map_value"])
-            df.at[index, "object_references"] = references_list
-            df.at[index, "object_reference_count"] = len(references_list)
-            df.at[index, "object_references_template"] = re.sub('{[A-z0-9^{}]*}', '([^\/]*)',
-                                                                df.at[index, "object_map_value"]) + '$'
-
-        elif df.at[index, "object_map_type"] == "http://w3id.org/rml/parentTriplesMap":
-            df.at[index, "object_references"] = [
-                list(json.loads(df.at[index, "object_join_conditions"].replace("'", '"')).values())[0]['child_value']]
-            df.at[index, "object_reference_count"] = 1
+            case "http://w3id.org/rml/parentTriplesMap":
+                df.at[index, "object_references"] = [
+                    list(json.loads(df.at[index, "object_join_conditions"].replace("'", '"')).values())[0]['child_value']]
+                df.at[index, "object_reference_count"] = 1
+                
     return df
 
 
@@ -467,8 +465,7 @@ def run_test(row: pd.Series, rdf4j_connector: pyrdf4j.rdf4j.RDF4J):
 
                 if PRINT_ROW_ADDING:
                     print(f"Adding row {new_row} to {source} output dataframe.")
-                source_output_dfs_dict[source] = pd.concat([output_source_df, new_row.to_frame().transpose()],
-                                                           ignore_index=True)
+                source_output_dfs_dict[source] = pd.concat([output_source_df, new_row.to_frame().transpose()], ignore_index=True)
 
         for source in source_output_dfs_dict.keys():
             source_output_dfs_dict[source].sort_index(axis=1, inplace=True)
@@ -504,7 +501,7 @@ def run_test(row: pd.Series, rdf4j_connector: pyrdf4j.rdf4j.RDF4J):
         if str(e) != "Found an invalid graph termtype. Found values {'http://w3id.org/rml/BlankNode'}. Graph maps must be http://w3id.org/rml/IRI.":
             # morph-kgc uses build-in python errors, but catching all ValueErrors is not a good idea as it also catches errors that are not related to morph-kgc
             raise
-    rdf4j_connector.drop_repository(row["better RML id"], accept_not_exist=True)
+    # rdf4j_connector.drop_repository(row["better RML id"], accept_not_exist=True)
     print('\n' * 5)
     os.chdir("..")
 
