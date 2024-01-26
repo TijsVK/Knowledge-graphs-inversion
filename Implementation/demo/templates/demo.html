@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>KGI Demo</h1>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<form id="DemoForm">
+    <div class="form-group">
+        <label for="presetSelect">Preset:</label>
+        <select class="form-control" id="presetSelect">
+            <option value="None">None</option>
+            {% for source in sources %}
+                <option value="{{ source }}">{{ source }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="yarrrml">Yarrrml mappings:</label>
+        {% include "yarrrml_textarea.html" %}
+        <input type="button" value="Generate Mappings" class="btn btn-primary" id="generateMappingsButton">
+        {% include "generated_mappings_textarea.html" %}
+    </div>
+    <div class="form-group">
+        {% include "source_name_text_box.html" %}
+        {% include "source_content_textarea.html" %}
+    </div>
+    
+</form>
+<script>
+    function GenerateMappings (){
+        var myform = document.getElementById("DemoForm");
+        const formData = new FormData();
+        formData.set("yarrrml", myform.elements["yarrrml"].value);
+        fetch("/generate_mappings", {
+            method: "POST",
+            body: formData,
+        })
+    }
+    var generateButton = document.getElementById("generateMappingsButton");
+    generateButton.addEventListener("click", GenerateMappings);
+
+    function PresetLoader (value){
+        var myform = document.getElementById("DemoForm");
+        const formData = new FormData();
+        formData.set("preset", value);
+        fetch("/load_preset", {
+            method: "POST",
+            body: formData,
+        })
+    }
+
+    var presetSelect = document.getElementById("presetSelect");
+    presetSelect.addEventListener("change", function(){
+        PresetLoader(presetSelect.value);
+    });
+    
+</script>
+{% endblock %}
