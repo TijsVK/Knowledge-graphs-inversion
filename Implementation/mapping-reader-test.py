@@ -26,7 +26,7 @@ table_tests = testsDf[testsDf["data format"] == "CSV"]
 table_tests_with_output = table_tests[table_tests["error expected?"] == False]
 
 os.chdir(testcasesbasepath)
-for _, row in table_tests_with_output.iterrows():
+for _, row in testsDf.iterrows():
     os.chdir(row["RML id"])
     print(row["RML id"], row["title"], row["purpose"], row["error expected?"])
     config = f"""
