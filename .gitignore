@@ -16,3 +16,5 @@ Implementation/.venv/*
 Implementation/compose.yaml
 Implementation/RMLStreamer-v2.5.0.jar
 meeting_notes.md
+.venv
+*.pyc
