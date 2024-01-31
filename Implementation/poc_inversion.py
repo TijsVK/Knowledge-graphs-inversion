@@ -18,7 +18,7 @@ import pyrdf4j.repo_types
 import rdflib
 from SPARQLWrapper import SPARQLWrapper, CSV
 import re
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult, urlparse, unquote
 from io import StringIO
 import hashlib
 import logging
@@ -57,8 +57,7 @@ MORPH_CONFIG = f"""
 REPO_ID = "inversion"
 TRIPLESTORE_URL = f"http://localhost:7200/repositories/{REPO_ID}"
 
-TEST_CASES_PATH = "F:\\Github_repos\\Inversion_KG_to_raw_data\\Implementation\\rml-test-cases\\test-cases"
-
+TEST_CASES_PATH = pathlib.Path(__file__).parent / "rml-test-cases" / "test-cases"
 REF_TEMPLATE_REGEX = '{([^{}]*)}'
 
 # endregion
@@ -128,15 +127,17 @@ class RemoteEndpoint(Endpoint):
         return f"RemoteSparqlEndpoint({self._sparql.endpoint})"
 
 class LocalSparqlGraphStore(Endpoint):
-    def __init__(self, url:str):
-        data = open(url, "r").read()
+    def __init__(self, url:str, delete_after_use:bool=False):
+        data = open(url, "r", encoding="utf-8").read()
         self._repoid = hashlib.md5(data.encode('utf-8')).hexdigest()
         rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
         rdf4jconnector.empty_repository(self._repoid)
         rdf4jconnector.create_repository(self._repoid, accept_existing=True, repo_type='graphdb')
         rdf4jconnector.add_data_to_repo(self._repoid, data, "text/x-nquads")
+        time.sleep(1)
         self._sparql = SPARQLWrapper(f"http://localhost:7200/repositories/{self._repoid}")
         self._sparql.setReturnFormat(CSV)
+        self.delete_after_use = delete_after_use
     
     def query(self, query: str) -> str:
         self._sparql.setQuery(query)
@@ -146,8 +147,10 @@ class LocalSparqlGraphStore(Endpoint):
         return decoded
     
     def __del__(self):
-        rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
-        rdf4jconnector.drop_repository(self._repoid)
+        if self.delete_after_use:
+            inversion_logger.debug(f"Dropping repository: {self._repoid}")
+            rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
+            rdf4jconnector.drop_repository(self._repoid, accept_not_exist=True)
 
     def __repr__(self):
         return f"LocalSparqlGraphStore({self._repoid})"
@@ -169,8 +172,10 @@ class Validator:
         # sort by columns and rows
         df1.sort_index(axis=1, inplace=True)
         df1.sort_values(by=list(df1.columns), inplace=True)
+        df1.drop_duplicates(inplace=True)
         df2.sort_index(axis=1, inplace=True)
         df2.sort_values(by=list(df2.columns), inplace=True)
+        df2.drop_duplicates(inplace=True)
         if df1.shape != df2.shape:
             return False
         # for each row in df1, check if it exists in df2
@@ -185,9 +190,13 @@ class Validator:
         return True
 
 class EndpointFactory:
-    @staticmethod
-    def create(config:morph_kgc.config.Config):
+    @classmethod
+    def create(cls, config:morph_kgc.config.Config):
         url = config.get_output_file()
+        return cls.create_from_url(url)
+    
+    @classmethod
+    def create_from_url(cls, url:str):
         if Validator.url(url):
             return RemoteEndpoint(url)
         else:
@@ -331,6 +340,7 @@ def generate_object_fragment(rule:pd.Series, subject_index:int) -> str|None:
             return "\n".join(lines)
 
 def generate_subject_fragment(rule:pd.Series, subject_index:int) -> str|None:
+    return None
     if rule["subject_termtype"] == "http://w3id.org/rml/IRI":
         if rule["subject_map_type"] == "http://w3id.org/rml/template":
             temp_index_counter = 0
@@ -400,9 +410,34 @@ def invert_source(mapping_rules:pd.DataFrame, source_rules:pd.DataFrame, endpoin
     if iterator_result is None:
         return None
     return iterator_result
-    
 
 def inversion(config_file: str|pathlib.Path):
+    config = load_config_from_argument(config_file)
+    mappings:pd.DataFrame
+    mappings, _= retrieve_mappings(config)
+    endpoint = EndpointFactory.create(config)
+    insert_columns(mappings)
+    for source, source_rules in mappings.groupby("logical_source_value"):
+        generated_source = invert_source(mappings, source_rules, endpoint)
+        generated_df = pd.read_csv(StringIO(generated_source))
+        for column in generated_df.columns:
+            generated_df[column] = generated_df[column].apply(url_decode)
+        generated_df.to_csv(source, index=False, encoding="utf-8", lineterminator="")
+        # with open(source, "w", encoding="utf-8", newline="") as file:
+        #     file.write(generated_source)
+
+def url_decode(url):
+    try:
+        # check if url is a string
+        if not isinstance(url, str):
+            return url
+        decoded_url = unquote(url)
+        return decoded_url
+    except Exception as e:
+        # Handle invalid URLs or other decoding errors
+        return None
+
+def inversion_tested(config_file: str|pathlib.Path):
     config = load_config_from_argument(config_file)
     mappings:pd.DataFrame
     mappings, _= retrieve_mappings(config)
@@ -446,24 +481,26 @@ def test_rml_test_cases():
         inversion_logger.info(f'Running test {row["RML id"]}, ({row["better RML id"]})')
         os.chdir(testcases_path / row["RML id"])
         try:
-            inversion(MORPH_CONFIG)
+            inversion_tested(MORPH_CONFIG)
         except Exception as e:
             inversion_logger.debug(e)
             inversion_logger.info("Test failed (exception: %s)", type(e).__name__)
-        
 
+inversion_logger.setLevel(logging.DEBUG)
+inversion_logger.propagate = False
+formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+file_logger = logging.FileHandler("inversion.log")
+file_logger.setLevel(logging.DEBUG)
+file_logger.setFormatter(formatter)
+inversion_logger.addHandler(file_logger)
 
 def main():
     if os.path.exists("inversion.log"):
         os.remove("inversion.log")
     inversion_logger.setLevel(logging.DEBUG)
     inversion_logger.propagate = False
-    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    file_logger = logging.FileHandler("inversion.log")
-    file_logger.setLevel(logging.DEBUG)
-    file_logger.setFormatter(formatter)
     consolelogger = logging.StreamHandler()
-    consolelogger.setLevel(logging.INFO)
+    consolelogger.setLevel(logging.DEBUG)
     consolelogger.setFormatter(formatter)
     inversion_logger.addHandler(file_logger)
     inversion_logger.addHandler(consolelogger)

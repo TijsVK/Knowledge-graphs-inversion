@@ -1,0 +1,24 @@
+prefixes:
+    ex: "http://example.com/"
+    schema: "http://schema.org/"
+
+mappings:
+    job:
+        sources:
+        - ['chi.csv~csv']
+        s: http://example.com/City/$(City)/$(Month)/$(Year)
+        po:
+        - [a, schema:measurement]
+        - [schema:city, $(City)]
+        - [schema:month, $(Month)]
+        - [schema:year, $(Year)]
+        - [schema:decibelLevel, $(Decibel_Level)]
+        - [schema:trafficDensity, $(Traffic_Density)]
+        - [schema:greenSpaceArea, $(Green_Space_Area)]
+        - [schema:airQualityIndex, $(Air_Quality_Index)]
+        - [schema:happinessScore, $(Happiness_Score)]
+        - [schema:costOfLivingIndex, $(Cost_of_Living_Index)]
+        - [schema:healthcareIndex, $(Healthcare_Index)]
+
+
+# City,Month,Year,Decibel_Level,Traffic_Density,Green_Space_Area,Air_Quality_Index,Happiness_Score,Cost_of_Living_Index,Healthcare_Index

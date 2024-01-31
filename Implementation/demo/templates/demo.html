@@ -1,57 +1,121 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>KGI Demo</h1>
-<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-<form id="DemoForm">
-    <div class="form-group">
-        <label for="presetSelect">Preset:</label>
-        <select class="form-control" id="presetSelect">
-            <option value="None">None</option>
-            {% for source in sources %}
-                <option value="{{ source }}">{{ source }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="yarrrml">Yarrrml mappings:</label>
-        {% include "yarrrml_textarea.html" %}
-        <input type="button" value="Generate Mappings" class="btn btn-primary" id="generateMappingsButton">
-        {% include "generated_mappings_textarea.html" %}
-    </div>
-    <div class="form-group">
-        {% include "source_name_text_box.html" %}
-        {% include "source_content_textarea.html" %}
-    </div>
-    
-</form>
-<script>
-    function GenerateMappings (){
-        var myform = document.getElementById("DemoForm");
-        const formData = new FormData();
-        formData.set("yarrrml", myform.elements["yarrrml"].value);
-        fetch("/generate_mappings", {
-            method: "POST",
-            body: formData,
-        })
-    }
-    var generateButton = document.getElementById("generateMappingsButton");
-    generateButton.addEventListener("click", GenerateMappings);
+<div class="container-fluid">
+    <h1>KGI Demo</h1>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    <form id="DemoForm">
+        <div class="form-group row">
+            <label for="presetSelect">Preset:</label>
+            <select class="form-control col-md-10" id="presetSelect">
+                <option value="None">None</option>
+                {% for source in sources %}
+                    <option value="{{ source }}">{{ source }}</option>
+                {% endfor %}
+            </select>
+            <input type="button" value="Reload preset" class="btn btn-primary col-md-2" id="reloadPresetButton">
+        </div>
+        <div class="form-group row">
+            <div class="col-md-6">
+                <label for="yarrrml">Yarrrml mappings:</label>
+                {% include "yarrrml_textarea.html" %}
+            </div>
+            <div class="col-md-6">
+                <label for="rml_mappings">Generated RML mappings:</label>
+                {% include "generated_mappings_textarea.html" %}
+            </div>
+            <input type="button" value="Generate Mappings" class="btn btn-primary" id="generateMappingsButton">
+        </div>
+        <div class="form-group row">
+            <div class="col-md-4">
+                <label for="source_name">Source name:</label>
+                {% include "source_name_text_box.html" %}
+                <label for="source_content">Source content:</label>
+                {% include "source_content_textarea.html" %}
+            </div>
+            <div class="col-md-6">
+                <label for="knowledge_graph">Generated knowledge graph:</label>
+                {% include "knowledge_graph_textarea.html" %}
+            </div>
+            <div class="col-md-2">
+                <label for="knowledge_graph_stats">Knowledge graph statistics:</label>
+                {% include "knowledge_graph_stats.html" %}
+            </div>
+            <input type="button" value="Generate knowledge graph" class="btn btn-primary" id="generateKnowledgeGraphButton">
+        </div>
+        <div class="form-group row">
+            <div class="col-md-12">
+                <label for="inverted source">Inverted source:</label>
+                {% include "inverted_source_textarea.html" %}
+            </div>
+            <input type="button" value="Invert knowledge graph" class="btn btn-primary col-md-8" id="invertKnowledgeGraphButton">
+            <input type="button" value="Copy inverted source to source content" class="btn btn-secondary col-md-4" id="copyButton">
+        </div>
+        
+    </form>
+    <script>
+        function GenerateMappings (){
+            var myform = document.getElementById("DemoForm");
+            const formData = new FormData();
+            formData.set("yarrrml", myform.elements["yarrrml"].value);
+            fetch("/generate_mappings", {
+                method: "POST",
+                body: formData,
+            })
+        }
+        var generateButton = document.getElementById("generateMappingsButton");
+        generateButton.addEventListener("click", GenerateMappings);
 
-    function PresetLoader (value){
-        var myform = document.getElementById("DemoForm");
-        const formData = new FormData();
-        formData.set("preset", value);
-        fetch("/load_preset", {
-            method: "POST",
-            body: formData,
-        })
-    }
+        function PresetLoader (value){
+            var myform = document.getElementById("DemoForm");
+            const formData = new FormData();
+            formData.set("preset", value);
+            fetch("/load_preset", {
+                method: "POST",
+                body: formData,
+            })
+        }
+        var presetSelect = document.getElementById("presetSelect");
+        presetSelect.addEventListener("change", function(){
+            PresetLoader(presetSelect.value);
+        });
+        var reloadPresetButton = document.getElementById("reloadPresetButton");
+        reloadPresetButton.addEventListener("click", function(){
+            PresetLoader(presetSelect.value);
+        });
 
-    var presetSelect = document.getElementById("presetSelect");
-    presetSelect.addEventListener("change", function(){
-        PresetLoader(presetSelect.value);
-    });
-    
-</script>
+        function GenerateKnowledgeGraph (){
+            var myform = document.getElementById("DemoForm");
+            const formData = new FormData();
+            formData.set("rml_mappings", myform.elements["rml_mappings"].value)
+            formData.set("source_name", myform.elements["source_name"].value);
+            formData.set("source_content", myform.elements["source_content"].value);
+            fetch("/generate_knowledge_graph", {
+                method: "POST",
+                body: formData,
+            })
+        }
+        var generateButton = document.getElementById("generateKnowledgeGraphButton");
+        generateButton.addEventListener("click", GenerateKnowledgeGraph);
+
+        function InvertKnowledgeGraph (){
+            var myform = document.getElementById("DemoForm");
+            const formData = new FormData();
+            formData.set("knowledge_graph", myform.elements["knowledge_graph"].value)
+            formData.set("rml_mappings", myform.elements["rml_mappings"].value)
+            fetch("/invert_knowledge_graph", {
+                method: "POST",
+                body: formData,
+            })
+        }
+        var generateButton = document.getElementById("invertKnowledgeGraphButton");
+        generateButton.addEventListener("click", InvertKnowledgeGraph);
+        
+        var copyButton = document.getElementById("copyButton");
+        copyButton.addEventListener("click", function(){
+            var myform = document.getElementById("DemoForm");
+            myform.elements["source_content"].value = myform.elements["inverted_source"].value;
+        });
+    </script>
+</div>
 {% endblock %}
