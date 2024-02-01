@@ -4,7 +4,7 @@ from turbo_flask import Turbo
 
 import pathlib
 
-from ..poc_inversion import inversion
+from ..demo_inversion import inversion
 
 import morph_kgc
 
@@ -124,7 +124,6 @@ def load_preset():
     with open(preset_dir / 'yarrrml.yml') as f:
         yarrrml = f.read()
     push_yarrml(yarrrml)
-    generate_and_push_mappings(yarrrml)
     # get all files with .csv extension
     csv_files = [f for f in preset_dir.glob('*.csv')]
     csv_file = csv_files[0]
@@ -132,6 +131,7 @@ def load_preset():
     push_source_name(filename)
     file_contents = csv_file.read_bytes().decode('utf-8')
     push_source_content(file_contents)
+    generate_and_push_mappings(yarrrml)
     return ''
 
 @app.route('/generate_knowledge_graph', methods=['POST'])

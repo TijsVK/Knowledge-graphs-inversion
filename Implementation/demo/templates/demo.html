@@ -41,7 +41,8 @@
                 <label for="knowledge_graph_stats">Knowledge graph statistics:</label>
                 {% include "knowledge_graph_stats.html" %}
             </div>
-            <input type="button" value="Generate knowledge graph" class="btn btn-primary" id="generateKnowledgeGraphButton">
+            <input type="button" value="Generate knowledge graph" class="btn btn-primary col-md-8" id="generateKnowledgeGraphButton">
+            <input type="button" value="Clear knowledge graph" class="btn btn-secondary col-md-4" id="clearKnowledgeGraphButton">
         </div>
         <div class="form-group row">
             <div class="col-md-12">
@@ -111,6 +112,15 @@
         var generateButton = document.getElementById("invertKnowledgeGraphButton");
         generateButton.addEventListener("click", InvertKnowledgeGraph);
         
+
+        var clearButton = document.getElementById("clearKnowledgeGraphButton");
+        clearButton.addEventListener("click", function(){
+            var myform = document.getElementById("DemoForm");
+            myform.elements["knowledge_graph"].value = "";
+            var statsTable = document.getElementById("knowledge_graph_stats_table");
+            statsTable.innerHTML = "";
+        });
+
         var copyButton = document.getElementById("copyButton");
         copyButton.addEventListener("click", function(){
             var myform = document.getElementById("DemoForm");
