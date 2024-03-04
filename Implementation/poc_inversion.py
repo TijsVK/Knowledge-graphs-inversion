@@ -67,9 +67,6 @@ MORPH_CONFIG = """
     mappings: mapping.ttl
 """
 
-REPO_ID = "inversion"
-TRIPLESTORE_URL = f"http://localhost:7200/repositories/{REPO_ID}"
-
 TEST_CASES_PATH = pathlib.Path(__file__).parent / "rml-test-cases" / "test-cases"
 REF_TEMPLATE_REGEX = "{([^{}]*)}"
 
@@ -165,6 +162,8 @@ class QueryTriple:
         predicate = f'<{self.rule["predicate_map_value"]}>'
         object_map_value = self.rule["object_map_value"]
         object_map_type = self.rule["object_map_type"]
+        object_references_template = self.rule["object_references_template"]
+        
         if object_map_type == RML_CONSTANT:
             object_term_type = self.rule["object_termtype"]
             if object_term_type == RML_IRI:
@@ -194,27 +193,29 @@ class QueryTriple:
             full_template_reference = f"{object_reference_hex}_full_{IdGenerator.get_id()}"
             lines.append(f"OPTIONAL{{?{subject_reference_hex} {predicate} ?{full_template_reference}}}")
             lines.append(f"FILTER(!BOUND(?{full_template_reference}) || REGEX(STR(?{full_template_reference}), '{self.rule['object_references_template']}'))")
-            evaluated_template = object_map_value
+            evaluated_template = object_references_template
             current_reference = full_template_reference
             for reference in self.rule["object_references"]: # we cant use self.object_references here as the order is important (#TODO: refactor self.object_references)
-                current_pre_string = evaluated_template.split("{", 1)[0]
-                current_post_string = evaluated_template.split("}", 1)[1]
-                next_pre_string = current_post_string.split("{", 1)[0]
+                current_pre_string = evaluated_template.split("(", 1)[0]
+                current_post_string = evaluated_template.split(")", 1)[1]
+                next_pre_string = current_post_string.split("(", 1)[0]
                 reference_byte_string = reference.encode("utf-8")
                 reference_hex = reference_byte_string.hex()
                 next_reference = f"{object_reference_hex}_slice_{IdGenerator.get_id()}"
-                lines.append(f"OPTIONAL{{BIND(STRAFTER(STR(?{current_reference}), '{current_pre_string}') as ?{next_reference})}}")
+                unescaped_current_pre_string = current_pre_string.replace('\\', "")
+                unescaped_next_pre_string = next_pre_string.replace('\\', "")
+                lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_reference}), '{unescaped_current_pre_string}') as ?{next_reference})}}")
                 if current_post_string == "":
-                    lines.append(f"OPTIONAL{{BIND(?{next_reference} as ?{reference_hex}_encoded)}}")
+                    lines.append(f"{{}} OPTIONAL{{BIND(?{next_reference} as ?{reference_hex}_encoded)}}")
                 else:
                     reference_placeholder = f"{reference_hex}_{IdGenerator.get_id()}"
                     lines.append(
-                        f"BIND(STRBEFORE(STR(?{next_reference}), '{next_pre_string}') AS ?{reference_placeholder})"
+                        f"BIND(STRBEFORE(STR(?{next_reference}), '{unescaped_next_pre_string}') AS ?{reference_placeholder})"
                     )
-                    lines.append(f"OPTIONAL{{BIND(?{reference_placeholder} as ?{reference_hex}_encoded)}}")
+                    lines.append(f"{{}} OPTIONAL{{BIND(?{reference_placeholder} as ?{reference_hex}_encoded)}}")
                     lines.append(f"FILTER(!BOUND(?{reference_hex}_encoded) || ?{reference_placeholder} = ?{reference_hex}_encoded)")
 
-                evaluated_template = evaluated_template.split("}", 1)[1]
+                evaluated_template = current_post_string
                 current_reference = next_reference
             return "\n".join(lines)
 
@@ -233,38 +234,41 @@ class SubjectTriple(QueryTriple):
     def generate(self, encoded_references: set[str], IdGenerator: IdGenerator) -> str | None:
         subject_map_value = self.rule["subject_map_value"]
         subject_map_type = self.rule["subject_map_type"]
+        subject_term_type = self.rule["subject_termtype"]
+        subject_references_template = self.rule["subject_references_template"]
         
-        if subject_map_type != RML_TEMPLATE:
+        if subject_map_type != RML_TEMPLATE or subject_term_type != RML_IRI:
             return None
         
         subject_reference_byte_string = subject_map_value.encode("utf-8")
         subject_reference_hex = subject_reference_byte_string.hex()
         
         lines = []
-        full_template_reference = f"?{subject_reference_hex}_full_{IdGenerator.get_id()}"
-        lines.append(f"FILTER(REGEX(STR(?{full_template_reference}), '{self.rule['object_references_template']}'))")
-        evaluated_template = subject_map_value
+        full_template_reference = f"{subject_reference_hex}"
+        lines.append(f"FILTER(REGEX(STR(?{full_template_reference}), '{self.rule['subject_references_template']}'))")
+        evaluated_template = subject_references_template
         current_reference = full_template_reference
         for reference in self.rule["subject_references"]: # we cant use self.object_references here as the order is important (#TODO: refactor self.object_references)
-            current_pre_string = evaluated_template.split("{", 1)[0]
-            current_post_string = evaluated_template.split("}", 1)[1]
-            next_pre_string = current_post_string.split("{", 1)[0]
+            current_pre_string = evaluated_template.split("(", 1)[0]
+            current_post_string = evaluated_template.split(")", 1)[1]
+            next_pre_string = current_post_string.split("(", 1)[0]
             reference_byte_string = reference.encode("utf-8")
             reference_hex = reference_byte_string.hex()
-            next_reference = f"{subject_reference_hex}_slice_{IdGenerator.get_id()}"
-            lines.append(f"OPTIONAL{{BIND(STRAFTER(STR(?{current_reference}), '{current_pre_string}') as ?{next_reference})}}")
+            next_reference = f"{subject_reference_hex}_slice_subject_{IdGenerator.get_id()}"
+            lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_reference}), '{current_pre_string}') as ?{next_reference})}}")
             if current_post_string == "":
-                lines.append(f"OPTIONAL{{BIND(?{next_reference} as ?{reference_hex})}}")
+                lines.append(f"{{}} OPTIONAL{{BIND(?{next_reference} as ?{reference_hex}_encoded)}}")
             else:
                 reference_placeholder = f"{reference_hex}_{IdGenerator.get_id()}"
                 lines.append(
                     f"BIND(STRBEFORE(STR(?{next_reference}), '{next_pre_string}') AS ?{reference_placeholder})"
                 )
-                lines.append(f"OPTIONAL{{BIND(?{reference_placeholder} as ?{reference_hex})}}")
-                lines.append(f"FILTER(!BOUND(?{reference_hex}) || ?{reference_placeholder} = ?{reference_hex})")
+                lines.append(f"{{}} OPTIONAL{{BIND(?{reference_placeholder} as ?{reference_hex}_encoded)}}")
+                lines.append(f"FILTER(!BOUND(?{reference_hex}_encoded) || ?{reference_placeholder} = ?{reference_hex}_encoded)")
 
-            evaluated_template = evaluated_template.split("}", 1)[1]
+            evaluated_template = current_post_string
             current_reference = next_reference
+        return "\n".join(lines)
 
 # region Selectors
 
@@ -578,7 +582,6 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
                             "([^\/]*)",
                             df.at[index, "subject_map_value"],
                         )
-                        + "$"
                 )
 
         match df.at[index, "predicate_map_type"]:
@@ -604,7 +607,6 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
                             "([^\/]*)",
                             df.at[index, "predicate_map_value"],
                         )
-                        + "$"
                 )
 
         match df.at[index, "object_map_type"]:
@@ -626,7 +628,6 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
                         re.sub(
                             REF_TEMPLATE_REGEX, "([^\/]*)", df.at[index, "object_map_value"]
                         )
-                        + "$"
                 )
 
             case "http://w3id.org/rml/parentTriplesMap":
@@ -749,7 +750,7 @@ def url_decode(url):
         return url
 
 def rml_test_cases():
-    bad_tests = ["4a", "16a", "18a", "20a", "21a", "22a", "23a", "24a", "26a", "27a", "28a", "36a", "37a", "40a", "41a", "42a", "56a", "57a", "58a", "59a"]
+    bad_tests = ["4a", "16a", "18a", "20a", "21a", "22a", "23a", "24a", "26a", "27a", "28a", "31a", "36a", "37a", "40a", "41a", "42a", "56a", "57a", "58a", "59a"]
     original_path = os.getcwd()
     os.chdir(TEST_CASES_PATH)
     this_file_path = pathlib.Path(__file__).resolve()
@@ -789,13 +790,11 @@ def rml_test_cases():
             inversion_logger.debug(e)
             inversion_logger.info("Test failed (exception: %s - %s)", type(e).__name__, e)
     os.chdir(original_path)
-        
 
 def run_tests():
     rml_test_cases()
 
-
-def main():
+def logging_setup():
     if os.path.exists("inversion.log"):
         # copy to inversion.log.old
         try:
@@ -815,17 +814,28 @@ def main():
     consolelogger.setLevel(logging.INFO)
     consolelogger.setFormatter(formatter)
     inversion_logger.addHandler(consolelogger)
+
+def main():
+    logging_setup()
     # ignore morph_kgc FutureWarning logs
     warnings.simplefilter(action="ignore", category=FutureWarning)
 
     run_tests()
 
 def test():
+    logging_setup()
     this_file_path = pathlib.Path(__file__).resolve()
     implementation_dir = this_file_path.parent
     metadata_path = implementation_dir / "rml-test-cases" / "metadata.csv"
     testcases_path = implementation_dir / "rml-test-cases" / "test-cases"
-
+    with open(metadata_path, "r") as file:
+        tests_df: pd.DataFrame = pd.read_csv(file)
+    tests_with_output = tests_df[tests_df["error expected?"] == False]
+    # only CSV tests for now
+    tests_with_output = tests_with_output[tests_with_output["data format"] == "JSON"]
+    
+    for _, row in tests_with_output.iterrows():
+        inversion_logger.info(f'Running test {row["RML id"]}, ({row["better RML id"]})')
 
     expr:jsonpath_ng.JSONPath = jsonpath_ng.parse("$.['students', 'teachers'][*]['Name', 'ID']")
     print(expr.__str__())
@@ -848,4 +858,4 @@ def test():
     print([match.value for match in expr.find(students_json)])
 
 if __name__ == "__main__":
-    main()
+    test()
