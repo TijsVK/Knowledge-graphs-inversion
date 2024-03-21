@@ -12,13 +12,9 @@ with open(metadata_file, "r") as file:
 
 tests_with_output = tests_df[tests_df["error expected?"] == False]
 
-additional_failed_tests = ["28a"]
-
-tests_with_output = tests_with_output[~tests_with_output["better RML id"].isin(additional_failed_tests)]
-
 bad_tests = {
     "CSV": ["4a", "16a", "18a", "20a", "21a", "22a", "23a", "24a", "26a", "27a", "28a", "31a", "36a", "37a", "40a", "41a", "42a", "56a", "57a", "58a", "59a"],
-    "JSON": [],
+    "JSON": ["28b"],
     "XML": [],
     "RDF": [],
     "table": []

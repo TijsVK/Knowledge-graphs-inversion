@@ -7,6 +7,7 @@ import pandas as pd
 from urllib.parse import ParseResult, urlparse, unquote
 import os
 from io import StringIO
+import json
 
 pytest_rml_test_cases_dir = pathlib.Path(__file__).parent
 implementation_dir = pathlib.Path(__file__).parent.parent.parent
@@ -78,13 +79,44 @@ class Validator:
         for row in df2.itertuples():
             if row not in df1.itertuples():
                 return False
-
         return True
+    
+    """Order an object recursively
+    
+    Args:
+        obj (object): any object
 
+    Returns:
+        obj: sorted object"""
+    @staticmethod
+    def _order_object(obj):
+        if isinstance(obj, dict):
+            return sorted((k, Validator._order_object(v)) for k, v in obj.items())
+        if isinstance(obj, list):
+            return sorted(Validator._order_object(x) for x in obj)
+        else:
+            return obj
+    
+    """Compare two jsons for equality, regardless of the order of the keys
 
-
+    Args:
+        json1 (str): first json as string
+        json2 (str): second json as string
+    
+    Returns:
+        bool: True if the jsons are equal, False otherwise
+    """
+    @staticmethod
+    def json_equals(json1: str, json2: str) -> bool:
+        try:
+            json_loaded1 = json.loads(json1)
+            json_loaded2 = json.loads(json2)
+        except json.JSONDecodeError:
+            return False
+        return Validator._order_object(json_loaded1) == Validator._order_object(json_loaded2)
+    
 csv_file = str(pytest_rml_test_cases_dir / "input_CSV.csv")
-print(csv_file)
+json_file = str(pytest_rml_test_cases_dir / "input_JSON.csv")
 
 @csv_params(
     data_file= csv_file,
@@ -104,7 +136,7 @@ def test_csv_test_case(
     print(f"Running test case {rml_id} with better RML id {better_rml_id}")
     original_dir = os.getcwd()
     os.chdir(test_cases_path / rml_id)
-    results = inversion.inversion(MORPH_CONFIG)
+    results = inversion.inversion(MORPH_CONFIG, rml_id)
     for source, source_result in results.items():
         with open(source, "r") as file:
             expected_source = pd.read_csv(file)
@@ -120,3 +152,41 @@ def test_csv_test_case(
             os.chdir(original_dir)
             pytest.fail(f"Test case {rml_id} failed")
     os.chdir(original_dir)
+    
+@csv_params(
+    data_file= json_file,
+    header_renames={
+        "RML id": "rml_id",
+        "better RML id": "better_rml_id"
+    },
+    data_casts={
+        "rml_id": str,
+        "better_rml_id": str
+    }
+)
+def test_json_test_case(
+    rml_id: str,
+    better_rml_id: str
+) -> None:
+    print(f"Running test case {rml_id} with better RML id {better_rml_id}")
+    original_dir = os.getcwd()
+    os.chdir(test_cases_path / rml_id)
+    try:
+        results = inversion.inversion(MORPH_CONFIG, rml_id)
+    except Exception as e:
+        os.chdir(original_dir)
+        pytest.fail(f"Test case {rml_id} failed with error: {e}")
+    for source, source_result in results.items():
+        with open(source, "r") as file:
+            expected_source = file.read()
+        print("Generated: " + source_result)
+        print("Original:" + expected_source)
+        if Validator.json_equals(source_result, expected_source):
+            print(f"JSONs are equal for {source}")
+            print("Test passed")
+        else:
+            print(f"JSONs are not equal for {source}")
+            print("Test failed")
+            os.chdir(original_dir)
+            pytest.fail(f"Test case {rml_id} failed")
+    
