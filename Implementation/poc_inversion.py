@@ -6,7 +6,7 @@ from xml.dom.minidom import Document
 import morph_kgc.config
 from morph_kgc.mapping.mapping_parser import retrieve_mappings
 from morph_kgc.args_parser import load_config_from_argument
-from morph_kgc.constants import RML_IRI, RML_LITERAL, RML_BLANK_NODE, RML_TEMPLATE, RML_REFERENCE, RML_CONSTANT
+from morph_kgc.constants import RML_IRI, RML_LITERAL, RML_BLANK_NODE, RML_TEMPLATE, RML_REFERENCE, RML_CONSTANT, RML_PARENT_TRIPLES_MAP
 import pathlib
 import json
 import pandas as pd
@@ -83,12 +83,17 @@ class Endpoint(ABC):
     def query(self, query: str):
         raise NotImplementedError
 
+class Triple(ABC):
+    @abstractmethod
+    def generate(self) -> str:
+        raise NotImplementedError
+
 class Selector(ABC):
     def __init__(self):
         pass
 
     @abstractmethod
-    def select(self):
+    def select(self) -> list[Triple]:
         pass
     
 class Node(ABC):
@@ -97,6 +102,16 @@ class Node(ABC):
     
     @abstractmethod
     def to_template(self) -> str:
+        raise NotImplementedError
+
+class Template(ABC):
+    @abstractmethod
+    def create_template(self) -> str:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def columns_decoded(self) -> bool:
         raise NotImplementedError
 
 # endregion
@@ -184,12 +199,37 @@ class Hexer:
         converted = "abcdefghijklmnop"
         return x.translate(str.maketrans(converted, hex_numbers))
         
-
+class Identifier:
+    @staticmethod
+    def generate_plain_identifier(rule: pd.Series, value: str) -> str | None:
+        source_type:str = rule["source_type"]
+        object_identifier:str
+        if source_type == "CSV":
+            object_identifier = value + "beepboop"
+        elif source_type == "JSON":
+            object_identifier = JSONPathFunctions.extend_string_path(rule["iterator"], value)
+        else:
+            inversion_logger.error(f"Unsupported source type: {source_type}")
+            return None
+        return object_identifier
+    
+class Codex:
+    def __init__(self):
+        self.codex: dict[str, str] = {}
+        self.idGenerator = IdGenerator()
+    
+    def get(self, key: str) -> str:
+        if key in self.codex.keys():
+            return self.codex[key]
+        else:
+            self.codex[key] = str(self.idGenerator.get_id())
+            return self.codex[key]
+    
 # endregion
 
 # region Triples
 
-class QueryTriple:
+class QueryTriple(Triple):
     def __init__(self, rule: pd.Series):
         self.rule = rule
 
@@ -226,28 +266,33 @@ class QueryTriple:
     @property
     def subject_references(self) -> set[str]:
         return set(
-            self.rule["subject_references"]
+            [Identifier.generate_plain_identifier(self.rule, value) for value in self.rule["subject_references"]]
         )
 
     @property
     def predicate_references(self) -> set[str]:
         return set(
-            self.rule["predicate_references"]
+            [Identifier.generate_plain_identifier(self.rule, value) for value in self.rule["predicate_references"]]
         )
 
     @property
     def object_references(self) -> set[str]:
         return set(
-            self.rule["object_references"]
+            [Identifier.generate_plain_identifier(self.rule, value) for value in self.rule["object_references"]]
         )
 
-    def generate(self, encoded_references:set[str], IdGenerator:IdGenerator) -> str|None:
+    def generate(self, encoded_references:set[str], IdGenerator:IdGenerator, codex: Codex) -> str|None:
         subject_reference_bytes = self.rule["subject_map_value"].encode("utf-8")
         subject_reference_hex = f"{subject_reference_bytes.hex()}"
         predicate = f'<{self.rule["predicate_map_value"]}>'
         object_map_value = self.rule["object_map_value"]
         object_map_type = self.rule["object_map_type"]
         object_references_template = self.rule["object_references_template"]
+        
+        object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
+        
+        object_reference_byte_string = object_identifier.encode("utf-8")
+        object_reference_hex = object_reference_byte_string.hex()
         
         if object_map_type == RML_CONSTANT:
             object_term_type = self.rule["object_termtype"]
@@ -258,11 +303,10 @@ class QueryTriple:
                 return None
             return f"?{subject_reference_hex} {predicate} {object_map_value} ."
 
-        object_reference_byte_string = object_map_value.encode("utf-8")
-        object_reference_hex = object_reference_byte_string.hex()
+        
 
         if object_map_type == RML_REFERENCE:    
-            if object_map_value in encoded_references:
+            if object_identifier in encoded_references:
                 lines = []
                 plain_object_reference = f"{object_reference_hex}_plain_{IdGenerator.get_id()}"
                 lines.append(f"OPTIONAL{{?{subject_reference_hex} {predicate} ?{plain_object_reference}}}")
@@ -280,11 +324,12 @@ class QueryTriple:
             lines.append(f"FILTER(!BOUND(?{full_template_reference}) || REGEX(STR(?{full_template_reference}), '{self.rule['object_references_template']}'))")
             evaluated_template = object_references_template
             current_reference = full_template_reference
-            for reference in self.rule["object_references"]: # we cant use self.object_references here as the order is important (#TODO: refactor self.object_references)
+            for reference in self.rule["object_references"]: 
                 current_pre_string = evaluated_template.split("(", 1)[0]
                 current_post_string = evaluated_template.split(")", 1)[1]
                 next_pre_string = current_post_string.split("(", 1)[0]
-                reference_byte_string = reference.encode("utf-8")
+                reference_identifier = Identifier.generate_plain_identifier(self.rule, reference)
+                reference_byte_string = reference_identifier.encode("utf-8")
                 reference_hex = reference_byte_string.hex()
                 next_reference = f"{object_reference_hex}_slice_{IdGenerator.get_id()}"
                 unescaped_current_pre_string = current_pre_string.replace('\\', "")
@@ -316,7 +361,7 @@ class SubjectTriple(QueryTriple):
     def plain_references(self) -> set[str]:
         return set()
 
-    def generate(self, encoded_references: set[str], IdGenerator: IdGenerator) -> str | None:
+    def generate(self, encoded_references: set[str], IdGenerator: IdGenerator, codex: Codex) -> str | None:
         subject_map_value = self.rule["subject_map_value"]
         subject_map_type = self.rule["subject_map_type"]
         subject_term_type = self.rule["subject_termtype"]
@@ -337,7 +382,8 @@ class SubjectTriple(QueryTriple):
             current_pre_string = evaluated_template.split("(", 1)[0]
             current_post_string = evaluated_template.split(")", 1)[1]
             next_pre_string = current_post_string.split("(", 1)[0]
-            reference_byte_string = reference.encode("utf-8")
+            reference_identifier = Identifier.generate_plain_identifier(self.rule, reference)
+            reference_byte_string = reference_identifier.encode("utf-8")
             reference_hex = reference_byte_string.hex()
             next_reference = f"{subject_reference_hex}_slice_subject_{IdGenerator.get_id()}"
             lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_reference}), '{current_pre_string}') as ?{next_reference})}}")
@@ -441,9 +487,10 @@ class Query:
         return [reference for reference in self.references if reference not in self.uri_encoded_references]
 
     def generate(self) -> str:
+        codex = Codex()
         # select triples using strategy
         inversion_logger.info(f"Selecting triples using {self.selector}")
-        selected_triples = self.selector.select(self.triples)
+        selected_triples:list[Triple] = self.selector.select(self.triples)
         subject_count = len(set([triple.rule["subject_map_value"] for triple in selected_triples]))
         triple_count = len(selected_triples)
 
@@ -463,7 +510,7 @@ class Query:
                 {len(all_references)} all references: {all_references}")
         triple_strings = []
         for triple in selected_triples:
-            triple_string = triple.generate(uri_encoded_references, self.idGenerator)
+            triple_string = triple.generate(uri_encoded_references, self.idGenerator, codex)
             if triple_string is not None:
                 triple_strings.append(triple_string)
         
@@ -574,14 +621,44 @@ class JSONPathFunctions:
     
     def find_top(self, jsonpath: jsonpath_ng.JSONPath) -> jsonpath_ng.JSONPath:
         return self.list_path_steps(jsonpath)[0]
+    
+    @staticmethod
+    def extend_string_path(path: str, extension: str) -> str:
+        """Extends a string JSON path
 
-class JSONTemplate:
+        Args:
+            path (str): base path
+            extension (str): extension to add
+
+        Returns:
+            str: extended path
+        """
+        if ' ' in extension:
+            return f"{path}['{extension}']"
+        return f"{path}.{extension}"
+
+class CSVTemplate(Template):
+    def __init__(self):
+        pass
+    
+    def create_template(self) -> str:
+        return ""
+    
+    @property
+    def columns_decoded(self) -> bool:
+        return True
+
+class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functions to somewhere else)
     """Template for JSON data, filling the template will either be done by passing the data to the nodes, or by simply using string templates
     Passing the data would be more robust, but come at a performance cost
     String templates could lead to unforeseen issues, but would be faster (probably)... which could count in huge datasets
     """
     def __init__(self):
         self.paths:list[jsonpath_ng.JSONPath] = []
+    
+    @property
+    def columns_decoded(self) -> bool:
+        return False
     
     def add_path(self, jsonpath: jsonpath_ng.JSONPath|str) -> bool:
         """Add a full path to the template
@@ -610,7 +687,7 @@ class JSONTemplate:
         if len(steps) == 0:
             return None
         if len(steps) == 1:
-            return Leaf(steps[0])
+            return Object(values=[steps[0].fields[0]])
         root_step = steps[0]
         if isinstance(root_step, jsonpath_ng.Root):
             root = Root()
@@ -633,16 +710,45 @@ class JSONTemplate:
             elif isinstance(current, Root):
                 current.child = next
             current = next
-        leaf = Leaf([steps[-1].fields[0]])
+        leaf = Object(values=[steps[-1].fields[0]])
         if isinstance(current, Object):
             current.children[key] = leaf
         elif isinstance(current, Array):
             current.content.append(leaf)
         return root
-                
     
+    def merge_node_trees(self, base: Node, other: Node):
+        """Merge two node trees
+        
+        Args:
+            base (Node): The base tree
+            other (Node): The other tree
+        """
+        if isinstance(base, Object):
+            if isinstance(other, Object):
+                for key, child in other.children.items():
+                    if key in base.children.keys():
+                        self.merge_node_trees(base.children[key], child)
+                    else:
+                        base.children[key] = child
+                for value in other.values:
+                    if value not in base.values:
+                        base.values.append(value)
+            else:
+                raise ValueError("Cannot merge Object with non-Object")
+        if isinstance(base, Array):
+            if isinstance(other, Array):
+                self.merge_node_trees(base.content[0], other.content[0])
+            else:
+                raise ValueError("Cannot merge Array with non-Array")
+        if isinstance(base, Root):
+            if isinstance(other, Root):
+                self.merge_node_trees(base.child, other.child)
+            else:
+                raise ValueError("Cannot merge Root with non-Root")
+                
     def create_template(self) -> str:
-        """Create a template from the paths, later probably need to make a TemplateBuilder class to handle various options in generation for unknown (wildcard) paths
+        """Create a template from the paths, this is only for demonstration purposes as filling the data is more complex
         
         Returns:
             str: The template
@@ -657,26 +763,37 @@ class JSONTemplate:
         if root_path is None:
             # will be implemented later, probably... or a more descriptive error will be raised
             raise ValueError("No root path found")
-        node_tree = self.create_node_tree(JSONPathFunctions.list_path_steps(root_path))
+        root = self.create_node_tree(JSONPathFunctions.list_path_steps(root_path))
+        
+        for path in self.paths:
+            # merge the paths into the tree
+            node = self.create_node_tree(JSONPathFunctions.list_path_steps(path))
+            self.merge_node_trees(root, node)
+        
+        return root.to_template()
+    
+    def fill_data(self, data: pd.DataFrame) -> str:
+        """Fill the template with data
+        
+        Args:
+            data (pd.DataFrame): The data to fill the template with
+            
+        Returns:
+            str: The filled template
+        """
+        pass
     
     def __str__(self):
         return f"JSONTemplate({self.paths})"
 
-            
-# class Branch(Node):
-#     def __init__(self, named_children: dict[str, Node] = None, unnamed_children: list[Node] = None):
-#         if named_children is None:
-#             named_children = {}
-#         if unnamed_children is None:
-#             unnamed_children = []
-#         self.named_children = named_children
-#         self.unnamed_children = unnamed_children
-
 class Object(Node):
-    def __init__(self, children: dict[str, Node] = None):
+    def __init__(self, children: dict[str, Node] = None, values: list[str] = None):
         if children is None:
             children = {}
+        if values is None:
+            values = []
         self.children = children
+        self.values = values
     
     def find(self, key: str) -> Node|None:
         if key in self.children.keys():
@@ -685,8 +802,12 @@ class Object(Node):
             if child.find(key) is not None:
                 return child
             
-    def to_template(self, human_readable: bool = False) -> str:
-        return "{" + ", ".join([f'"{key}": {child.to_template(human_readable)}' for key, child in self.children.items()]) + "}"
+    def to_template(self) -> str:
+        child_strings = [f'"{key}": {child.to_template()}' for key, child in self.children.items()]
+        value_strings = [f'"{value}": "${value}"' for value in self.values]
+        return "{" + \
+            ", ".join(child_strings + value_strings) + \
+            "}"
         
 class Array(Node):
     def __init__(self, content: list[Node] = None):
@@ -699,8 +820,8 @@ class Array(Node):
             if child.find(key) is not None:
                 return child
             
-    def to_template(self, human_readable: bool = False) -> str:
-        return "[" + ", ".join([child.to_template(human_readable) for child in self.content]) + "]"
+    def to_template(self) -> str:
+        return "[" + ", ".join([child.to_template() for child in self.content]) + "]"
 
 class Root(Node):
     def __init__(self, child: Node = None):
@@ -710,25 +831,8 @@ class Root(Node):
     def find(self, key: str) -> Node|None:
         return self.child.find(key)
     
-    def to_template(self, human_readable: bool = False) -> str:
-        return self.child.to_template(human_readable)
-
-class Leaf(Node):
-    def __init__(self, values: list[str] = None):
-        if values is None:
-            values = []
-        self.values = values
-        
-    def __str__(self) -> str:
-        return f"Leaf({self.values})"
-    
-    def to_template(self, human_readable: bool = False) -> str:
-        """A leaf is a dictionary with a key and value for each item, eg. {"name": $name} (encoding should be done later)
-
-        Returns:
-            str: The template
-        """
-        return "{" + ", ".join([f'"{value}": ${value}' for value in self.values]) + "}"
+    def to_template(self) -> str:
+        return self.child.to_template()
         
 
 inversion_logger = logging.getLogger("inversion")
@@ -863,56 +967,15 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
 
     return df
 
-
 def retrieve_data(
-        mapping_rules: pd.DataFrame, source_rules: pd.DataFrame, endpoint: Endpoint
-) -> pd.DataFrame | None:
-    inversion_logger.debug(f"Processing source {source_rules.iloc[0]['logical_source_value']}")
-    for _, rule in source_rules.iterrows():
-        for key, value in rule.items():
-            inversion_logger.debug(f"{key}: {value}")
-    iterator_result:dict = {}
-    for iterator, iterator_rules in source_rules.groupby("iterator", dropna=False):
-        inversion_logger.debug(f"Processing iterator {iterator}")
-        triples:list[QueryTriple] = []
-        for _, rule in iterator_rules.iterrows():
-            triples.append(QueryTriple(rule))
-        for subject, subject_rules in iterator_rules.groupby("subject_map_value", dropna=False):
-            triples.append(SubjectTriple(subject_rules.iloc[0]))
-        query = Query(triples)
-        generated_query = query.generate()
-        # query = generate_query(mapping_rules, iterator_rules)
-        inversion_logger.debug(query)
-        if generated_query is None:
-            inversion_logger.warning("No query generated (no references found)")
-        else:
-            inversion_logger.debug(generated_query)
-            try:
-                result = endpoint.query(generated_query)
-                df = pd.read_csv(StringIO(result))
-                for _, row in df.iterrows():
-                    inversion_logger.debug(row)
-                decoded_df = query.decode_dataframe(df)
-                for _, row in decoded_df.iterrows():
-                    inversion_logger.debug(row)
-                iterator_result[iterator] = decoded_df
-            except Exception as e:
-                inversion_logger.warning(f"Error while querying endpoint: {e}")
-                iterator_result[iterator] = None
-    if len(iterator_result) == 0:
-        return None
-    else:
-        return list(iterator_result.values())[0] # for now, just return the first iterators result
-
-def retrieve_data_from_full_source(
-        mapping_rules: pd.DataFrame, source_rules: pd.DataFrame, endpoint: Endpoint
+        mapping_rules: pd.DataFrame, source_rules: pd.DataFrame, endpoint: Endpoint,  decode_columns: bool = False
 ) -> pd.DataFrame | None:
     inversion_logger.debug(f"Processing source {source_rules.iloc[0]['logical_source_value']}")
     for _, rule in source_rules.iterrows():
         for key, value in rule.items():
             inversion_logger.debug(f"{key}: {value}")
     triples: list[QueryTriple] = [
-        QueryTriple(rule) for _, rule in source_rules.iterrows()
+        QueryTriple(rule) for _, rule in source_rules.iterrows() if not rule["object_map_type"] in [RML_BLANK_NODE, RML_PARENT_TRIPLES_MAP]
     ]
     triples.extend(
         SubjectTriple(subject_rules.iloc[0])
@@ -926,6 +989,7 @@ def retrieve_data_from_full_source(
     inversion_logger.debug(query)
     if generated_query is None:
         inversion_logger.warning("No query generated (no references found)")
+        return None
     else:
         inversion_logger.debug(generated_query)
         try:
@@ -933,13 +997,14 @@ def retrieve_data_from_full_source(
             df = pd.read_csv(StringIO(result))
             for _, row in df.iterrows():
                 inversion_logger.debug(row)
-            decoded_df = query.decode_dataframe(df)
-            for _, row in decoded_df.iterrows():
+            if decode_columns:
+                df = query.decode_dataframe(df)
+            for _, row in df.iterrows():
                 inversion_logger.debug(row)
+            return df
         except Exception as e:
             inversion_logger.warning(f"Error while querying endpoint: {e}")
             return None
-    return decoded_df 
 
 def generate_template(source_rules: pd.DataFrame) -> str:
     source_type = source_rules.iloc[0]["source_type"]
@@ -948,12 +1013,16 @@ def generate_template(source_rules: pd.DataFrame) -> str:
     if source_type == "JSON":
         template = JSONTemplate()
         for _, rule in source_rules.iterrows():
+            if rule["object_map_type"] in [RML_BLANK_NODE, RML_PARENT_TRIPLES_MAP]:
+                continue
             iterator = rule["iterator"]
             # jsonpath = iterator + '.' + (Hexer.encode(value) for values in rule["subject_map_value"])
             for value in rule["subject_references"] + rule["predicate_references"] + rule["object_references"]:
-                path = f"{iterator}.['{value}']"
+                splitted = value.split(".")
+                predecessors = '.'.join(splitted[:-1])
+                path = f"{iterator}.{predecessors}['{splitted[-1]}']"
                 template.add_path(path)
-        template.create_template()
+        inversion_logger.debug(json.dumps(json.loads(template.create_template()), indent=4))
         return template
 
 def test_logging_setup(testID: str):
@@ -979,7 +1048,7 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
     for source, source_rules in mappings.groupby("logical_source_value"):
         inversion_logger.info(f"Processing source {source}")
         template = generate_template(source_rules)
-        source_data = retrieve_data_from_full_source(mappings, source_rules, endpoint)
+        source_data = retrieve_data(mappings, source_rules, endpoint, decode_columns=True)
         if source_data is None:
             results[source] = ""
             inversion_logger.warning(f"No data generated for {source}")
@@ -1025,8 +1094,6 @@ def main():
 
 
 def test():
-    logging_setup()
-    warnings.simplefilter(action="ignore", category=FutureWarning)
     this_file_path = pathlib.Path(__file__).resolve()
     implementation_dir = this_file_path.parent
     metadata_path = implementation_dir / "rml-test-cases" / "metadata.csv"
@@ -1050,47 +1117,49 @@ def test():
         insert_columns(mappings)
         results = {}
         for source, source_rules in mappings.groupby("logical_source_value"):
+            pass
             template = generate_template(source_rules)
-    
-    expr:jsonpath_ng.Child = jsonpath_ng.parse("$.teachers[*].Name")
-    print(expr.__str__())
-    print(expr.__repr__())
+            print(json.dumps(json.loads(template.create_template()), indent=4))
+
+def templating_test():
     students_json_string = """{
         "teachers": [{
-                "Country Code": 1,
-                "Name":"Jupiter"
+                "card": {
+                    "name": "John",
+                    "telephone_number": "123456789",
+                }
+                "school": "Mars"
             },
             {
-                "Country Code": 2,
-                "Name":"Saturn"
+                "card": {
+                    "name": "Jane",
+                    "telephone_number": "987654321",
+                }
+                "school": "Venus"
             },
             {
-                "Country Code": 3,
-                "Name":"Uranus"
+                "card": {
+                    "name": "Jack",
+                    "telephone_number": "456789123",
+                }
+                "school": "Earth"
             }
         ]
     }"""
-    rights = []
-    current = expr
-    while isinstance(current, jsonpath_ng.Child):
-        rights.append(current.right)
-        current = current.left
-    rights.append(current)
-    inverted_rights = rights[::-1]
-    print(inverted_rights)
-    students_json = json.loads(students_json_string)
-    print([match.value for match in expr.find(students_json)])
+    template = JSONTemplate()
+    template.add_path("$.teachers[*].card.name")
+    template.add_path("$.teachers[*].card.telephone_number")
+    template.add_path("$.teachers[*].school")
+    generated = template.create_template()
+    print(generated)
+    print(json.dumps(json.loads(generated), indent=4))
     return
 
 def small_test():
-    logging_setup()
-    warnings.simplefilter(action="ignore", category=FutureWarning)
-    template = JSONTemplate()
-    template.add_path("$.students[*].card.name")
-    template.add_path("$.students[*].card.telephone_number")
-    template.add_path("$.students[*].card.school")
-    template.create_template()
-
+    test_folder_path = "C:\Github\Knowledge-graphs-inversion\Implementation\Tests\Inversion_tests\Temp"
+    os.chdir(test_folder_path)
+    inversion(MORPH_CONFIG, testID="test")
+    
 def rml_test_cases():
     bad_tests = ["4a", "16a", "18a", "20a", "21a", "22a", "23a", "24a", "26a", "27a", "28a", "31a", "36a", "37a", "40a", "41a", "42a", "56a", "57a", "58a", "59a"]
     original_path = os.getcwd()

@@ -1,0 +1,63 @@
+<http://example.com/country/Belgium> <http://example.com/name> "Belgium" .
+<http://example.com/course/Engineering%20Mathematics> <http://example.com/name> "Engineering Mathematics" .
+<http://example.com/course/Introduction%20to%20Biomedical%20Engineering> <http://example.com/name> "Introduction to Biomedical Engineering" .
+<http://example.com/course/Data%20Structures> <http://example.com/name> "Data Structures" .
+<http://example.com/course/Introduction%20to%20Laboratory%20Technology> <http://example.com/name> "Introduction to Laboratory Technology" .
+<http://example.com/course/Laboratory%20Techniques> <http://example.com/name> "Laboratory Techniques" .
+<http://example.com/course/Introduction%20to%20Programming> <http://example.com/name> "Introduction to Programming" .
+<http://example.com/course/Biomedical%20Instrumentation> <http://example.com/name> "Biomedical Instrumentation" .
+<http://example.com/course/Introduction%20to%20Engineering> <http://example.com/name> "Introduction to Engineering" .
+<http://example.com/country/Belgium> <http://example.com/hasUniversity> <http://example.com/university/VUB> .
+<http://example.com/country/Belgium> <http://example.com/hasUniversity> <http://example.com/university/KU%20Leuven> .
+<http://example.com/course/Introduction%20to%20Engineering> <http://example.com/credits> "6" .
+<http://example.com/course/Introduction%20to%20Laboratory%20Technology> <http://example.com/credits> "6" .
+<http://example.com/course/Introduction%20to%20Programming> <http://example.com/credits> "6" .
+<http://example.com/course/Laboratory%20Techniques> <http://example.com/credits> "6" .
+<http://example.com/course/Biomedical%20Instrumentation> <http://example.com/credits> "6" .
+<http://example.com/course/Engineering%20Mathematics> <http://example.com/credits> "6" .
+<http://example.com/course/Data%20Structures> <http://example.com/credits> "6" .
+<http://example.com/course/Introduction%20to%20Biomedical%20Engineering> <http://example.com/credits> "6" .
+<http://example.com/campus/Leuven> <http://example.com/name> "Leuven" .
+<http://example.com/campus/De%20Nayer> <http://example.com/name> "De Nayer" .
+<http://example.com/campus/Brussels> <http://example.com/name> "Brussels" .
+<http://example.com/campus/De%20Nayer> <http://example.com/partOf> <http://example.com/university/KU%20Leuven> .
+<http://example.com/campus/Brussels> <http://example.com/partOf> <http://example.com/university/VUB> .
+<http://example.com/campus/Leuven> <http://example.com/partOf> <http://example.com/university/KU%20Leuven> .
+<http://example.com/program/Laboratory%20Technology> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Program> .
+<http://example.com/program/Computer%20Science> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Program> .
+<http://example.com/program/Industrial%20Engineering> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Program> .
+<http://example.com/program/Biomedical%20Engineering> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Program> .
+<http://example.com/university/VUB> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/University> .
+<http://example.com/university/KU%20Leuven> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/University> .
+<http://example.com/program/Biomedical%20Engineering> <http://example.com/name> "Biomedical Engineering" .
+<http://example.com/program/Laboratory%20Technology> <http://example.com/name> "Laboratory Technology" .
+<http://example.com/program/Computer%20Science> <http://example.com/name> "Computer Science" .
+<http://example.com/program/Industrial%20Engineering> <http://example.com/name> "Industrial Engineering" .
+<http://example.com/campus/Leuven> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Campus> .
+<http://example.com/campus/Brussels> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Campus> .
+<http://example.com/campus/De%20Nayer> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Campus> .
+<http://example.com/university/KU%20Leuven> <http://example.com/name> "KU Leuven" .
+<http://example.com/university/VUB> <http://example.com/name> "VUB" .
+<http://example.com/course/Biomedical%20Instrumentation> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/course/Data%20Structures> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/course/Introduction%20to%20Programming> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/course/Introduction%20to%20Biomedical%20Engineering> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/course/Engineering%20Mathematics> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/course/Introduction%20to%20Laboratory%20Technology> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/course/Introduction%20to%20Engineering> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/course/Laboratory%20Techniques> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Course> .
+<http://example.com/university/KU%20Leuven> <http://example.com/inCountry> <http://example.com/country/Belgium> .
+<http://example.com/university/VUB> <http://example.com/inCountry> <http://example.com/country/Belgium> .
+<http://example.com/program/Industrial%20Engineering> <http://example.com/givenAt> <http://example.com/campus/De%20Nayer> .
+<http://example.com/program/Laboratory%20Technology> <http://example.com/givenAt> <http://example.com/campus/Brussels> .
+<http://example.com/program/Biomedical%20Engineering> <http://example.com/givenAt> <http://example.com/campus/Leuven> .
+<http://example.com/program/Computer%20Science> <http://example.com/givenAt> <http://example.com/campus/Leuven> .
+<http://example.com/course/Laboratory%20Techniques> <http://example.com/partOf> <http://example.com/program/Laboratory%20Technology> .
+<http://example.com/course/Engineering%20Mathematics> <http://example.com/partOf> <http://example.com/program/Industrial%20Engineering> .
+<http://example.com/course/Introduction%20to%20Programming> <http://example.com/partOf> <http://example.com/program/Computer%20Science> .
+<http://example.com/course/Introduction%20to%20Biomedical%20Engineering> <http://example.com/partOf> <http://example.com/program/Biomedical%20Engineering> .
+<http://example.com/course/Biomedical%20Instrumentation> <http://example.com/partOf> <http://example.com/program/Biomedical%20Engineering> .
+<http://example.com/course/Data%20Structures> <http://example.com/partOf> <http://example.com/program/Computer%20Science> .
+<http://example.com/course/Introduction%20to%20Laboratory%20Technology> <http://example.com/partOf> <http://example.com/program/Laboratory%20Technology> .
+<http://example.com/course/Introduction%20to%20Engineering> <http://example.com/partOf> <http://example.com/program/Industrial%20Engineering> .
+<http://example.com/country/Belgium> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/country> .

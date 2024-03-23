@@ -1,0 +1,128 @@
+{
+    "Countries": [
+        {
+            "Name": "Belgium",
+            "Country Code": "BE",
+            "Universities": [
+                {
+                    "Name": "KU Leuven",
+                    "Website": "https://www.kuleuven.be/english/",
+                    "Campuses": [
+                        {
+                            "Name": "Leuven",
+                            "Municipality": "Leuven",
+                            "Programs": [
+                                {
+                                    "Name": "Computer Science",
+                                    "Level": "Bachelor",
+                                    "Courses": [
+                                        {
+                                            "Name": "Introduction to Programming",
+                                            "Weight": {
+                                                "Lecture": 0.5,
+                                                "Lab": 0.5
+                                            },
+                                            "Credits": 6
+                                        },
+                                        {
+                                            "Name": "Data Structures",
+                                            "Weight": {
+                                                "Lecture": 0.8,
+                                                "Lab": 0.2
+                                            },
+                                            "Credits": 6
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Name": "Biomedical Engineering",
+                                    "Level": "Master",
+                                    "Courses": [
+                                        {
+                                            "Name": "Introduction to Biomedical Engineering",
+                                            "Weight": {
+                                                "Lecture": 0.9,
+                                                "Lab": 0.1
+                                            },
+                                            "Credits": 6
+                                        },
+                                        {
+                                            "Name": "Biomedical Instrumentation",
+                                            "Weight": {
+                                                "Lecture": 0.2,
+                                                "Lab": 0.8
+                                            },
+                                            "Credits": 6
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Name": "De Nayer",
+                            "Municipality": "Sint-Katelijne-Waver",
+                            "Programs": [
+                                {
+                                    "Name": "Industrial Engineering",
+                                    "Level": "Bachelor",
+                                    "Courses": [
+                                        {
+                                            "Name": "Introduction to Engineering",
+                                            "Weight": {
+                                                "Lecture": 0.7,
+                                                "Lab": 0.3
+                                            },
+                                            "Credits": 6
+                                        },
+                                        {
+                                            "Name": "Engineering Mathematics",
+                                            "Weight": {
+                                                "Lecture": 0.6,
+                                                "Lab": 0.4
+                                            },
+                                            "Credits": 6
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Name": "VUB",
+                    "Website": "https://www.vub.be/en/",
+                    "Campuses": [
+                        {
+                            "Name": "Brussels",
+                            "Municipality": "Brussels",
+                            "Programs": [
+                                {
+                                    "Name": "Laboratory Technology",
+                                    "Level": "Bachelor",
+                                    "Courses": [
+                                        {
+                                            "Name": "Introduction to Laboratory Technology",
+                                            "Weight": {
+                                                "Lecture": 0.3,
+                                                "Lab": 0.7
+                                            },
+                                            "Credits": 6
+                                        },
+                                        {
+                                            "Name": "Laboratory Techniques",
+                                            "Weight": {
+                                                "Lecture": 0.4,
+                                                "Lab": 0.6
+                                            },
+                                            "Credits": 6
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
