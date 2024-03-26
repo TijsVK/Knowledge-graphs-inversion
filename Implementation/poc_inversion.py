@@ -170,34 +170,6 @@ class Hexer:
     @staticmethod
     def decode(x: str) -> str:
         return bytes.fromhex(x).decode("utf-8")
-    
-    @staticmethod
-    def shift_10(x: str) -> str:
-        """shifts the hex string by 10, eg 0123456789abcdef becomes abcdefghijklmnop
-
-        Args:
-            x (str): _description_
-
-        Returns:
-            str: _description_
-        """
-        hex_numbers = "0123456789abcdef"
-        converted = "abcdefghijklmnop"
-        return x.translate(str.maketrans(hex_numbers, converted))
-    
-    @staticmethod
-    def unshift_10(x: str) -> str:
-        """unshifts the hex string by 10, eg abcdefghijklmnop becomes 0123456789abcdef
-
-        Args:
-            x (str): _description_
-
-        Returns:
-            str: _description_
-        """
-        hex_numbers = "0123456789abcdef"
-        converted = "abcdefghijklmnop"
-        return x.translate(str.maketrans(converted, hex_numbers))
         
 class Identifier:
     @staticmethod
@@ -205,7 +177,7 @@ class Identifier:
         source_type:str = rule["source_type"]
         object_identifier:str
         if source_type == "CSV":
-            object_identifier = value + "beepboop"
+            object_identifier = value
         elif source_type == "JSON":
             object_identifier = JSONPathFunctions.extend_string_path(rule["iterator"], value)
         else:
@@ -218,12 +190,12 @@ class Codex:
         self.codex: dict[str, str] = {}
         self.idGenerator = IdGenerator()
     
-    def get(self, key: str) -> str:
+    def get_id(self, key: str) -> str:
         if key in self.codex.keys():
             return self.codex[key]
         else:
             self.codex[key] = str(self.idGenerator.get_id())
-            return self.codex[key]
+            return self.codex[key]        
     
 # endregion
 
@@ -282,17 +254,14 @@ class QueryTriple(Triple):
         )
 
     def generate(self, encoded_references:set[str], IdGenerator:IdGenerator, codex: Codex) -> str|None:
-        subject_reference_bytes = self.rule["subject_map_value"].encode("utf-8")
-        subject_reference_hex = f"{subject_reference_bytes.hex()}"
+        subject_reference = codex.get_id(self.rule["subject_map_value"])
         predicate = f'<{self.rule["predicate_map_value"]}>'
         object_map_value = self.rule["object_map_value"]
         object_map_type = self.rule["object_map_type"]
         object_references_template = self.rule["object_references_template"]
         
         object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
-        
-        object_reference_byte_string = object_identifier.encode("utf-8")
-        object_reference_hex = object_reference_byte_string.hex()
+        object_reference = codex.get_id(object_identifier)
         
         if object_map_type == RML_CONSTANT:
             object_term_type = self.rule["object_termtype"]
@@ -301,52 +270,54 @@ class QueryTriple(Triple):
             elif object_term_type == RML_BLANK_NODE:
                 # raise NotImplementedError("Blank nodes are not implemented, and will not be implemented due to their nature.")
                 return None
-            return f"?{subject_reference_hex} {predicate} {object_map_value} ."
+            return f"?{subject_reference} {predicate} {object_map_value} ."
 
         
 
         if object_map_type == RML_REFERENCE:    
             if object_identifier in encoded_references:
                 lines = []
-                plain_object_reference = f"{object_reference_hex}_plain_{IdGenerator.get_id()}"
-                lines.append(f"OPTIONAL{{?{subject_reference_hex} {predicate} ?{plain_object_reference}}}")
-                lines.append(f"OPTIONAL{{BIND(ENCODE_FOR_URI(?{plain_object_reference}) as ?{object_reference_hex}_encoded)}}")
-                lines.append(f"FILTER(!BOUND(?{plain_object_reference}) || ENCODE_FOR_URI(?{plain_object_reference}) = ?{object_reference_hex}_encoded)")
+                plain_object_reference = codex.get_id(f"{object_identifier}_plain_{IdGenerator.get_id()}")
+                lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference}}}")
+                lines.append(f"OPTIONAL{{BIND(ENCODE_FOR_URI(?{plain_object_reference}) as ?{object_reference}_encoded)}}")
+                lines.append(f"FILTER(!BOUND(?{plain_object_reference}) || ENCODE_FOR_URI(?{plain_object_reference}) = ?{object_reference}_encoded)")
                 return "\n".join(lines)
             else:
-                return f"OPTIONAL{{?{subject_reference_hex} {predicate} ?{object_reference_hex}}}"
+                return f"OPTIONAL{{?{subject_reference} {predicate} ?{object_reference}}}"
             
 
         elif object_map_type == RML_TEMPLATE:
             lines = []
-            full_template_reference = f"{object_reference_hex}_full_{IdGenerator.get_id()}"
-            lines.append(f"OPTIONAL{{?{subject_reference_hex} {predicate} ?{full_template_reference}}}")
+            full_template_identifier = f"{object_identifier}_full_{IdGenerator.get_id()}"
+            full_template_reference = codex.get_id(full_template_identifier)
+            lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{full_template_reference}}}")
             lines.append(f"FILTER(!BOUND(?{full_template_reference}) || REGEX(STR(?{full_template_reference}), '{self.rule['object_references_template']}'))")
             evaluated_template = object_references_template
-            current_reference = full_template_reference
-            for reference in self.rule["object_references"]: 
+            current_slice = full_template_reference
+            for object in self.rule["object_references"]: 
                 current_pre_string = evaluated_template.split("(", 1)[0]
                 current_post_string = evaluated_template.split(")", 1)[1]
                 next_pre_string = current_post_string.split("(", 1)[0]
-                reference_identifier = Identifier.generate_plain_identifier(self.rule, reference)
-                reference_byte_string = reference_identifier.encode("utf-8")
-                reference_hex = reference_byte_string.hex()
-                next_reference = f"{object_reference_hex}_slice_{IdGenerator.get_id()}"
+                object_identifier = Identifier.generate_plain_identifier(self.rule, object)
+                object_reference = codex.get_id(object_identifier)
+                next_slice_identifier = f"{object_identifier}_slice_{IdGenerator.get_id()}"
+                next_slice = codex.get_id(next_slice_identifier)
                 unescaped_current_pre_string = current_pre_string.replace('\\', "")
                 unescaped_next_pre_string = next_pre_string.replace('\\', "")
-                lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_reference}), '{unescaped_current_pre_string}') as ?{next_reference})}}")
+                lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_slice}), '{unescaped_current_pre_string}') as ?{next_slice})}}")
                 if current_post_string == "":
-                    lines.append(f"{{}} OPTIONAL{{BIND(?{next_reference} as ?{reference_hex}_encoded)}}")
+                    lines.append(f"{{}} OPTIONAL{{BIND(?{next_slice} as ?{object_reference}_encoded)}}")
                 else:
-                    reference_placeholder = f"{reference_hex}_{IdGenerator.get_id()}"
+                    temp_reference_identifier = f"{object_identifier}_temp_{IdGenerator.get_id()}"
+                    temp_reference = codex.get_id(temp_reference_identifier)
                     lines.append(
-                        f"BIND(STRBEFORE(STR(?{next_reference}), '{unescaped_next_pre_string}') AS ?{reference_placeholder})"
+                        f"BIND(STRBEFORE(STR(?{next_slice}), '{unescaped_next_pre_string}') AS ?{temp_reference})"
                     )
-                    lines.append(f"{{}} OPTIONAL{{BIND(?{reference_placeholder} as ?{reference_hex}_encoded)}}")
-                    lines.append(f"FILTER(!BOUND(?{reference_hex}_encoded) || ?{reference_placeholder} = ?{reference_hex}_encoded)")
+                    lines.append(f"{{}} OPTIONAL{{BIND(?{temp_reference} as ?{object_reference}_encoded)}}")
+                    lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || ?{temp_reference} = ?{object_reference}_encoded)")
 
                 evaluated_template = current_post_string
-                current_reference = next_reference
+                current_slice = next_slice
             return "\n".join(lines)
 
 class SubjectTriple(QueryTriple):
@@ -370,35 +341,33 @@ class SubjectTriple(QueryTriple):
         if subject_map_type != RML_TEMPLATE or subject_term_type != RML_IRI:
             return None
         
-        subject_reference_byte_string = subject_map_value.encode("utf-8")
-        subject_reference_hex = subject_reference_byte_string.hex()
+        subject_reference = codex.get_id(subject_map_value)
         
         lines = []
-        full_template_reference = f"{subject_reference_hex}"
+        full_template_reference = subject_reference
         lines.append(f"FILTER(REGEX(STR(?{full_template_reference}), '{self.rule['subject_references_template']}'))")
         evaluated_template = subject_references_template
-        current_reference = full_template_reference
+        current_slice_reference = full_template_reference
         for reference in self.rule["subject_references"]: # we cant use self.object_references here as the order is important (#TODO: refactor self.object_references)
             current_pre_string = evaluated_template.split("(", 1)[0]
             current_post_string = evaluated_template.split(")", 1)[1]
             next_pre_string = current_post_string.split("(", 1)[0]
             reference_identifier = Identifier.generate_plain_identifier(self.rule, reference)
-            reference_byte_string = reference_identifier.encode("utf-8")
-            reference_hex = reference_byte_string.hex()
-            next_reference = f"{subject_reference_hex}_slice_subject_{IdGenerator.get_id()}"
-            lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_reference}), '{current_pre_string}') as ?{next_reference})}}")
+            current_reference = codex.get_id(reference_identifier)
+            next_slice_reference_identifier = f"{subject_map_value}_slice_subject_{IdGenerator.get_id()}"
+            next_slice_reference = codex.get_id(next_slice_reference_identifier)
+            lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_slice_reference}), '{current_pre_string}') as ?{next_slice_reference})}}")
             if current_post_string == "":
-                lines.append(f"{{}} OPTIONAL{{BIND(?{next_reference} as ?{reference_hex}_encoded)}}")
+                lines.append(f"{{}} OPTIONAL{{BIND(?{next_slice_reference} as ?{current_reference}_encoded)}}")
             else:
-                reference_placeholder = f"{reference_hex}_{IdGenerator.get_id()}"
+                reference_placeholder = codex.get_id(f"{reference_identifier}_temp_{IdGenerator.get_id()}")
                 lines.append(
-                    f"BIND(STRBEFORE(STR(?{next_reference}), '{next_pre_string}') AS ?{reference_placeholder})"
+                    f"BIND(STRBEFORE(STR(?{next_slice_reference}), '{next_pre_string}') AS ?{reference_placeholder})"
                 )
-                lines.append(f"{{}} OPTIONAL{{BIND(?{reference_placeholder} as ?{reference_hex}_encoded)}}")
-                lines.append(f"FILTER(!BOUND(?{reference_hex}_encoded) || ?{reference_placeholder} = ?{reference_hex}_encoded)")
-
+                lines.append(f"{{}} OPTIONAL{{BIND(?{reference_placeholder} as ?{current_reference}_encoded)}}")
+                lines.append(f"FILTER(!BOUND(?{current_reference}_encoded) || ?{reference_placeholder} = ?{current_reference}_encoded)")
             evaluated_template = current_post_string
-            current_reference = next_reference
+            current_slice_reference = next_slice_reference
         return "\n".join(lines)
 
 # endregion
@@ -460,6 +429,7 @@ class Query:
         else:
             self.selector = selector
         self.idGenerator = IdGenerator()
+        self.codex = Codex()
 
     @property
     def references(self) -> list[str]:
@@ -487,7 +457,6 @@ class Query:
         return [reference for reference in self.references if reference not in self.uri_encoded_references]
 
     def generate(self) -> str:
-        codex = Codex()
         # select triples using strategy
         inversion_logger.info(f"Selecting triples using {self.selector}")
         selected_triples:list[Triple] = self.selector.select(self.triples)
@@ -497,7 +466,6 @@ class Query:
         all_references = self.references
         uri_encoded_references = self.uri_encoded_references
         plain_references = self.plain_references
-        pure_references = self.pure_references
         
         if all_references == []:
             inversion_logger.warning("No references found, no query generated")
@@ -510,24 +478,27 @@ class Query:
                 {len(all_references)} all references: {all_references}")
         triple_strings = []
         for triple in selected_triples:
-            triple_string = triple.generate(uri_encoded_references, self.idGenerator, codex)
+            triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex)
             if triple_string is not None:
                 triple_strings.append(triple_string)
+                
+        pure_references = [f'?{self.codex.get_id(reference)}' for reference in self.pure_references]
         
-        select_part = "SELECT " + " ".join([f'?{reference.encode("utf-8").hex()}' for reference in pure_references] + [f'?{reference.encode("utf-8").hex()}_encoded' for reference in uri_encoded_references]) + " WHERE {"
+        select_part = "SELECT " + " ".join(pure_references + [f'?{self.codex.get_id(reference)}_encoded' for reference in uri_encoded_references]) + " WHERE {"
         generated_query = select_part + "\n".join(triple_strings) + "}"
+        inversion_logger.debug(self.codex.codex)
         return generated_query.replace("\\", "\\\\")
 
-    def decode_dataframe(self, df: pd.DataFrame):
+    def decode_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy(deep=True)
         for reference in self.uri_encoded_references:
-            hex_reference = reference.encode("utf-8").hex()
-            column = f"{hex_reference}_encoded" 
+            column_reference = self.codex.get_id(reference)
+            column = f"{column_reference}_encoded" 
             df[column] = df[column].apply(url_decode)
             df.rename(columns={column: reference}, inplace=True)
         for reference in self.pure_references:
-            hex_reference = reference.encode("utf-8").hex()
-            df.rename(columns={hex_reference: reference}, inplace=True)
+            column_reference = self.codex.get_id(reference)
+            df.rename(columns={column_reference: reference}, inplace=True)
         return df
 
     def execute_on_endpoint(self, endpoint: Endpoint) -> pd.DataFrame:
@@ -1004,7 +975,7 @@ def retrieve_data(
             return df
         except Exception as e:
             inversion_logger.warning(f"Error while querying endpoint: {e}")
-            return None
+            raise e
 
 def generate_template(source_rules: pd.DataFrame) -> str:
     source_type = source_rules.iloc[0]["source_type"]
@@ -1101,25 +1072,15 @@ def test():
     with open(metadata_path, "r") as file:
         tests_df: pd.DataFrame = pd.read_csv(file)
     tests_with_output = tests_df[tests_df["error expected?"] == False]
-    # only CSV tests for now
-    tests_with_output = tests_with_output[tests_with_output["data format"] == "JSON"]
     
-    selected_tests_ids = ["36b", "40b"]
+    selected_tests_ids = ["15a"]
     
     selected_tests = tests_with_output[tests_with_output["better RML id"].isin(selected_tests_ids)]
     
     for _, row in selected_tests.iterrows():
         inversion_logger.info(f'Running test {row["RML id"]}, ({row["better RML id"]})')
         os.chdir(testcases_path / row["RML id"])
-        config = load_config_from_argument(MORPH_CONFIG)
-        mappings: pd.DataFrame
-        mappings, _ = retrieve_mappings(config)
-        insert_columns(mappings)
-        results = {}
-        for source, source_rules in mappings.groupby("logical_source_value"):
-            pass
-            template = generate_template(source_rules)
-            print(json.dumps(json.loads(template.create_template()), indent=4))
+        inversion(MORPH_CONFIG, testID=row["RML id"])
 
 def templating_test():
     students_json_string = """{
@@ -1208,4 +1169,4 @@ def run_tests():
 if __name__ == "__main__":
     logging_setup()
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    small_test()
+    test()
