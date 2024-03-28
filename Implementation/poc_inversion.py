@@ -96,12 +96,26 @@ class Selector(ABC):
     def select(self) -> list[Triple]:
         pass
     
-class Node(ABC):
+class Node(ABC):  
     def find(self, key: str) -> Self|None:
         raise NotImplementedError
     
+    @property
+    @abstractmethod
+    def path(self) -> str:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def parent_path(self) -> str:
+        raise NotImplementedError
+        
     @abstractmethod
     def to_template(self) -> str:
+        raise NotImplementedError
+    
+    @abstractmethod
+    def fill(self, data: pd.DataFrame) -> str:
         raise NotImplementedError
 
 class Template(ABC):
@@ -109,9 +123,8 @@ class Template(ABC):
     def create_template(self) -> str:
         raise NotImplementedError
     
-    @property
     @abstractmethod
-    def columns_decoded(self) -> bool:
+    def fill_data(self, data: pd.DataFrame) -> str:
         raise NotImplementedError
 
 # endregion
@@ -260,8 +273,7 @@ class QueryTriple(Triple):
         object_map_type = self.rule["object_map_type"]
         object_references_template = self.rule["object_references_template"]
         
-        object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
-        object_reference = codex.get_id(object_identifier)
+        
         
         if object_map_type == RML_CONSTANT:
             object_term_type = self.rule["object_termtype"]
@@ -272,7 +284,8 @@ class QueryTriple(Triple):
                 return None
             return f"?{subject_reference} {predicate} {object_map_value} ."
 
-        
+        object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
+        object_reference = codex.get_id(object_identifier)
 
         if object_map_type == RML_REFERENCE:    
             if object_identifier in encoded_references:
@@ -538,6 +551,8 @@ class LocalSparqlGraphStore(Endpoint):
             f"http://localhost:7200/repositories/{self._repoid}"
         )
         self._sparql.setReturnFormat(CSV)
+        self._sparql.setMethod("POST")
+        self._sparql.setRequestMethod("postdirectly")
 
     def query(self, query: str) -> str:
         self._sparql.setQuery(query)
@@ -593,6 +608,27 @@ class JSONPathFunctions:
     def find_top(self, jsonpath: jsonpath_ng.JSONPath) -> jsonpath_ng.JSONPath:
         return self.list_path_steps(jsonpath)[0]
     
+    def get_json_path(steps: list[Node]) -> jsonpath_ng.JSONPath:
+        if len(steps) == 0:
+            return None
+        if isinstance(steps[0], Root):
+            current = jsonpath_ng.Root()
+        if isinstance(steps[0], Object):
+            current = jsonpath_ng.Fields(steps[0].values[0])
+        if isinstance(steps[0], Array):
+            current = jsonpath_ng.Slice()
+        for step in steps[1:]:
+            if isinstance(step, Object):
+                current = jsonpath_ng.Child(current, jsonpath_ng.Fields(step.values[0]))
+            if isinstance(step, Array):
+                current = jsonpath_ng.Child(current, jsonpath_ng.Slice())
+        return current
+    
+    @staticmethod
+    def normalize_json_path(path: str) -> str:
+        parsed:jsonpath_ng.Child = jsonpath_ng.parse(path)
+        return str(parsed)
+    
     @staticmethod
     def extend_string_path(path: str, extension: str) -> str:
         """Extends a string JSON path
@@ -605,15 +641,20 @@ class JSONPathFunctions:
             str: extended path
         """
         if ' ' in extension:
-            return f"{path}['{extension}']"
-        return f"{path}.{extension}"
+            new_path = f"{path}['{extension}']"
+        else:
+            new_path = f"{path}.{extension}"
+        return JSONPathFunctions.normalize_json_path(new_path)
 
 class CSVTemplate(Template):
     def __init__(self):
         pass
     
     def create_template(self) -> str:
-        return ""
+        return "No real CSV template is created as we can just dump the dataframe to csv"
+    
+    def fill_data(self, data: pd.DataFrame) -> str:
+        return data.to_csv(index=False)
     
     @property
     def columns_decoded(self) -> bool:
@@ -630,6 +671,31 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
     @property
     def columns_decoded(self) -> bool:
         return False
+    
+    @property
+    def root(self) -> Node:
+        """Create the root from the paths
+        
+        Returns:
+            Node: The root node
+        """    
+        # first try to find a path connected to the root
+        root_path = None
+        for path in self.paths:
+            top_steps = JSONPathFunctions.list_path_steps(path)
+            if isinstance(top_steps[0], jsonpath_ng.Root):
+                root_path = path
+                break
+        if root_path is None:
+            # will be implemented later, probably... or a more descriptive error will be raised
+            raise ValueError("No root path found")
+        root = self.create_node_tree(JSONPathFunctions.list_path_steps(root_path))
+        
+        for path in self.paths:
+            # merge the paths into the tree
+            node = self.create_node_tree(JSONPathFunctions.list_path_steps(path))
+            self.merge_node_trees(root, node)
+        return root
     
     def add_path(self, jsonpath: jsonpath_ng.JSONPath|str) -> bool:
         """Add a full path to the template
@@ -675,17 +741,17 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
             if isinstance(step, jsonpath_ng.Slice):
                 next = Array()
             if isinstance(current, Object):
-                current.children[key] = next
+                current.add_child(key, next)
             elif isinstance(current, Array):
-                current.content.append(next)
+                current.content = next
             elif isinstance(current, Root):
                 current.child = next
             current = next
         leaf = Object(values=[steps[-1].fields[0]])
         if isinstance(current, Object):
-            current.children[key] = leaf
+            current.add_child(key, leaf)
         elif isinstance(current, Array):
-            current.content.append(leaf)
+            current.content = leaf
         return root
     
     def merge_node_trees(self, base: Node, other: Node):
@@ -709,7 +775,7 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
                 raise ValueError("Cannot merge Object with non-Object")
         if isinstance(base, Array):
             if isinstance(other, Array):
-                self.merge_node_trees(base.content[0], other.content[0])
+                self.merge_node_trees(base.content, other.content)
             else:
                 raise ValueError("Cannot merge Array with non-Array")
         if isinstance(base, Root):
@@ -723,25 +789,8 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
         
         Returns:
             str: The template
-        """    
-        # first try to find a path connected to the root
-        root_path = None
-        for path in self.paths:
-            top_steps = JSONPathFunctions.list_path_steps(path)
-            if isinstance(top_steps[0], jsonpath_ng.Root):
-                root_path = path
-                break
-        if root_path is None:
-            # will be implemented later, probably... or a more descriptive error will be raised
-            raise ValueError("No root path found")
-        root = self.create_node_tree(JSONPathFunctions.list_path_steps(root_path))
-        
-        for path in self.paths:
-            # merge the paths into the tree
-            node = self.create_node_tree(JSONPathFunctions.list_path_steps(path))
-            self.merge_node_trees(root, node)
-        
-        return root.to_template()
+        """           
+        return self.root.to_template()
     
     def fill_data(self, data: pd.DataFrame) -> str:
         """Fill the template with data
@@ -752,19 +801,36 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
         Returns:
             str: The filled template
         """
-        pass
+        return self.root.fill(data)
     
     def __str__(self):
         return f"JSONTemplate({self.paths})"
 
 class Object(Node):
     def __init__(self, children: dict[str, Node] = None, values: list[str] = None):
+        self._parent_path = ""
         if children is None:
             children = {}
         if values is None:
             values = []
         self.children = children
         self.values = values
+    
+    def add_child(self, key: str, child: Node):
+        self.children[key] = child
+        child.parent_path = self.path + "." + key
+    
+    @property
+    def path(self) -> str:
+        return self.parent_path 
+    
+    @property
+    def parent_path(self) -> str:
+        return self._parent_path
+    
+    @parent_path.setter
+    def parent_path(self, value: str):
+        self._parent_path = value
     
     def find(self, key: str) -> Node|None:
         if key in self.children.keys():
@@ -779,35 +845,116 @@ class Object(Node):
         return "{" + \
             ", ".join(child_strings + value_strings) + \
             "}"
+            
+    def fill(self, data: pd.DataFrame) -> str:
+        """Fill the template with data,
+        automatically groups the data into slices, for each array in the data
+
+        Args:
+            data (pd.DataFrame): The data to fill the template with
+
+        Returns:
+            str: The filled template
+        """
+        paths = [JSONPathFunctions.normalize_json_path(f"{self.path}.['{value}']") for value in self.values]
+        value_paths = zip(self.values, paths)
+        filled_values = [f'"{value}": "{data[path].iloc[0]}"' for value, path in value_paths]
+        # this might be unnecessary, so TODO: test if this is necessary
+        data = data.drop(columns=paths)
+        filled_children = [f'"{key}": {child.fill(data)}' for key, child in self.children.items()]
+        return "{" + ", ".join(filled_values + filled_children) + "}"
+
+        
+    
+    def get_slice_columns(self) -> list[str]:
+        columns = [JSONPathFunctions.normalize_json_path(f"{self.path}.['{value}']") for value in self.values]
+        for child in self.children.values():
+            if isinstance(child, Object):
+                columns.extend(child.get_slice_columns())
+        return columns
         
 class Array(Node):
-    def __init__(self, content: list[Node] = None):
-        if content is None:
-            content = []
-        self.content = content
-        
-    def find(self, key: str) -> Node|None:
-        for child in self.content:
-            if child.find(key) is not None:
-                return child
-            
+    def __init__(self, content: Node = None):
+        self._parent_path = ""
+        self._content = None
+        if content is not None:
+            self.content = content
+    
+    @property
+    def path(self) -> str:
+        return self.parent_path + "[*]"
+    
+    @property
+    def parent_path(self) -> str:
+        return self._parent_path
+    
+    @parent_path.setter
+    def parent_path(self, value: str):
+        self._parent_path = value
+    
+    @property
+    def content(self) -> Node:
+        return self._content
+    
+    @content.setter
+    def content(self, value: Node):
+        self._content = value
+        self._content.parent_path = self.path
+
     def to_template(self) -> str:
-        return "[" + ", ".join([child.to_template() for child in self.content]) + "]"
+        return "[" + self.content.to_template() + "]"
+    
+    def fill(self, data: pd.DataFrame) -> str:
+        if isinstance(self.content, Object):
+            columns = self.content.get_slice_columns()
+            columns_data = data[columns].drop_duplicates()
+            filled_content = ""
+            for _, row in columns_data.iterrows():
+                # slice data is subset of data with the values of each row of the columns_data set
+                slice_data = data.copy(deep=True)
+                for column in columns:
+                    slice_data = slice_data[slice_data[column] == row[column]]
+                filled_content += self.content.fill(slice_data) + ", "
+            return "[" + filled_content[:-2] + "]"
+        return "[" + self.content.fill(data) + "]"
 
 class Root(Node):
     def __init__(self, child: Node = None):
-        if child is None:
-            child = None
+        self._child = None
+        if child is not None:
+            self.child = child
+            
+    @property
+    def child(self) -> Node:
+        return self._child
+    
+    @child.setter
+    def child(self, value: Node):
+        self._child = value
+        self._child.parent_path = "$"
+        
+    @property
+    def path(self) -> str:
+        return "$"
+    
+    @property
+    def parent_path(self) -> str:
+        return ""
         
     def find(self, key: str) -> Node|None:
         return self.child.find(key)
     
     def to_template(self) -> str:
         return self.child.to_template()
+    
+    def fill(self, data: pd.DataFrame) -> str:
+        return self.child.fill(data)
         
 
 inversion_logger = logging.getLogger("inversion")
 
+def get_logger() -> logging.Logger:
+    return inversion_logger
 
 def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
     if pure:
@@ -942,9 +1089,6 @@ def retrieve_data(
         mapping_rules: pd.DataFrame, source_rules: pd.DataFrame, endpoint: Endpoint,  decode_columns: bool = False
 ) -> pd.DataFrame | None:
     inversion_logger.debug(f"Processing source {source_rules.iloc[0]['logical_source_value']}")
-    for _, rule in source_rules.iterrows():
-        for key, value in rule.items():
-            inversion_logger.debug(f"{key}: {value}")
     triples: list[QueryTriple] = [
         QueryTriple(rule) for _, rule in source_rules.iterrows() if not rule["object_map_type"] in [RML_BLANK_NODE, RML_PARENT_TRIPLES_MAP]
     ]
@@ -966,18 +1110,14 @@ def retrieve_data(
         try:
             result = endpoint.query(generated_query)
             df = pd.read_csv(StringIO(result))
-            for _, row in df.iterrows():
-                inversion_logger.debug(row)
             if decode_columns:
                 df = query.decode_dataframe(df)
-            for _, row in df.iterrows():
-                inversion_logger.debug(row)
             return df
         except Exception as e:
             inversion_logger.warning(f"Error while querying endpoint: {e}")
             raise e
 
-def generate_template(source_rules: pd.DataFrame) -> str:
+def generate_template(source_rules: pd.DataFrame) -> Template | None:
     source_type = source_rules.iloc[0]["source_type"]
     inversion_logger.info(f"Generating template for source type {source_type}")
 
@@ -995,6 +1135,8 @@ def generate_template(source_rules: pd.DataFrame) -> str:
                 template.add_path(path)
         inversion_logger.debug(json.dumps(json.loads(template.create_template()), indent=4))
         return template
+    elif source_type == "CSV":
+        return CSVTemplate()
 
 def test_logging_setup(testID: str):
     if os.path.exists(TEST_LOG_FOLDER / f"{testID}.log"):
@@ -1024,11 +1166,13 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
             results[source] = ""
             inversion_logger.warning(f"No data generated for {source}")
             continue
-        if source_rules.iloc[0]["source_type"] == "CSV":
-            results[source] = source_data.to_csv(index=False)
-        else:
-            results[source] = ""
-            inversion_logger.warning(f"Source type {source_rules.iloc[0]['source_type']} not supported yet")
+        try:
+            filled_source = template.fill_data(source_data)
+            inversion_logger.debug(filled_source)
+            results[source] = filled_source
+        except AttributeError as e:
+            inversion_logger.error(f"Error while filling template: {e}")
+            raise e
     return results
     
 def url_decode(url):
@@ -1082,31 +1226,7 @@ def test():
         os.chdir(testcases_path / row["RML id"])
         inversion(MORPH_CONFIG, testID=row["RML id"])
 
-def templating_test():
-    students_json_string = """{
-        "teachers": [{
-                "card": {
-                    "name": "John",
-                    "telephone_number": "123456789",
-                }
-                "school": "Mars"
-            },
-            {
-                "card": {
-                    "name": "Jane",
-                    "telephone_number": "987654321",
-                }
-                "school": "Venus"
-            },
-            {
-                "card": {
-                    "name": "Jack",
-                    "telephone_number": "456789123",
-                }
-                "school": "Earth"
-            }
-        ]
-    }"""
+def templating_test(): 
     template = JSONTemplate()
     template.add_path("$.teachers[*].card.name")
     template.add_path("$.teachers[*].card.telephone_number")
@@ -1114,6 +1234,9 @@ def templating_test():
     generated = template.create_template()
     print(generated)
     print(json.dumps(json.loads(generated), indent=4))
+    print(JSONPathFunctions.get_json_path([Root(), Object(values=["teachers"]), Array(), Object(values=["card"]), Object(values=["name"])]))
+    path = jsonpath_ng.parse("$.teachers[*].card.name")
+    print(path)
     return
 
 def small_test():
@@ -1169,4 +1292,4 @@ def run_tests():
 if __name__ == "__main__":
     logging_setup()
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    test()
+    small_test()
