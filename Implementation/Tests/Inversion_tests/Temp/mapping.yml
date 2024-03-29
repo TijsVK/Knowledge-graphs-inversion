@@ -81,6 +81,8 @@ mappings:
       - [ex:credits, $(Credits)]
       - [ex:LectureWeight, $(Weight.Lecture)]
       - [ex:LabWeight, $(Weight.Lab)]
+      - [ex:AvgScore, $(Stats.Average)]
+      - [ex:StdDevScore, $(Stats.Standard_Deviation)]
       - p: ex:partOf
         o: 
           - mapping: program

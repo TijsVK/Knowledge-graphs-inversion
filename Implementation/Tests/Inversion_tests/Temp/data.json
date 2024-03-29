@@ -22,7 +22,11 @@
                                                 "Lecture": 0.5,
                                                 "Lab": 0.5
                                             },
-                                            "Credits": 6
+                                            "Stats": {
+                                                "Average": 12,
+                                                "Standard_Deviation": 2
+                                            },
+                                            "Credits": 4
                                         },
                                         {
                                             "Name": "Data Structures",
@@ -30,7 +34,11 @@
                                                 "Lecture": 0.8,
                                                 "Lab": 0.2
                                             },
-                                            "Credits": 6
+                                            "Stats": {
+                                                "Average": 14,
+                                                "Standard_Deviation": 3
+                                            },
+                                            "Credits": 5
                                         }
                                     ]
                                 },
@@ -44,7 +52,11 @@
                                                 "Lecture": 0.9,
                                                 "Lab": 0.1
                                             },
-                                            "Credits": 6
+                                            "Stats": {
+                                                "Average": 15,
+                                                "Standard_Deviation": 2
+                                            },
+                                            "Credits": 8
                                         },
                                         {
                                             "Name": "Biomedical Instrumentation",
@@ -52,7 +64,11 @@
                                                 "Lecture": 0.2,
                                                 "Lab": 0.8
                                             },
-                                            "Credits": 6
+                                            "Stats": {
+                                                "Average": 13,
+                                                "Standard_Deviation": 3
+                                            },
+                                            "Credits": 3
                                         }
                                     ]
                                 }
@@ -72,7 +88,11 @@
                                                 "Lecture": 0.7,
                                                 "Lab": 0.3
                                             },
-                                            "Credits": 6
+                                            "Stats": {
+                                                "Average": 14,
+                                                "Standard_Deviation": 2
+                                            },
+                                            "Credits": 3
                                         },
                                         {
                                             "Name": "Engineering Mathematics",
@@ -80,7 +100,11 @@
                                                 "Lecture": 0.6,
                                                 "Lab": 0.4
                                             },
-                                            "Credits": 6
+                                            "Stats": {
+                                                "Average": 10,
+                                                "Standard_Deviation": 3
+                                            },
+                                            "Credits": 8
                                         }
                                     ]
                                 }
@@ -106,6 +130,10 @@
                                                 "Lecture": 0.3,
                                                 "Lab": 0.7
                                             },
+                                            "Stats": {
+                                                "Average": 11,
+                                                "Standard_Deviation": 4
+                                            },
                                             "Credits": 6
                                         },
                                         {
@@ -113,6 +141,10 @@
                                             "Weight": {
                                                 "Lecture": 0.4,
                                                 "Lab": 0.6
+                                            },
+                                            "Stats": {
+                                                "Average": 12,
+                                                "Standard_Deviation": 3
                                             },
                                             "Credits": 6
                                         }
