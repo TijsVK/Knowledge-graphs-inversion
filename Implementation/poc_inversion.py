@@ -175,15 +175,6 @@ class Validator:
 
         return True
 
-class Hexer:
-    @staticmethod
-    def encode(x: str) -> str:
-        return x.encode("utf-8").hex()
-    
-    @staticmethod
-    def decode(x: str) -> str:
-        return bytes.fromhex(x).decode("utf-8")
-        
 class Identifier:
     @staticmethod
     def generate_plain_identifier(rule: pd.Series, value: str) -> str | None:
@@ -1127,7 +1118,6 @@ def generate_template(source_rules: pd.DataFrame) -> Template | None:
             if rule["object_map_type"] in [RML_BLANK_NODE, RML_PARENT_TRIPLES_MAP]:
                 continue
             iterator = rule["iterator"]
-            # jsonpath = iterator + '.' + (Hexer.encode(value) for values in rule["subject_map_value"])
             for value in rule["subject_references"] + rule["predicate_references"] + rule["object_references"]:
                 splitted = value.split(".")
                 predecessors = '.'.join(splitted[:-1])
