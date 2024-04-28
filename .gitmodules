@@ -1,6 +1,6 @@
 [submodule "Implementation/morph-kgc"]
 	path = Implementation/morph-kgc
-	url = https://github.com/TijsVK/morph-kgc.git
+	url = https://github.com/morph-kgc/morph-kgc.git
 [submodule "Implementation/rml-test-cases"]
 	path = Implementation/rml-test-cases
 	url = https://github.com/kg-construct/rml-test-cases.git
