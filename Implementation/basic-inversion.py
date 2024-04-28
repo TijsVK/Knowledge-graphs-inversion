@@ -5,6 +5,10 @@ from morph_kgc.args_parser import load_config_from_argument
 import pathlib
 import json
 import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_colwidth', None)
+pd.set_option('display.expand_frame_repr', False)
 import warnings
 import os
 import sys
@@ -20,7 +24,7 @@ MAPPINGFILENAME = "mapping.ttl"
 OUTPUTFILENAME = "output.nq"
 
 # debug flags
-DEBUG = True  # if True, do not redirect stdout to file
+DEBUG = False  # if True, do not redirect stdout to file
 PRINT_MAPPING_FILE = False
 PRINT_TRIPLE_FILE = True
 PRINT_OBJECT_IDS = False
@@ -516,10 +520,15 @@ def main():
     current_folder = pathlib.Path(__file__).parent
 
     if not DEBUG:
-        with open(current_folder / "basic-inversion-output.txt", "r") as file:
-            with open(current_folder / "basic-inversion-old-output.txt", "w") as oldfile:
+        stdout_file_path = current_folder / "basic-inversion-output.txt"
+        if not stdout_file_path.exists():
+            with open(stdout_file_path, "w") as file:
+                file.write("")
+
+        with open(stdout_file_path, "r") as file:
+            with open(stdout_file_path, "w") as oldfile:
                 oldfile.write(file.read())
-        sys.stdout = open(current_folder / "basic-inversion-output.txt", "w")
+        sys.stdout = open(stdout_file_path, "w")
 
     this_file_path = pathlib.Path(__file__).resolve()
     implementation_dir = this_file_path.parent
