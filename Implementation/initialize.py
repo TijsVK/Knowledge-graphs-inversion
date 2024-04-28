@@ -1,6 +1,9 @@
 import inspect
-import pyrdf4j
 from pathlib import Path
+import sys
+pyrdf4j_path = Path(__file__).parent / "pyrdf4j"
+sys.path.append(str(pyrdf4j_path))
+import pyrdf4j
 import shutil
 
 template_folder = Path(inspect.getfile(pyrdf4j)).parent / 'repo_type_templates'

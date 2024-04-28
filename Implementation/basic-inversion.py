@@ -8,6 +8,8 @@ import pandas as pd
 import warnings
 import os
 import sys
+pyrdf4j_path = pathlib.Path(__file__).parent / "pyrdf4j"
+sys.path.append(str(pyrdf4j_path))
 import pyrdf4j.rdf4j
 import pyrdf4j.errors
 from SPARQLWrapper import SPARQLWrapper, JSON
@@ -18,7 +20,7 @@ MAPPINGFILENAME = "mapping.ttl"
 OUTPUTFILENAME = "output.nq"
 
 # debug flags
-DEBUG = False  # if True, do not redirect stdout to file
+DEBUG = True  # if True, do not redirect stdout to file
 PRINT_MAPPING_FILE = False
 PRINT_TRIPLE_FILE = True
 PRINT_OBJECT_IDS = False
