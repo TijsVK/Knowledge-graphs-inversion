@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "knowledge-graphs-inversion"
+version = "0.1.0"
+description = ""
+authors = ["arcangelo7 <arcangelomas@gmail.com>"]
+license = "ISC"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+morph-kgc = "^2.7.0"
+pandas = "^2.2.2"
+build = "^1.2.1"
+requests = "^2.31.0"
+sparqlwrapper = "^2.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
