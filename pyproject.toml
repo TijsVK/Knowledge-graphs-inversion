@@ -13,6 +13,10 @@ pandas = "^2.2.2"
 build = "^1.2.1"
 requests = "^2.31.0"
 sparqlwrapper = "^2.0.0"
+flask = "^3.0.3"
+turbo-flask = "^0.8.4"
+yatter = "^1.1.4"
+pyyaml = "^6.0"
 
 
 [build-system]

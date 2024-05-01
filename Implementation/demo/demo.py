@@ -3,18 +3,17 @@ import rdflib
 from turbo_flask import Turbo
 
 import pathlib
-
-from ..demo_inversion import inversion
+import sys, os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+sys.path.append(os.path.join(parent_dir, "pyrdf4j"))
+from demo_inversion import inversion
 
 import morph_kgc
 
 import shutil
 
-import sys, os
-
-import time
-
-import pretty_yarrrml2rml
 import yatter
 import yaml
 
