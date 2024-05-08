@@ -7,3 +7,6 @@
 [submodule "Implementation/pyrdf4j"]
 	path = Implementation/pyrdf4j
 	url = https://github.com/BB-Open/pyrdf4j.git
+[submodule "Implementation/r2rml-test-cases"]
+	path = Implementation/r2rml-test-cases
+	url = https://github.com/kg-construct/r2rml-test-cases-support.git

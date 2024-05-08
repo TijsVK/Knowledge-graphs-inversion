@@ -552,6 +552,45 @@ tabular = ["pyarrow (>=14.0.0,<16.0.0)"]
 test = ["odfpy (>=1.4.1,<2.0.0)", "openpyxl (>=3.0.0,<4.0.0)", "pyarrow (>=14.0.0,<16.0.0)", "pytest (>=8.0.0,<9.0.0)", "sql-metadata (>=2.6.0,<3.0.0)", "sqlalchemy (>=2.0.0,<3.0.0)"]
 
 [[package]]
+name = "mysql-connector-python"
+version = "8.0.22"
+description = "MySQL driver written in Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "mysql-connector-python-8.0.22.tar.gz", hash = "sha256:8ee85cd6b99b236a8a27870f0e77ac8f55c4e2cb4015e8f6f3a221d5e8ec059a"},
+    {file = "mysql_connector_python-8.0.22-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:a01b6e25aadec1a6c76763073081a570b6dd663ac727462b6439aac05ae7afc4"},
+    {file = "mysql_connector_python-8.0.22-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:cadc3afc6dd1730479456ab0224a87932d3aaa59d1b550b1a514e28fb7c167dc"},
+    {file = "mysql_connector_python-8.0.22-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:8786b014f28690be6a6b2f50579a4fbaa2e01ca1fd9a276592a1224806b012a0"},
+    {file = "mysql_connector_python-8.0.22-cp27-cp27mu-manylinux1_i686.whl", hash = "sha256:899cd65c3270b8e32a4507c8e9984417bc189f50481b583335596f62d3048651"},
+    {file = "mysql_connector_python-8.0.22-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:a4762b325a638f0970cfb88daa560586d440c81b207b0c5b011f1edeac0c7c02"},
+    {file = "mysql_connector_python-8.0.22-cp35-cp35m-macosx_10_14_x86_64.whl", hash = "sha256:727d5d66c5e7b9cac98b64960213e7d63541db544f39a1edd25b50b5c4226c33"},
+    {file = "mysql_connector_python-8.0.22-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:af326728682ac80d9d8e242aa2667bb0f58fee3842945168ddc5a01880a50d59"},
+    {file = "mysql_connector_python-8.0.22-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:bddfd9d6937e1c4a83ff30b33746ece63cdab79d02debde751dcf14904b57e72"},
+    {file = "mysql_connector_python-8.0.22-cp35-cp35m-win_amd64.whl", hash = "sha256:4679e4f5af7b422452fa7ab30b61be071207c049bacf7087223eddd46b3861b8"},
+    {file = "mysql_connector_python-8.0.22-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:b487375adf2e9772be357c7204a051c71055b9b145fa6ef205421884e8879b15"},
+    {file = "mysql_connector_python-8.0.22-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:8a855b120c6ae39410942c423767a61df01288f3dc9c38a545e221df392f7da3"},
+    {file = "mysql_connector_python-8.0.22-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:17f6c352e2d4bc1dad69228c7382fc1b77e335a0ed765f8f4a23b97770c109c7"},
+    {file = "mysql_connector_python-8.0.22-cp36-cp36m-win_amd64.whl", hash = "sha256:9a8acbc96e3eea0605ea31bb6235836c6be62400b5331939c6dea67239e163de"},
+    {file = "mysql_connector_python-8.0.22-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:bad73f974e7d281f686d2551ddd778154e742d8c6547cf62c9f3e491c928053f"},
+    {file = "mysql_connector_python-8.0.22-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:ea5902baa08c5f12a5efe1d93bc47f1d1cd2136346567cde05ef5a11669e6fae"},
+    {file = "mysql_connector_python-8.0.22-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:9879536b47b61632263e42ad793a39a4d67c48d6b2449fe62da84a7e4a71a998"},
+    {file = "mysql_connector_python-8.0.22-cp37-cp37m-win_amd64.whl", hash = "sha256:2e712dd9f2c9f9a16dffa8c0d5908a5a89c6e36533090bde8970ec9cf994d8fe"},
+    {file = "mysql_connector_python-8.0.22-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:7622b7a37c7b94568ca62f130eb182f0b6fc8c0637f7909eed32dd726b611820"},
+    {file = "mysql_connector_python-8.0.22-cp38-cp38-manylinux1_i686.whl", hash = "sha256:291449ab49e347acf1aa002f78ed0561436dd21c61c66fa5b318de6c503affeb"},
+    {file = "mysql_connector_python-8.0.22-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:5517802ed71c4d07cfd7e73d4301d45410cdf4b1982e457b4c6abeaa6cf63fac"},
+    {file = "mysql_connector_python-8.0.22-cp38-cp38-win_amd64.whl", hash = "sha256:93a4f4589c11c6b93f29b78f161afe53db93e9b4862f4b7fd846c59551fe8585"},
+    {file = "mysql_connector_python-8.0.22-py2.py3-none-any.whl", hash = "sha256:29702ceeb4d9462c61064c5e8d04eec7af25ac3d8db73c52ea04b9bd2fb655d5"},
+]
+
+[package.dependencies]
+protobuf = ">=3.0.0"
+
+[package.extras]
+compression = ["lz4 (>=2.1.6)", "zstandard (>=0.12.0)"]
+dns-srv = ["dnspython (>=1.16.0)"]
+
+[[package]]
 name = "numpy"
 version = "1.26.4"
 description = "Fundamental package for array computing in Python"
@@ -679,6 +718,70 @@ spss = ["pyreadstat (>=1.2.0)"]
 sql-other = ["SQLAlchemy (>=2.0.0)", "adbc-driver-postgresql (>=0.8.0)", "adbc-driver-sqlite (>=0.8.0)"]
 test = ["hypothesis (>=6.46.1)", "pytest (>=7.3.2)", "pytest-xdist (>=2.2.0)"]
 xml = ["lxml (>=4.9.2)"]
+
+[[package]]
+name = "protobuf"
+version = "5.26.1"
+description = ""
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "protobuf-5.26.1-cp310-abi3-win32.whl", hash = "sha256:3c388ea6ddfe735f8cf69e3f7dc7611e73107b60bdfcf5d0f024c3ccd3794e23"},
+    {file = "protobuf-5.26.1-cp310-abi3-win_amd64.whl", hash = "sha256:e6039957449cb918f331d32ffafa8eb9255769c96aa0560d9a5bf0b4e00a2a33"},
+    {file = "protobuf-5.26.1-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:38aa5f535721d5bb99861166c445c4105c4e285c765fbb2ac10f116e32dcd46d"},
+    {file = "protobuf-5.26.1-cp37-abi3-manylinux2014_aarch64.whl", hash = "sha256:fbfe61e7ee8c1860855696e3ac6cfd1b01af5498facc6834fcc345c9684fb2ca"},
+    {file = "protobuf-5.26.1-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:f7417703f841167e5a27d48be13389d52ad705ec09eade63dfc3180a959215d7"},
+    {file = "protobuf-5.26.1-cp38-cp38-win32.whl", hash = "sha256:d693d2504ca96750d92d9de8a103102dd648fda04540495535f0fec7577ed8fc"},
+    {file = "protobuf-5.26.1-cp38-cp38-win_amd64.whl", hash = "sha256:9b557c317ebe6836835ec4ef74ec3e994ad0894ea424314ad3552bc6e8835b4e"},
+    {file = "protobuf-5.26.1-cp39-cp39-win32.whl", hash = "sha256:b9ba3ca83c2e31219ffbeb9d76b63aad35a3eb1544170c55336993d7a18ae72c"},
+    {file = "protobuf-5.26.1-cp39-cp39-win_amd64.whl", hash = "sha256:7ee014c2c87582e101d6b54260af03b6596728505c79f17c8586e7523aaa8f8c"},
+    {file = "protobuf-5.26.1-py3-none-any.whl", hash = "sha256:da612f2720c0183417194eeaa2523215c4fcc1a1949772dc65f05047e08d5932"},
+    {file = "protobuf-5.26.1.tar.gz", hash = "sha256:8ca2a1d97c290ec7b16e4e5dff2e5ae150cc1582f55b5ab300d45cb0dfa90e51"},
+]
+
+[[package]]
+name = "psycopg2-binary"
+version = "2.8.6"
+description = "psycopg2 - Python-PostgreSQL Database Adapter"
+optional = false
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
+files = [
+    {file = "psycopg2-binary-2.8.6.tar.gz", hash = "sha256:11b9c0ebce097180129e422379b824ae21c8f2a6596b159c7659e2e5a00e1aa0"},
+    {file = "psycopg2_binary-2.8.6-cp27-cp27m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:d14b140a4439d816e3b1229a4a525df917d6ea22a0771a2a78332273fd9528a4"},
+    {file = "psycopg2_binary-2.8.6-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:1fabed9ea2acc4efe4671b92c669a213db744d2af8a9fc5d69a8e9bc14b7a9db"},
+    {file = "psycopg2_binary-2.8.6-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:f5ab93a2cb2d8338b1674be43b442a7f544a0971da062a5da774ed40587f18f5"},
+    {file = "psycopg2_binary-2.8.6-cp27-cp27m-win32.whl", hash = "sha256:b4afc542c0ac0db720cf516dd20c0846f71c248d2b3d21013aa0d4ef9c71ca25"},
+    {file = "psycopg2_binary-2.8.6-cp27-cp27m-win_amd64.whl", hash = "sha256:e74a55f6bad0e7d3968399deb50f61f4db1926acf4a6d83beaaa7df986f48b1c"},
+    {file = "psycopg2_binary-2.8.6-cp27-cp27mu-manylinux1_i686.whl", hash = "sha256:0deac2af1a587ae12836aa07970f5cb91964f05a7c6cdb69d8425ff4c15d4e2c"},
+    {file = "psycopg2_binary-2.8.6-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:ad20d2eb875aaa1ea6d0f2916949f5c08a19c74d05b16ce6ebf6d24f2c9f75d1"},
+    {file = "psycopg2_binary-2.8.6-cp34-cp34m-win32.whl", hash = "sha256:950bc22bb56ee6ff142a2cb9ee980b571dd0912b0334aa3fe0fe3788d860bea2"},
+    {file = "psycopg2_binary-2.8.6-cp34-cp34m-win_amd64.whl", hash = "sha256:b8a3715b3c4e604bcc94c90a825cd7f5635417453b253499664f784fc4da0152"},
+    {file = "psycopg2_binary-2.8.6-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:d1b4ab59e02d9008efe10ceabd0b31e79519da6fb67f7d8e8977118832d0f449"},
+    {file = "psycopg2_binary-2.8.6-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:ac0c682111fbf404525dfc0f18a8b5f11be52657d4f96e9fcb75daf4f3984859"},
+    {file = "psycopg2_binary-2.8.6-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:7d92a09b788cbb1aec325af5fcba9fed7203897bbd9269d5691bb1e3bce29550"},
+    {file = "psycopg2_binary-2.8.6-cp35-cp35m-win32.whl", hash = "sha256:aaa4213c862f0ef00022751161df35804127b78adf4a2755b9f991a507e425fd"},
+    {file = "psycopg2_binary-2.8.6-cp35-cp35m-win_amd64.whl", hash = "sha256:c2507d796fca339c8fb03216364cca68d87e037c1f774977c8fc377627d01c71"},
+    {file = "psycopg2_binary-2.8.6-cp36-cp36m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:ee69dad2c7155756ad114c02db06002f4cded41132cc51378e57aad79cc8e4f4"},
+    {file = "psycopg2_binary-2.8.6-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:e82aba2188b9ba309fd8e271702bd0d0fc9148ae3150532bbb474f4590039ffb"},
+    {file = "psycopg2_binary-2.8.6-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:d5227b229005a696cc67676e24c214740efd90b148de5733419ac9aaba3773da"},
+    {file = "psycopg2_binary-2.8.6-cp36-cp36m-win32.whl", hash = "sha256:a0eb43a07386c3f1f1ebb4dc7aafb13f67188eab896e7397aa1ee95a9c884eb2"},
+    {file = "psycopg2_binary-2.8.6-cp36-cp36m-win_amd64.whl", hash = "sha256:e1f57aa70d3f7cc6947fd88636a481638263ba04a742b4a37dd25c373e41491a"},
+    {file = "psycopg2_binary-2.8.6-cp37-cp37m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:833709a5c66ca52f1d21d41865a637223b368c0ee76ea54ca5bad6f2526c7679"},
+    {file = "psycopg2_binary-2.8.6-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:ba28584e6bca48c59eecbf7efb1576ca214b47f05194646b081717fa628dfddf"},
+    {file = "psycopg2_binary-2.8.6-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:6a32f3a4cb2f6e1a0b15215f448e8ce2da192fd4ff35084d80d5e39da683e79b"},
+    {file = "psycopg2_binary-2.8.6-cp37-cp37m-win32.whl", hash = "sha256:0e4dc3d5996760104746e6cfcdb519d9d2cd27c738296525d5867ea695774e67"},
+    {file = "psycopg2_binary-2.8.6-cp37-cp37m-win_amd64.whl", hash = "sha256:cec7e622ebc545dbb4564e483dd20e4e404da17ae07e06f3e780b2dacd5cee66"},
+    {file = "psycopg2_binary-2.8.6-cp38-cp38-macosx_10_9_x86_64.macosx_10_9_intel.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:ba381aec3a5dc29634f20692349d73f2d21f17653bda1decf0b52b11d694541f"},
+    {file = "psycopg2_binary-2.8.6-cp38-cp38-manylinux1_i686.whl", hash = "sha256:a0c50db33c32594305b0ef9abc0cb7db13de7621d2cadf8392a1d9b3c437ef77"},
+    {file = "psycopg2_binary-2.8.6-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:2dac98e85565d5688e8ab7bdea5446674a83a3945a8f416ad0110018d1501b94"},
+    {file = "psycopg2_binary-2.8.6-cp38-cp38-win32.whl", hash = "sha256:bd1be66dde2b82f80afb9459fc618216753f67109b859a361cf7def5c7968729"},
+    {file = "psycopg2_binary-2.8.6-cp38-cp38-win_amd64.whl", hash = "sha256:8cd0fb36c7412996859cb4606a35969dd01f4ea34d9812a141cd920c3b18be77"},
+    {file = "psycopg2_binary-2.8.6-cp39-cp39-macosx_10_9_x86_64.macosx_10_9_intel.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:89705f45ce07b2dfa806ee84439ec67c5d9a0ef20154e0e475e2b2ed392a5b83"},
+    {file = "psycopg2_binary-2.8.6-cp39-cp39-manylinux1_i686.whl", hash = "sha256:42ec1035841b389e8cc3692277a0bd81cdfe0b65d575a2c8862cec7a80e62e52"},
+    {file = "psycopg2_binary-2.8.6-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:7312e931b90fe14f925729cde58022f5d034241918a5c4f9797cac62f6b3a9dd"},
+    {file = "psycopg2_binary-2.8.6-cp39-cp39-win32.whl", hash = "sha256:6422f2ff0919fd720195f64ffd8f924c1395d30f9a495f31e2392c2efafb5056"},
+    {file = "psycopg2_binary-2.8.6-cp39-cp39-win_amd64.whl", hash = "sha256:15978a1fbd225583dd8cdaf37e67ccc278b5abecb4caf6b2d6b8e2b948e953f6"},
+]
 
 [[package]]
 name = "pyoxigraph"
@@ -852,13 +955,13 @@ files = [
 
 [[package]]
 name = "rdflib"
-version = "7.0.0"
+version = "6.3.2"
 description = "RDFLib is a Python library for working with RDF, a simple yet powerful language for representing information."
 optional = false
-python-versions = ">=3.8.1,<4.0.0"
+python-versions = ">=3.7,<4.0"
 files = [
-    {file = "rdflib-7.0.0-py3-none-any.whl", hash = "sha256:0438920912a642c866a513de6fe8a0001bd86ef975057d6962c79ce4771687cd"},
-    {file = "rdflib-7.0.0.tar.gz", hash = "sha256:9995eb8569428059b8c1affd26b25eac510d64f5043d9ce8c84e0d0036e995ae"},
+    {file = "rdflib-6.3.2-py3-none-any.whl", hash = "sha256:36b4e74a32aa1e4fa7b8719876fb192f19ecd45ff932ea5ebbd2e417a0247e63"},
+    {file = "rdflib-6.3.2.tar.gz", hash = "sha256:72af591ff704f4caacea7ecc0c5a9056b8553e0489dd4f35a9bc52dbd41522e0"},
 ]
 
 [package.dependencies]
@@ -1136,4 +1239,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "2e27a41c6504ee5e7146ba5cada67b3a1f386327431647864ec2153c2cf8dc2b"
+content-hash = "afad6181f64921fd0bbefacfeb8723f722a27fcde13a63305bccb5fd56b0a1b1"
