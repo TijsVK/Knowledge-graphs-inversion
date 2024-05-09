@@ -5,94 +5,28 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Implementation}
 \label{chapter:implementation}
-This chapter is split into three sections. In the first section the structure of the algorithm is outlined. In the second and third sections, we go into detail about the two sub-research questions: how to construct the schema and how to populate the schema. 
+In this chapter we present the design and implementation of the proposed system. The design and any of its components are not bound to any specific technology, as such they can be implemented using any programming language, framework or mapping language. For the implementation we first present the general setup of the environment. We then present the implementation of the data retrieval. Lastly we present some implementations of template creation and filling.
+
+\section{System Design}
+The system we propose is a pipeline that takes as input a knowledge graph and set of mapping rules and outputs the source files from which it would have been constructed. It has the advantage of being very modular, consisting of just data retrieval and template creation/filling. Depending on the mapping rules and config files different modules will be used. The graph source will decide the data retrieval strategy while the output file will determine the templating engine to be used. An overview of the design can be seen in figure \ref{fig:design}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{fig/design.png}
+    \caption{Design of the proposed system}
+    \label{fig:design}   
+\end{figure}
 
 
 % At this time we only have a PoC implementation, as such many details haven't been worked out yet. For example, the section on creating the schema is limited, as we only handle CSV files which require little to no schema. 
 
-For the implementation, we assume that the mapping rules never map to a superset of the knowledge graph. 
+\section{Setup}
 
-The implementation is written in Python. As we seek to extend Morph-KGC we make use of its internal functions and the libraries to work with those, like pandas. Querying the knowledge graph is done with the SPARQLWrapper library.
+We choose to make our implementation in Python as it both has an extensive set of libraries and is well suited for rapid development. We use Morph-KGC to process the mapping rules for its ease of use, being well made and its use of the pandas library to represent the mapping rules. As the graph source we choose a standalone SPARQL endpoint on a triple store. For working with graph(\acrshort{rdf}) files, we first upload them to a triple store.
 
-\section{General structure}
-The algorithm consists of 4 main parts: setting up, creating the schema, retrieving the data, and applying the data to the schema. Creating the schema and retrieving the data are the two main parts of the implementation, and are covered in their sections. Setting up consists of setting up the \acrshort{sparql} endpoint if necessary and processing the mapping files. Applying the data to the schema consists of applying the data of each iteration to the schema, and creating the output file. A graphical representation of the algorithm can be found in figure \ref{fig:algorithm}. A more formal representation can be found in algorithm \ref{alg:inversion}. The functions used in the algorithm are described in the relevant sections.
+First the endpoint is set up, if necessary. If the source is a file, it is uploaded to the endpoint using the SPARQL 1.1 Graph Store HTTP Protocol. In our setup this is a locally running the free version of GraphDB. The url of the repository is then wrapped using the SPARQLWrapper library and some settings are set.
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{Chapter3/algorithm_flat.png}
-    \caption{Simplified overview of the algorithm}
-    \label{fig:algorithm}
-\end{figure}
-
-\begin{algorithm}
-    \caption{Inversion algorithm}
-    \label{alg:inversion}
-    \begin{algorithmic}[1]
-        \Require{$morph\_config$ is a morph-kgc config file describing the mapping files and output location}
-        \State $config \gets load_config(morph\_config)$
-        \State $mapping\_rules \gets retrieve\_mappings(config)$
-        \State $mapping\_rules \gets add\_helper\_columns(mapping\_rules)$
-        \State $graph\_location \gets config.get\_output\_file()$
-        \State $graph\_endpoint \gets load\_graph(graph\_location)$
-        \ForAll{$source, source\_rules \in mapping\_rules.groupby('source')$}
-            \ForAll{$iterator, iterator\_rules \in source\_rules.groupby('iterator')$}
-                \State $query \gets generate\_query(iterator\_rules)$
-                \State $values[iterator] \gets graph.query(query)$
-            \EndFor
-            \State $templates \gets generate\_templates(source\_rules)$
-            \State $source\_output \gets apply\_templates(templates, values)$
-        \EndFor
-    \end{algorithmic}
-\end{algorithm}
-
-% I made this as a joke, this is in no way readable so the algorithm is split over the sections
-% \begin{algorithm}
-%     \caption{Full inversion algorithm}
-%     \label{alg:inversion}
-%     \begin{algorithmic}[1]
-%         \Require{$morph\_config$ is a morph-kgc config file describing the mapping files and output location}
-%         \State $config \gets load_config(morph\_config)$
-%         \State $mapping\_rules \gets retrieve\_mappings(config)$
-%         \State $mapping\_rules \gets add\_helper\_columns(mapping\_rules)$
-%         \State $graph\_location \gets config.get_output_file()$
-%         \State $graph\_endpoint \gets load\_graph(graph\_location)$
-%         \ForAll{$source, source\_rules \in mapping\_rules.groupby('source')$}
-%             \ForAll{$iterator, iterator\_rules \in source\_rules.groupby('iterator')$}
-%                 \ForAll{$subject, subject\_rules \in iterator\_rules.groupby('subject')$}
-%                     \ForAll{$rule \in subject\_rules$}
-%                         \If{$rule.is\_constant()$}
-%                             \State $query\_lines.append(rule.to\_triple())$ 
-%                         \ElsIf{$rule.is\_reference()$}
-%                             \State $query\_lines.append(rule.to\_triple())$
-%                         \ElsIf{$rule.is\_template()$}
-%                             \State $query\_lines.append(test\_object\_regex(rule))$
-%                             \State $remainder \gets rule['object\_map\_value']$
-%                             \ForAll{$reference \in rule.get\_references()$}
-%                                 \If{$remainder.empty()$}
-%                                     \State $query\_lines.append(bind\_str\_after\_ref(reference)) $
-%                                 \Else
-%                                     \State $query\_lines.append(bind\_str\_after\_remainder()) $
-%                                     \State $query\_lines.append(bind\_str\_before(reference)) $
-%                                 \EndIf
-%                                 \State $remainder \gets remainder - reference$
-%                             \EndFor
-%                         \EndIf
-%                         \State $query \gets wrap\_query\_lines(query\_lines)$
-%                     \EndFor                                
-%                 \State $query \gets generate\_query(iterator\_rules)$
-%                 \State $values[iterator] \gets graph\_endpoint.query(query)$
-%                 \EndFor
-%             \EndFor
-%             \If{$source\_rules['source\_type'] == 'CSV'$}
-%                 \State $source\_output \gets values[0]$
-%             \EndIf
-%         \EndFor
-%     \end{algorithmic}
-% \end{algorithm}
-
-\subsection{Loading the mapping rules}
-We start by loading the mapping rules from the mapping files. We use Morph-KGC's internal \texttt{retrieve\_mappings} function for this. This function takes a loaded config file (.ini format) as input, which specifies the location of the mapping files and various other settings for which we have little use as they are only used for the materialization process. When relevant later on we could add our settings to this config file.
-The mappings are returned as a pandas DataFrame. As the pandas library has the functionality to group by columns, we can easily group the mapping rules by source and iterator later. An example of a single mapping rule (row in the DataFrame) can be found in listing \ref{lst:mapping_rule}. Marked in bold are the helper columns we add.
+Next we load the mapping rules from the mapping(\acrshort{rml}) files using Morph-KGC's internal \texttt{retrieve\_mappings} function. This function takes a config file (.ini format) as input, which specifies the location of the mapping files and various other settings which can be used to configure the behavior of the mapping. The mappings are returned as a pandas DataFrame which we enrich with various helper columns. An example of a single mapping rule (row in the DataFrame) can be found in listing \ref{lst:mapping_rule}. Marked in bold are the helper columns we add.
 
 \begin{lstlisting}[caption={Example of a mapping rule in Morph-KGC}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small]
 source_name: DataSource1
@@ -128,57 +62,24 @@ source_type: CSV
 mapping_partition: 1-1-1-1
 \end{lstlisting}
 
-\section{Contructing the schema}
-\label{section:constructing_schema}
-Constructing the schema is done by reversing the mapping rules' source. We do this using the iterator and the mapping rule's references. \acrshort{rml} supports many different types of sources and referenceFormulations. We will implement the CSV, xPath, and JSONPath referenceFormulations. Not every source is a file, so for query-based sources, we will generate the query output. In a later stage, we could look into taking it a step further, generating the actual source behind those intermediate results.
-
-As each referenceFormulation has its reference syntax, we will have to tailor the implementation to each referenceFormulation. For the PoC, we only implement the CSV referenceFormulation. 
-
-\subsection{CSV}
-\label{subsection:csv}
-The CSV referenceFormulation is the simplest of the three as it describes a simple two-dimensional table, with columns having the names of the references and rows being the iterated values. The example TriplesMap in listing \ref{lst:csv_file_mapping} results in the CSV template in listing \ref{lst:csv_file}. Unlike the other referenceFormulations, CSV has no uncertainty in terms of structure.
-
-\begin{lstlisting}[caption={Example mapping for a CSV file}, label={lst:csv_file_mapping}, captionpos=b, basicstyle=\small]
-<TriplesMap1> a rr:TriplesMap;
-
-rml:logicalSource [ 
-    rml:source "student.csv";
-    rml:referenceFormulation ql:CSV
-];
-
-rr:subjectMap [ 
-    rr:template "http://example.com/Student/{ID}/{Name}";
-    rr:graph ex:PersonGraph ;
-    rr:class foaf:Person
-];
-
-rr:predicateObjectMap [ 
-    rr:predicate ex:id ; 
-    rr:objectMap [ rml:reference "ID" ]
-];
-
-rr:predicateObjectMap [ 
-    rr:predicate foaf:name ; 
-    rr:objectMap [ rml:reference "Name" ]
-].
-\end{lstlisting}
-
-\begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small]
-[*ID,Name*]
-<ID>,<Name>
-\end{lstlisting}
-
 \section{Retrieving the data}
 \label{section:retrieving_data}
-Retrieving the data is done by querying the knowledge graph. We do this by generating SPARQL queries matching the mapping rules. We then execute these queries and store the results. Mappings sharing the same iterator are executed together, as they have been generated in the same iteration. 
+Retrieving the data is done by querying the \acrshort{sparql} endpoint using an automatically generated query. All the required data from the source is retrieved at once. This does result in some degree of duplication for nested structures, but doing all processing and joining server-side is preferable. This also has a disadvantage in disjointed mappings resulting in a Cartesian product of the fragments. This is further discussed in subsection \ref{subsection:disjointed_mappings}. The data is returned as a CSV-table which is then loaded into a pandas DataFrame for further processing. The only post processing done at the moment is the decoding of url-encoded strings where necessary. 
 
 \subsection{Generating the queries}
 \label{subsection:generating_queries}
-We generate the queries by translating the mapping rules into triple patterns. 
-For each of the three map types, constant, reference, and template, we adapt our approach. 
+To generate the queries we first select the triple maps we want to use to generate the query. While constant values are always included, sometimes we can lighten the load on the server by reducing the amount and complexity of mapping rules we use. We design three operating modes:
+\begin{itemize}
+    \item \textbf{Full}: All triple maps are used to generate the query. This is guaranteed to give predicatable results as it checks each instance of a mapped value.
+    \item \textbf{Reduced}: All triple maps with a object map type of reference are used to generate the query. Only where necessary to retrieve all data template map types are used.
+    \item \textbf{Minimal}: Only a single datapoint is used for each reference, with a preference for reference object map types.
+\end{itemize}
+
+We then generate the queries by translating the mapping rules into patterns. 
+Each of the three map types, constant, reference, and template, generates a different pattern.
 For the constant map type, we know that it will always be present with a constant value, so we can simply add it as a triple pattern like \texttt{?s a foaf:Person .}. 
-Both reference and template map types will not generate a triple during materialization if any of the references are not present during the iteration. As such, they are wrapped in an optional block. 
-Reference maps are the easiest to work with as they directly translate back to the source. There is an exception to this, as a reference map can be used for a subject map. In this case, the value is either an \acrshort{uri} or appended to the base \acrshort{uri}. Sadly Morph-KGC does not support the latter, so we can not take this into account. An example of a basic query using constant and reference maps can be found in listing \ref{lst:simple_query_example}.
+Both reference and template map types will not generate a triple during materialization if any of the references are not present during the generation. We must take this into account by allowing for blank fields using the optional keyword.
+Reference maps are the easiest to work with as they directly translate back to the source. An example of a basic query using constant and reference maps can be found in listing \ref{lst:simple_query_example}.
 
 \begin{lstlisting}[caption={Simple query example}, label={lst:simple_query_example}, captionpos=b]
 SELECT DISTINCT ?Name ?ID
@@ -242,6 +143,7 @@ The algorithm for generating the queries can be found in algorithm \ref{alg:gene
 \end{algorithm}
 
 \subsection{Disjointed mappings}
+\label{subsection:disjointed_mappings}
 
 We generate a single query for each iterator. This query can contain multiple subjects. This can, however, lead to issues when the subjects share no references. The effect we get is not unlike joining two tables in SQL without join conditions. For example, using the mapping listed in listing \ref{lst:bad_join_example} we get the query in listing \ref{lst:bad_join_query}. When applied to the knowledge graph in listing \ref{lst:bad_join_kg} we get the result in listing \ref{lst:bad_join_result} instead of the original source in listing \ref{lst:bad_join_expected_result}. When converting the badly generated source back to the knowledge graph, we do get the same knowledge graph as the original as the duplicate data is ignored. The amount of duplicate data increases exponentially with the number of subjects so even though ignoring it would be a valid solution, it is not viable with larger datasets. The only solution to this problem is updating the mapping rules to either split the source or add shared references. The user is ultimately responsible for this, but we could generate a warning to notify the user. 
 
@@ -292,13 +194,18 @@ rr:predicateObjectMap [
 \end{listing}
 
 \begin{lstlisting}[caption={Bad join query (trimmed)}, label={lst:bad_join_query}, captionpos=b, basicstyle=\small]
+
+
+
+
+
+
 SELECT DISTINCT ?Student_name ?Sport
 WHERE {
     ?s1 a ex:Student .
     optional{
         ?s1 foaf:name ?Student_name .
     }
-
     ?s2 a ex:Sport .
     optional{
         ?s2 foaf:name ?Sport .
@@ -332,6 +239,46 @@ Tom,Football
 Student,Sport
 Venus,Tennis
 Tom,Football
+\end{lstlisting}
+
+\section{Contructing the schema}
+\label{section:constructing_schema}
+Constructing the schema is done by reversing the mapping rules' source. We do this using the iterator and the mapping rule's references. \acrshort{rml} supports many different types of sources and referenceFormulations. We will implement the CSV, xPath, and JSONPath referenceFormulations. Not every source is a file, so for query-based sources, we will generate the query output. In a later stage, we could look into taking it a step further, generating the actual source behind those intermediate results.
+
+As each referenceFormulation has its reference syntax, we will have to tailor the implementation to each referenceFormulation. For the PoC, we only implement the CSV referenceFormulation. 
+
+\subsection{CSV}
+\label{subsection:csv}
+The CSV referenceFormulation is the simplest of the three as it describes a simple two-dimensional table, with columns having the names of the references and rows being the iterated values. The example TriplesMap in listing \ref{lst:csv_file_mapping} results in the CSV template in listing \ref{lst:csv_file}. Unlike the other referenceFormulations, CSV has no uncertainty in terms of structure.
+
+\begin{lstlisting}[caption={Example mapping for a CSV file}, label={lst:csv_file_mapping}, captionpos=b, basicstyle=\small]
+<TriplesMap1> a rr:TriplesMap;
+
+rml:logicalSource [ 
+    rml:source "student.csv";
+    rml:referenceFormulation ql:CSV
+];
+
+rr:subjectMap [ 
+    rr:template "http://example.com/Student/{ID}/{Name}";
+    rr:graph ex:PersonGraph ;
+    rr:class foaf:Person
+];
+
+rr:predicateObjectMap [ 
+    rr:predicate ex:id ; 
+    rr:objectMap [ rml:reference "ID" ]
+];
+
+rr:predicateObjectMap [ 
+    rr:predicate foaf:name ; 
+    rr:objectMap [ rml:reference "Name" ]
+].
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small]
+[*ID,Name*]
+<ID>,<Name>
 \end{lstlisting}
 
 \section{Applying the data to the schema}

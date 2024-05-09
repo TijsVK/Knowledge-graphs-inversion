@@ -24,7 +24,7 @@ To achieve this these mapping languages use a declarative approach where the use
 Creating these mapping rules is often done by hand. Some tools make creating these mappings easier, like RMLEditor \citep{heyvaert_jws_2018} which exposes a visual editor, and YARRRML \citep{10.1007/978-3-319-98192-5_40} which allows users to create rules in the user-friendly \acrshort{yaml} which are then compiled to RML rules. Alternatively, tools are starting to be created for the automatic generation of mapping rules from e.g. \acrshort{shacl}.
 % TODO: do this citing
 
-Retrieving data from a knowledge graph, for consumption by other programs, is done by querying the knowledge graph using SPARQL \citep{Seaborne:08:SQL} for tabular data and XSPARQL \citep{Bischof2012} or XSLT for XML. XSPARQL is the only language that can both map[/lift] and query[/lower], but the syntax for mapping and querying differs, so it could be argued that XSPARQL is two languages.
+Retrieving data from a knowledge graph, for consumption by other programs, is done by querying the knowledge graph using SPARQL \citep{Seaborne:08:SQL} for tabular data and XSPARQL \citep{Bischof2012} or XSLT for XML. XSPARQL is the only language that can both lift and lower, but the mappings for lifting and lowering differ. 
 
 A knowledge graph cannot be converted back to the original data format using the same rules we created it with. As a result any changes we make to the data are hard to propagate back. We can not update, expand, or improve the original data using e.g. knowledge graph refining nor can we apply changes to a virtual knowledge graph to change the original data. 
 
