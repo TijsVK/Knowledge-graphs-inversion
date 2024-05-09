@@ -1,9 +1,12 @@
 [submodule "Implementation/morph-kgc"]
 	path = Implementation/morph-kgc
-	url = https://github.com/TijsVK/morph-kgc.git
+	url = https://github.com/morph-kgc/morph-kgc.git
 [submodule "Implementation/rml-test-cases"]
 	path = Implementation/rml-test-cases
 	url = https://github.com/kg-construct/rml-test-cases.git
 [submodule "Implementation/pyrdf4j"]
 	path = Implementation/pyrdf4j
 	url = https://github.com/BB-Open/pyrdf4j.git
+[submodule "Implementation/r2rml-test-cases"]
+	path = Implementation/r2rml-test-cases
+	url = https://github.com/kg-construct/r2rml-test-cases-support.git

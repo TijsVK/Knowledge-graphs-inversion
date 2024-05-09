@@ -10,9 +10,9 @@
     rep:repositoryID "{repo_id}" ;
     rdfs:label "{repo_label}" ;
     rep:repositoryImpl [
-        rep:repositoryType "graphdb:SailRepository" ;
+        rep:repositoryType "graphdb:FreeSailRepository" ;
         sr:sailImpl [
-            sail:sailType "graphdb:Sail" ;
+            sail:sailType "graphdb:FreeSail" ;
             graphdb:entity-id-size  "32" ;
         ]
     ].
