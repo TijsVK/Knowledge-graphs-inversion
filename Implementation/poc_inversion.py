@@ -257,7 +257,7 @@ class QueryTriple(Triple):
             [Identifier.generate_plain_identifier(self.rule, value) for value in self.rule["object_references"]]
         )
 
-    def generate(self, encoded_references:set[str], IdGenerator:IdGenerator, codex: Codex) -> str|None:
+    def generate(self, encoded_references:set[str], IdGenerator:IdGenerator, codex: Codex, all_mapping_rules: pd.DataFrame) -> str|None:
         subject_reference = codex.get_id(self.rule["subject_map_value"])
         predicate = f'<{self.rule["predicate_map_value"]}>'
         object_map_value = self.rule["object_map_value"]
@@ -275,22 +275,29 @@ class QueryTriple(Triple):
                 return None
             return f"?{subject_reference} {predicate} {object_map_value} ."
 
-        object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
-        object_reference = codex.get_id(object_identifier)
+        
 
-        if object_map_type == RML_REFERENCE:    
+        if object_map_type == RML_REFERENCE:
+            object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
+            object_reference = codex.get_id(object_identifier)
             if object_identifier in encoded_references:
                 lines = []
                 plain_object_reference = codex.get_id(f"{object_identifier}_plain_{IdGenerator.get_id()}")
                 lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference}}}")
                 lines.append(f"OPTIONAL{{BIND(ENCODE_FOR_URI(?{plain_object_reference}) as ?{object_reference}_encoded)}}")
-                lines.append(f"FILTER(!BOUND(?{plain_object_reference}) || ENCODE_FOR_URI(?{plain_object_reference}) = ?{object_reference}_encoded)")
+                lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || !BOUND(?{plain_object_reference}) || ENCODE_FOR_URI(?{plain_object_reference}) = ?{object_reference}_encoded)")
                 return "\n".join(lines)
             else:
-                return f"OPTIONAL{{?{subject_reference} {predicate} ?{object_reference}}}"
+                lines = []
+                temp_object_reference = codex.get_id(f"{object_identifier}_temp_{IdGenerator.get_id()}")
+                lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{temp_object_reference}}}")
+                lines.append(f"OPTIONAL{{BIND(?{temp_object_reference} as ?{object_reference})}}")
+                lines.append(f"FILTER(!BOUND(?{object_reference}) || !BOUND(?{temp_object_reference})  || ?{temp_object_reference} = ?{object_reference})")
+                return "\n".join(lines)
             
-
         elif object_map_type == RML_TEMPLATE:
+            object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
+            object_reference = codex.get_id(object_identifier)
             lines = []
             full_template_identifier = f"{object_identifier}_full_{IdGenerator.get_id()}"
             full_template_reference = codex.get_id(full_template_identifier)
@@ -310,7 +317,8 @@ class QueryTriple(Triple):
                 unescaped_next_pre_string = next_pre_string.replace('\\', "")
                 lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_slice}), '{unescaped_current_pre_string}') as ?{next_slice})}}")
                 if current_post_string == "":
-                    lines.append(f"{{}} OPTIONAL{{BIND(?{next_slice} as ?{object_reference}_encoded)}}")
+                    lines.append(f"{{}} OPTIONAL{{BIND(?{next_slice} as ?{object_reference}_encoded)}}") # TODO does this not need the bind/filter flow?
+                    lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || !BOUND(?{next_slice}) || ?{next_slice} = ?{object_reference}_encoded)") # <= untested line
                 else:
                     temp_reference_identifier = f"{object_identifier}_temp_{IdGenerator.get_id()}"
                     temp_reference = codex.get_id(temp_reference_identifier)
@@ -318,12 +326,30 @@ class QueryTriple(Triple):
                         f"BIND(STRBEFORE(STR(?{next_slice}), '{unescaped_next_pre_string}') AS ?{temp_reference})"
                     )
                     lines.append(f"{{}} OPTIONAL{{BIND(?{temp_reference} as ?{object_reference}_encoded)}}")
-                    lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || ?{temp_reference} = ?{object_reference}_encoded)")
+                    lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || !BOUND(?{temp_reference}) || ?{temp_reference} = ?{object_reference}_encoded)")
 
                 evaluated_template = current_post_string
                 current_slice = next_slice
             return "\n".join(lines)
 
+        elif object_map_type == RML_PARENT_TRIPLES_MAP:
+            subject_map_value = self.rule["subject_map_value"]
+            get_logger().debug(f"Generating parent triples map for {subject_map_value} (subject identifier: {subject_reference})")
+            object_parent_triples_map_id = self.rule["object_map_value"]
+            object_rule = all_mapping_rules[all_mapping_rules["triples_map_id"] == object_parent_triples_map_id].iloc[0]
+            object_map_value = object_rule["subject_map_value"]
+            object_reference = codex.get_id(object_map_value)
+            get_logger().debug(f"Object map value: {object_map_value} (object reference: {object_reference})")
+            predicate = f'<{self.rule["predicate_map_value"]}>'
+            get_logger().debug(f"Predicate: {predicate}")
+            get_logger().debug(f"Proposed mapping: ?{subject_reference} {predicate} ?{object_reference} (subject map value: {subject_map_value}) (object map value: {object_map_value})")
+            return f"?{subject_reference} {predicate} ?{object_reference} ."
+            
+        else:
+            get_logger().error(f"Unsupported object map type: {object_map_type}")
+            return None
+            
+            
 class SubjectTriple(QueryTriple):
     def __init__(self, rule: pd.Series):
         super().__init__(rule)
@@ -336,13 +362,14 @@ class SubjectTriple(QueryTriple):
     def plain_references(self) -> set[str]:
         return set()
 
-    def generate(self, encoded_references: set[str], IdGenerator: IdGenerator, codex: Codex) -> str | None:
+    def generate(self, encoded_references: set[str], IdGenerator: IdGenerator, codex: Codex, all_mapping_rules: pd.DataFrame) -> str | None:
         subject_map_value = self.rule["subject_map_value"]
         subject_map_type = self.rule["subject_map_type"]
         subject_term_type = self.rule["subject_termtype"]
         subject_references_template = self.rule["subject_references_template"]
         
         if subject_map_type != RML_TEMPLATE or subject_term_type != RML_IRI:
+            get_logger().error(f"Unsupported subject map type: {subject_map_type} or subject term type: {subject_term_type}")
             return None
         
         subject_reference = codex.get_id(subject_map_value)
@@ -363,13 +390,14 @@ class SubjectTriple(QueryTriple):
             lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_slice_reference}), '{current_pre_string}') as ?{next_slice_reference})}}")
             if current_post_string == "":
                 lines.append(f"{{}} OPTIONAL{{BIND(?{next_slice_reference} as ?{current_reference}_encoded)}}")
+                lines.append(f"FILTER(!BOUND(?{current_reference}_encoded) || !BOUND(?{next_slice_reference}) || ?{next_slice_reference} = ?{current_reference}_encoded)")
             else:
                 reference_placeholder = codex.get_id(f"{reference_identifier}_temp_{IdGenerator.get_id()}")
                 lines.append(
                     f"BIND(STRBEFORE(STR(?{next_slice_reference}), '{next_pre_string}') AS ?{reference_placeholder})"
                 )
                 lines.append(f"{{}} OPTIONAL{{BIND(?{reference_placeholder} as ?{current_reference}_encoded)}}")
-                lines.append(f"FILTER(!BOUND(?{current_reference}_encoded) || ?{reference_placeholder} = ?{current_reference}_encoded)")
+                lines.append(f"FILTER(!BOUND(?{current_reference}_encoded) || !BOUND(?{reference_placeholder}) || ?{reference_placeholder} = ?{current_reference}_encoded)")
             evaluated_template = current_post_string
             current_slice_reference = next_slice_reference
         return "\n".join(lines)
@@ -460,7 +488,7 @@ class Query:
     def pure_references(self) -> list[str]:
         return [reference for reference in self.references if reference not in self.uri_encoded_references]
 
-    def generate(self) -> str:
+    def generate(self, all_mapping_rules) -> str:
         # select triples using strategy
         inversion_logger.info(f"Selecting triples using {self.selector}")
         selected_triples:list[Triple] = self.selector.select(self.triples)
@@ -482,7 +510,7 @@ class Query:
                 {len(all_references)} all references: {all_references}")
         triple_strings = []
         for triple in selected_triples:
-            triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex)
+            triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex, all_mapping_rules)
             if triple_string is not None:
                 triple_strings.append(triple_string)
                 
@@ -1081,7 +1109,7 @@ def retrieve_data(
 ) -> pd.DataFrame | None:
     inversion_logger.debug(f"Processing source {source_rules.iloc[0]['logical_source_value']}")
     triples: list[QueryTriple] = [
-        QueryTriple(rule) for _, rule in source_rules.iterrows() if not rule["object_map_type"] in [RML_BLANK_NODE, RML_PARENT_TRIPLES_MAP]
+        QueryTriple(rule) for _, rule in source_rules.iterrows() if not rule["object_map_type"] in [RML_BLANK_NODE]
     ]
     triples.extend(
         SubjectTriple(subject_rules.iloc[0])
@@ -1090,7 +1118,8 @@ def retrieve_data(
         )
     )
     query = Query(triples)
-    generated_query = query.generate()
+    generated_query = query.generate(mapping_rules)
+    print(generated_query)
     # query = generate_query(mapping_rules, iterator_rules)
     inversion_logger.debug(query)
     if generated_query is None:
@@ -1196,6 +1225,7 @@ def main():
     logging_setup()
     # ignore morph_kgc FutureWarning logs
     warnings.simplefilter(action="ignore", category=FutureWarning)
+    test2()
 
 
 def test():
@@ -1215,19 +1245,6 @@ def test():
         inversion_logger.info(f'Running test {row["RML id"]}, ({row["better RML id"]})')
         os.chdir(testcases_path / row["RML id"])
         inversion(MORPH_CONFIG, testID=row["RML id"])
-
-def templating_test(): 
-    template = JSONTemplate()
-    template.add_path("$.teachers[*].card.name")
-    template.add_path("$.teachers[*].card.telephone_number")
-    template.add_path("$.teachers[*].school")
-    generated = template.create_template()
-    print(generated)
-    print(json.dumps(json.loads(generated), indent=4))
-    print(JSONPathFunctions.get_json_path([Root(), Object(values=["teachers"]), Array(), Object(values=["card"]), Object(values=["name"])]))
-    path = jsonpath_ng.parse("$.teachers[*].card.name")
-    print(path)
-    return
 
 def small_test():
     test_folder_path = "C:\Github\Knowledge-graphs-inversion\Implementation\Tests\Inversion_tests\Temp"
@@ -1279,7 +1296,22 @@ def rml_test_cases():
 def run_tests():
     rml_test_cases()
 
+def test2():
+    os.chdir(r"C:\Github\Knowledge-graphs-inversion\Implementation\Tests\Inversion_tests\Temp")
+    config = load_config_from_argument(MORPH_CONFIG)
+    mappings: pd.DataFrame
+    mappings, _ = retrieve_mappings(config)
+    insert_columns(mappings)
+    results = {}
+    for source, source_rules in mappings.groupby("logical_source_value"):
+        inversion_logger.info(f"Processing source {source}")
+        template = generate_template(source_rules)
+        # for _, mapping in source_rules.iterrows():
+        #     get_logger().debug(mapping['object_join_conditions'])
+        # for _, mapping in source_rules.iterrows():
+        #     get_logger().debug(mapping)
+        data = retrieve_data(mappings, source_rules, EndpointFactory.create(config), decode_columns=True)
+        get_logger().debug(template.fill_data(data))
+
 if __name__ == "__main__":
-    logging_setup()
-    warnings.simplefilter(action="ignore", category=FutureWarning)
-    small_test()
+    main()
