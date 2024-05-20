@@ -29,7 +29,7 @@ The subject must always be an entity, which can either be represented by an \acr
 
 \begin{figure}[]
     \begin{tabular}{lll}
-        \textbf{Subject}             & \textbf{Predicate}           & \textbf{Object}                           \\
+        \textbf{Subject}                                   & \textbf{Predicate}                                 & \textbf{Object}                                     \\
         \textless http://example.com/De\_Nayer\textgreater & \textless https://schema.org/location\textgreater  & \textless http://example.com/Mechelen\textgreater . \\
         \textless http://example.com/r0785695\textgreater  & \textless https://schema.org/givenName\textgreater & ``Tijs" .
     \end{tabular}
@@ -43,10 +43,10 @@ A blank node is a node that is not identified by a \acrshort{uri}. It is used to
 
 \begin{figure}[]
     \begin{tabular}{lll}
-        \textbf{Subject}    & \textbf{Predicate}   & \textbf{Object}                                     \\
-        ex:student/r0785695 & schema:address       & \_:addrr0785695                                     \\
-        \_:addrr0785695     & schema:postalCode    & "2800"\textasciicircum \textasciicircum xsd:integer \\
-        \_:addrr0785695     & schema:streetAddress & "Gentsesteenweg XXXX"@nl
+        \textbf{Subject}    & \textbf{Predicate}   & \textbf{Object}                                      \\
+        ex:student/r0785695 & schema:address       & \_:addrr0785695                                      \\
+        \_:addrr0785695     & schema:postalCode    & ``2800"\textasciicircum \textasciicircum xsd:integer \\
+        \_:addrr0785695     & schema:streetAddress & ``Gentsesteenweg XXXX"@nl
     \end{tabular}
     \caption{Example of a blank node and prefix notation}
     \label{fig:blank_node}
@@ -132,7 +132,7 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
 
 \section{Mapping languages}
 Mapping languages are used to define a mapping between a source and a target. The target in the context of linked data is of course \acrshort{rdf}, with the source being any structured data source. Some mapping languages exist for a single source, e.g. \acrfull{r2rml} for relational databases, \acrfull{xsparql} for \acrshort{xml}, etc. Others are more general purpose, e.g. \acrfull{rml} and \acrfull{d2rml}.
-We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as one extends the other. \acrshort{r2rml} is significant as it is the most widely used mapping language, as it supports virtualization \textit{ontop} of databases.\acrshort{rml} extends \acrshort{r2rml} with more features and source types making it one of the more feature-rich general mapping languages, as such it is the mapping language we will use in our implementation. 
+We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as one extends the other. \acrshort{r2rml} is significant as it is the most widely used mapping language, as it supports virtualization \textit{ontop} of databases.\acrshort{rml} extends \acrshort{r2rml} with more features and source types making it one of the more feature-rich general mapping languages, as such it is the mapping language we will use in our implementation.
 Most \acrshort{rml} implementations also support \acrshort{r2rml}, as \acrshort{rml} is a nearly superset of \acrshort{r2rml}.
 
 \subsection{\acrshort{r2rml}}
@@ -198,12 +198,12 @@ A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template
 \begin{table}[]
     \begin{tabular}{|ll|ll|}
         \hline
-        \multicolumn{2}{|c|}{R2RML}         & \multicolumn{2}{c|}{RML}                                                           \\ \hline
-        Logical Table (database) & \texttt{rr:logicalTable}          & Logical Source               & \texttt{rml:logicalSource}        \\ \hline
-        Table Name                          & \texttt{rr:tablename}             & URI (pointing to the source) & \texttt{rml:source}               \\ \hline
-        column                              & \texttt{rr:column}                & reference                    & \texttt{rml:reference}            \\ \hline
-        (SQL)                               & \texttt{rr:SQLQuery}              & Reference Formulation        & \texttt{rml:referenceFormulation} \\ \hline
-        per row iteration                   &                          & defined iterator             & \texttt{rml:iterator}             \\ \hline
+        \multicolumn{2}{|c|}{R2RML} & \multicolumn{2}{c|}{RML}                                                                    \\ \hline
+        Logical Table (database)    & \texttt{rr:logicalTable} & Logical Source               & \texttt{rml:logicalSource}        \\ \hline
+        Table Name                  & \texttt{rr:tablename}    & URI (pointing to the source) & \texttt{rml:source}               \\ \hline
+        column                      & \texttt{rr:column}       & reference                    & \texttt{rml:reference}            \\ \hline
+        (SQL)                       & \texttt{rr:SQLQuery}     & Reference Formulation        & \texttt{rml:referenceFormulation} \\ \hline
+        per row iteration           &                          & defined iterator             & \texttt{rml:iterator}             \\ \hline
     \end{tabular}
     \caption{Differences between \acrshort{r2rml} and \acrshort{rml}}
     \label{tab:r2rml_rml_differences}
@@ -337,8 +337,9 @@ json:ApiDescription {
 \end{lstlisting}
 
 \subsection{Relevance}
-As shown in this section the state of the art in updating the source in virtualization is pretty mature, only limited by fundamental limitations. It is however limited to databases. To work with other (semi-)structured data sources materialization is needed. For materialization the state of the art is much more limited. Though methods exist to lower \acrshort{rdf} to other formats, each method is intimately linked to a source type. The mappings are also unidirectional, even \acrshort{xsparql} which offers both lifting and lowering requires a separate mapping for each. 
+As shown in this section the state of the art in updating the source in virtualization is pretty mature, only limited by fundamental limitations. It is however limited to databases. To work with other (semi-)structured data sources materialization is needed. For materialization the state of the art is much more limited. Though methods exist to lower \acrshort{rdf} to other formats, each method is intimately linked to a source type. The mappings are also unidirectional, even \acrshort{xsparql} which offers both lifting and lowering requires a separate mapping for each.
 
-Our work expands RML, which can map from any structured data source to \acrshort{rdf}, with the ability to lower the \acrshort{rdf} back to the original source. We use a single mapping to do both lifting and lowering, as information on where to find the data during lifting can also be used to find where to put the data during lowering. This makes our work unique in the field of lowering \acrshort{rdf} to other formats. 
+Our work expands RML, which can map from any structured data source to \acrshort{rdf}, with the ability to lower the \acrshort{rdf} back to the original source. We use a single mapping to do both lifting and lowering, as information on where to find the data during lifting can also be used to find where to put the data during lowering. This makes our work unique in the field of lowering \acrshort{rdf} to other formats.
 
 As the state of the art is the most limited for sources to which only materialization applies, this is where our work is most relevant. As such we choose to focus our implementation on this domain. However, the design and concept of our work can be applied to any structured data source, including database updates over a virtual graph.
+
