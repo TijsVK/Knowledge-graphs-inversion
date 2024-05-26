@@ -29,8 +29,7 @@ from typing import Self
 
 QUERY_MINIMAL = 0
 QUERY_REDUCED = 1
-QUERY_SIMPLE = 2
-QUERY_FULL = 3
+QUERY_FULL = 2
 
 TEST_LOG_FOLDER = pathlib.Path(__file__).parent / "individual-logs"
 
@@ -183,7 +182,11 @@ class Identifier:
         if source_type == "CSV":
             object_identifier = value
         elif source_type == "JSON":
-            object_identifier = JSONPathFunctions.extend_string_path(rule["iterator"], value)
+            try:
+                object_identifier = JSONPathFunctions.extend_string_path(rule["iterator"], value)
+            except Exception as e:
+                return rule["iterator"] + value
+                
         else:
             inversion_logger.error(f"Unsupported source type: {source_type}")
             return None
@@ -413,22 +416,12 @@ class MinimalSelector(Selector):
     def __str__(self):
         return "MinimalSelector"
 
-
 class ReducedSelector(Selector):
     def select(self, triples: list[QueryTriple]):
         raise NotImplementedError
 
     def __str__(self):
         return "ReducedSelector"
-
-
-class SimpleSelector(Selector):
-    def select(self, triples: list[QueryTriple]):
-        raise NotImplementedError
-
-    def __str__(self):
-        return "SimpleSelector"
-
 
 class FullSelector(Selector):
     def select(self, triples: list[QueryTriple]):
@@ -444,8 +437,6 @@ class SelectorGenerator:
             return MinimalSelector()
         elif selector == QUERY_REDUCED:
             return ReducedSelector()
-        elif selector == QUERY_SIMPLE:
-            return SimpleSelector()
         elif selector == QUERY_FULL:
             return FullSelector()
         else:
@@ -697,7 +688,9 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
         
         Returns:
             Node: The root node
-        """    
+        """
+        if len(self.paths) == 0:
+            return Root()
         # first try to find a path connected to the root
         root_path = None
         for path in self.paths:
@@ -961,12 +954,18 @@ class Root(Node):
         return ""
         
     def find(self, key: str) -> Node|None:
+        if self.child is None:
+            return None
         return self.child.find(key)
     
     def to_template(self) -> str:
+        if self.child is None:
+            return "{}"
         return self.child.to_template()
     
     def fill(self, data: pd.DataFrame) -> str:
+        if self.child is None:
+            return "{}"
         return self.child.fill(data)
         
 
@@ -1105,8 +1104,9 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
     return df
 
 def retrieve_data(
-        mapping_rules: pd.DataFrame, source_rules: pd.DataFrame, endpoint: Endpoint,  decode_columns: bool = False
+        mapping_rules: pd.DataFrame, source_rules: pd.DataFrame, endpoint: Endpoint,  decode_columns: bool = False, try_cached: bool = False
 ) -> pd.DataFrame | None:
+    retrieve_data_start_time = time.time()
     inversion_logger.debug(f"Processing source {source_rules.iloc[0]['logical_source_value']}")
     triples: list[QueryTriple] = [
         QueryTriple(rule) for _, rule in source_rules.iterrows() if not rule["object_map_type"] in [RML_BLANK_NODE]
@@ -1119,7 +1119,7 @@ def retrieve_data(
     )
     query = Query(triples)
     generated_query = query.generate(mapping_rules)
-    print(generated_query)
+    get_logger().debug(generated_query)
     # query = generate_query(mapping_rules, iterator_rules)
     inversion_logger.debug(query)
     if generated_query is None:
@@ -1128,14 +1128,26 @@ def retrieve_data(
     else:
         inversion_logger.debug(generated_query)
         try:
-            result = endpoint.query(generated_query)
-            df = pd.read_csv(StringIO(result))
+            source = source_rules.iloc[0]["logical_source_value"]
+            if try_cached and pathlib.Path(f"{source}_table.csv").exists():
+                inversion_logger.info(f"Using cached data for {source}")
+            else:
+                start_query_time = time.time()
+                inversion_logger.debug(f"Time to generate query: {start_query_time - retrieve_data_start_time}s")
+                result = endpoint.query(generated_query)
+                end_query_time = time.time()
+                inversion_logger.debug(f"Time to query endpoint: {end_query_time - start_query_time}s")
+                with open(f"{source}_table.csv", "w") as file:
+                    file.write(result)
+            df = pd.read_csv(f"{source}_table.csv")
             if decode_columns:
                 df = query.decode_dataframe(df)
+            convert_time = time.time()
+            inversion_logger.debug(f"Time to convert data: {convert_time - end_query_time}s")
             return df
         except Exception as e:
             inversion_logger.warning(f"Error while querying endpoint: {e}")
-            raise e
+            raise
 
 def generate_template(source_rules: pd.DataFrame) -> Template | None:
     source_type = source_rules.iloc[0]["source_type"]
@@ -1169,6 +1181,7 @@ def test_logging_setup(testID: str):
     inversion_logger.setLevel(logging.DEBUG)
     
 def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, str]:
+    start_time = time.time()
     if testID is not None:
         test_logging_setup(testID)
     config = load_config_from_argument(config_file)
@@ -1177,21 +1190,31 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
     endpoint = EndpointFactory.create(config)
     insert_columns(mappings)
     results = {}
+    setup_done_time = time.time()
+    inversion_logger.debug(f"Starting sources generation, {setup_done_time - start_time}s used for setup")
     for source, source_rules in mappings.groupby("logical_source_value"):
         inversion_logger.info(f"Processing source {source}")
+        template_generation_start_time = time.time()
         template = generate_template(source_rules)
+        data_retrieval_start_time = time.time()
+        inversion_logger.debug(f"Starting data retrieval, {data_retrieval_start_time - template_generation_start_time}s used for template generation")
         source_data = retrieve_data(mappings, source_rules, endpoint, decode_columns=True)
         if source_data is None:
             results[source] = ""
             inversion_logger.warning(f"No data generated for {source}")
             continue
         try:
+            template_filling_start_time = time.time()
+            inversion_logger.debug(f"Starting template filling, {template_filling_start_time - data_retrieval_start_time}s used for data retrieval")
             filled_source = template.fill_data(source_data)
-            inversion_logger.debug(filled_source)
+            # inversion_logger.debug(filled_source)
             results[source] = filled_source
         except AttributeError as e:
             inversion_logger.error(f"Error while filling template: {e}")
             raise e
+        source_end_time = time.time()
+        inversion_logger.info(f"Source filled in {source_end_time - template_filling_start_time}s")
+        inversion_logger.info(f"Source {source} processed in {source_end_time - template_generation_start_time}s")
     return results
     
 def url_decode(url):
