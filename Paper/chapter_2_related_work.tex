@@ -37,16 +37,20 @@ The subject must always be an entity, which can either be represented by an \acr
     \label{fig:rdf_triples_table}
 \end{figure}
 
-A \acrshort{uri} is a unique identifier for a resource on the web. Unlike a normal \acrshort{url}, it does not have to point to a network location, but can also be used to identify a person, a location, a concept, etc. \citep{rdfprimer}. In \acrshort{rdf} the \acrshort{uri} is purely used for identifying resources. As such, unlike in HTML where certain conventions are expected, there are no conventions for \acrshortpl{uri} in \acrshort{rdf}. An example of this can be seen in figure \ref{fig:rdf_triples_table}, the example subjects share the same domain but this does not imply that they are closely related, or even related at all. \acrshortpl{uri} are extended to \acrshortpl{iri} to allow for a wider range of characters. Except for allowing Unicode characters, \acrshortpl{iri} are identical to \acrshortpl{uri} so little distinction is made between the two in this thesis.
+A \acrshort{uri} is a unique identifier for a resource on the web. Unlike a normal \acrshort{url}, it does not have to point to a network location, but can also be used to identify a person, a location, a concept, etc. \citep{rdfprimer}. In \acrshort{rdf} the \acrshort{uri} is purely used for identifying resources. As such, unlike in HTML where certain conventions are expected, there are no conventions for \acrshortpl{uri} in \acrshort{rdf}. An example of this can be seen in figure \ref{fig:rdf_triples_table}. In this figure the example subjects share the same domain but this does not imply that they are closely related, or even related at all. \acrshortpl{uri} are extended to \acrshortpl{iri} to allow for a wider range of characters. Except for allowing Unicode characters, \acrshortpl{iri} are identical to \acrshortpl{uri} so little distinction is made between the two in this thesis.
 
 A blank node is a node that is not identified by a \acrshort{uri}. It is used to represent an anonymous resource that can't be or has no reason to be uniquely identified. For example, the address of student r0785695 in figure \ref{fig:blank_node} is only pertinent to the student and thus does not need to be uniquely identified. A blank node is serialized as \texttt{\_:name}, where name is a unique identifier for the blank node. This identifier is only unique within the document, and thus can't be used to refer to the blank node from outside the document. \citep{rdfprimer}
 
 \begin{figure}[]
-    \begin{tabular}{lll}
+    \begin{tabular}{|lll|}
+        \hline
         \textbf{Subject}    & \textbf{Predicate}   & \textbf{Object}                                      \\
+        \hline
         ex:student/r0785695 & schema:address       & \_:addrr0785695                                      \\
         \_:addrr0785695     & schema:postalCode    & ``2800"\textasciicircum \textasciicircum xsd:integer \\
         \_:addrr0785695     & schema:streetAddress & ``Gentsesteenweg XXXX"@nl
+        \\
+        \hline
     \end{tabular}
     \caption{Example of a blank node and prefix notation}
     \label{fig:blank_node}
@@ -90,7 +94,7 @@ In its simplest form turtle consists of triple statements, sequences of subject-
 The example in listing \ref{lst:basic_turtle_example} can be rewritten using these features, as shown in listing \ref{lst:basic_turtle_example_concise}.
 
 
-\begin{lstlisting}[caption={Basic naive turtle document}, label={lst:basic_turtle_example}, captionpos=b, breaklines=true, basicstyle=\small]
+\begin{lstlisting}[caption={Basic naive turtle document}, label={lst:basic_turtle_example}, captionpos=b, breaklines=true, basicstyle=\small, float=!ht, frame=single]
     <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .
     <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Student> .
     <http://example.com/r0785695> <http://schema.org/givenName> "Tijs" .
@@ -102,7 +106,7 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
     <http://example.com/addrr0785695> <http://schema.org/addressCountry> "Belgium" .
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Basic turtle document using turtle features}, label={lst:basic_turtle_example_concise}, captionpos=b, breaklines=true]
+\begin{lstlisting}[caption={Basic turtle document using turtle features}, label={lst:basic_turtle_example_concise}, captionpos=b, breaklines=true, float=!ht, frame=single]
     @prefix schema: <https://schema.org/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
     @base <http://example.com/> .
@@ -121,7 +125,7 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
 \section{SPARQL}
 \acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data and shows many similarities to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature-rich, with support for aggregation, subqueries, negation, regex, string manipulation, etc. It also supports different return types, federated queries, entailment, etc \citep{SPARQL1.1QL}. Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}.
 
-\begin{lstlisting}[language=SPARQL, caption={Example of a basic \acrshort{sparql} SELECT query}, label={lst:sparql_select_query}, captionpos=b]
+\begin{lstlisting}[language=SPARQL, caption={Example of a basic \acrshort{sparql} SELECT query}, label={lst:sparql_select_query}, captionpos=b, float=!ht, frame=single]
     PREFIX schema: <https://schema.org/>
     SELECT ?name ?address
     WHERE {
@@ -176,7 +180,7 @@ Each of the SubjectMap, PredicateMap, ObjectMap, (and GraphMap) is a subclass of
 
 A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template is a string with placeholders, which are replaced by values from the logical row. A column is the value of a column in the logical row.
 
-\begin{lstlisting}[language=XML, caption={Example of an \acrshort{r2rml} mapping}, label={lst:r2rml_mapping}, captionpos=b]
+\begin{lstlisting}[language=XML, caption={Example of an \acrshort{r2rml} mapping}, label={lst:r2rml_mapping}, captionpos=b, float=!ht, frame=single]
 @prefix rr: <http://www.w3.org/ns/r2rml#>.
 @prefix ex: <http://example.com/ns#>.
 
@@ -188,7 +192,8 @@ A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template
     ];
     rr:predicateObjectMap [
         rr:predicate ex:id;
-        rr:objectMap [ rr:column "EMPNO"; rr:datatype xsd:positiveInteger ].
+        rr:objectMap [ rr:column "EMPNO"; 
+                        rr:datatype xsd:positiveInteger ].
     ].
 \end{lstlisting}
 
@@ -237,7 +242,7 @@ Materialization allows for a wider range of source formats, as the knowledge gra
 \subsubsection{\acrshort*{xsparql}}
 \acrshort{xsparql} is a mapping language that allows for the transformation of \acrshort{xml} to and back from \acrshort{rdf}. It expands XQUERY with SPARQL-like syntax, structure and features. Its predecessors would do lifting by querying the source \acrshort{xml} using \acrshort{xquery} to transform it into the \acrshort{xml} serialization of \acrshort{rdf}, while lowering was done using XSLT to do the inverse. Using its combined vocabulary \acrshort{xsparql} simplifies lifting and lowering, using a single language for both and having the ability to target the turtle serialization \citep{xsparql}. An example lifting and lowering query can be found in listing \ref{lst:xsparql_lifting} and listing \ref{lst:xsparql_lowering} respectively.
 
-\begin{lstlisting}[caption={Example of \acrshort{xsparql} lifting}, label={lst:xsparql_lifting}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example of \acrshort{xsparql} lifting}, label={lst:xsparql_lifting}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 declare namespace foaf="http://xmlns.com/foaf/0.1/";
 declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 let $persons := //*[@name or ../knows]
@@ -272,7 +277,7 @@ construct {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Example of \acrshort{xsparql} lowering}, label={lst:xsparql_lowering}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example of \acrshort{xsparql} lowering}, label={lst:xsparql_lowering}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 <relations>{
     for $Person $Name from <relations.rdf>
     where {$Person foaf:name $Name}
@@ -294,7 +299,7 @@ construct {
 \subsubsection{POSER: A Semantic Payload Lowering Service \citep{poser}}
 POSER(Payload lOwering SERvice) is a service that lowers \acrshort{rdf} to \acrshort{json}. To achieve this a mapping is created in two parts: first the source patterns are defined from which to extract the data, then the json structure is defined. The mapping is written in turtle, using a custom json ontology describing the json structure. A proof of concept implementation was made, but never got out of the prototype phase. It also only handles direct literal types, more complex composite values that are generated from templates are not supported. An example mapping is shown in listing \ref{lst:poser_mapping}.
 
-\begin{lstlisting}[caption={Example of a POSER mapping}, label={lst:poser_mapping}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example of a POSER mapping}, label={lst:poser_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 @prefix ctd: <http://connectd.api/> .
 @prefix onto: <http://ontodm.com/OntoDT#> .
 @prefix iots: <http://iotschema.org/> .

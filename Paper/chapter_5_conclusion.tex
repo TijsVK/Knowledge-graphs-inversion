@@ -3,23 +3,25 @@
 %                            CHAPTER                              %
 %                                                                 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
-\chapter{Roadmap}
+\chapter{Conclusion}
 \label{chapter:conclusion}
-This thesis is far from done, as such no conclusion can be made for now. Here we discuss what will be done in the second semester.
+In this master thesis we explored the possibility of inverting knowledge graphs back to their original raw data format using mapping rules. To this end we created a generic two-module design and made an implementation using RML mapping rules. We implement a data retrieval module using SPARQL and two templating modules for CSV and JSON. 
 
-\section{Implementation}
-We will improve the implementation in various ways:
-\begin{itemize}
-    \item Support for more referenceFormulations:
-    \begin{itemize}
-        \item \acrshort{json}-path
-        \item XPath
-    \end{itemize}
-    \item Joins
-    \item More robustness
-    \item More in-depth hybrid approach between SPARQL and local processing
-    \item Inverting query-based sources further by inverting the query.
-\end{itemize}
+The data retrieval modules takes the knowledge graph, either a file or an endpoint, and uses the mapping rules to retrieve the data from it. In our case we translate selected triple maps in the mapping rules into parts of a SPARQL query, adapting our approach based on the type of the triple map. The selection process aims to balance performance and reliability. Generating the output is made more challenging by the requirement to handle both absent fields and multiple occurrences of the same field while ensuring their equality. We find that to ensure proper inversion we can not use the full RML specification, but must impose restrictions on the mapping rules. These restrictions pertain to the access of the source and transformation of the data. To fully reconstruct a data source no aggregation, filtering or other irreversible transformations on the source can be done. Additionally the mapping must use all the data in the source. To be able to reconstruct values of the data no possibly irreversible transformations can be done on them as any information lost during a lossy transformation is impossible to regain. This includes the use of templates, where the divider between different references must not be present in the references. An exception exists for uri encoded templates, where the transformation is guaranteed to be reversible if reserved characters are used as divider.
 
-\section{Evaluation}
-The number of benchmarks used will be expanded to include: LUBM4OBDA, GTFS-Madrid-Bench, SDM-Genomic-dataset, and any other benchmark that has RML (or R2RML) mappings available. We will also look into creating a version of the RML test cases for inversion, as the ones designed to test the conformance of RML processors are not ideal for testing the inversion algorithm.
+The templating modules takes the data retrieved by the data retrieval module and uses it to create the source file. In case of the CSV templating module this is a simple process, as the data is already in the correct format. The JSON templating module is more complex, as JSON has a nested structure. We take all the paths from which data is retrieved and create a template from them. This template in then recursively filled from the root node, splitting the data at each array. To properly create the JSON template all filepaths must be linearly connected to the root node, using JSON features like recursive descent makes the path taken to the data unclear and the template impossible to create. This is another restriction we must impose on the mapping rules.
+
+We evaluate our implementation using the RML test cases to test various edge cases and the LUBM4OBDA benchmark to test the scalability of our data retrieval module. We find that our implementation is able to invert the knowledge graph back to the original source files in most cases. The failures mostly due to limitations of the mapping processor or incompatible mapping rules. The LUBM4OBDA benchmark shows that our data retrieval module scales linearly with the size of the knowledge graph and is completely dependent on the power of the SPARQL endpoint.
+
+\section{Future work}
+In this section we will discuss possible future work that can be done to expand on our implementation. The implementation can be expanded on in both depth and breadth. 
+
+\subsection{RML+FnO}
+Expanding the capabilities of the data retrieval module to encompass functions (both standard and custom) could be a good next step. Functions that merely transform data without losing information could be directly inverted. The data lost in lossy transformations could in some cases be regained by calling on an external data source. Lastly lossy functions could be used to verify the correctness of data values with duplicate references of which one was run through a lossy function.
+
+Implementing this would expand the depth of the implementation. We did not implement it due to the large complexity and time to implement it compared to the limited benefits it is expected to provide.
+
+\subsection{More templating modules}
+We implemented two templating modules, one for CSV and one for JSON. Each a representative of a different type of data format, tabular and nested. Implementing more templating modules would make the implementation more versatile, allowing more mixed data formats in mappings. 
+
+A special case of this is the possibility to make a database update module. If the primary key of a table is present in the references an update query can be made to update the database. 

@@ -35,11 +35,7 @@ We observe three types of limitation inherent to the system. As they stem from t
 \label{subsection:irreversible_source_transformation}
 The first limitation is caused by the transformation of the source data before mapping. The most common irreversible transformation of a source in RML is a view over a database. While some views could be reversible, like a simple projection, many are not. To be able to fully recreate a static source it must be passed on in full to the mapper, without any aggregation, filtering, or other irreversible transformations. To update an existing source, having a unique identifying (set of) reference would suffice, for databases this would be the primary key(s). The mapping must also use all the data in the table. An example irreversible source mapping on a database can be found in listing \ref{lst:irreversible_source_mapping}. This limitation is not limited to database sources. Query languages working on data formats like JSON or XML also have the capability to filter or select data, making full reconstruction impossible. Some examples of this can be found in table \ref{table:irreversible_source_mapping}.
 
-\begin{lstlisting}[caption={Irreversible source mapping from R2RML Test cases}, label={lst:irreversible_source_mapping}, captionpos=b, basicstyle=\small]
-
-
-
-
+\begin{lstlisting}[caption={Irreversible source mapping from R2RML Test cases}, label={lst:irreversible_source_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 <TriplesMap1>
     a rr:TriplesMap;
         
@@ -48,7 +44,8 @@ The first limitation is caused by the transformation of the source data before m
         FROM "Student"
         """ ];
 
-    rr:subjectMap [ rr:template "http://example.com/resource/student_{\"Name\"}"; ]; 
+    rr:subjectMap [ rr:template 
+                    "http://example.com/resource/student_{\"Name\"}"; ]; 
 
     rr:predicateObjectMap
     [ 
@@ -64,14 +61,14 @@ The first limitation is caused by the transformation of the source data before m
     .
 \end{lstlisting}
 
-\begin{table}[]
+\begin{table}[!ht]
     \begin{tabular}{|lll|}
     \hline
     XPath            & JSONPath               & Description                       \\ \hline
     //book[last()]       & \begin{tabular}[c]{@{}l@{}}\$..book[(@.length-1)]\\  \$..book[-1:]\end{tabular} & the last book in order. \\ \hline
-    //book[position()<3] & \begin{tabular}[c]{@{}l@{}}\$..book[0,1]\\  \$..book[:2]\end{tabular}           & the first two books     \\ \hline
+    //book[position()$<$3] & \begin{tabular}[c]{@{}l@{}}\$..book[0,1]\\  \$..book[:2]\end{tabular}           & the first two books     \\ \hline
     //book[isbn]     & \$..book[?(@.isbn)]     & filter all books with isbn number \\ \hline
-    //book[price$<$10] & \$..book[?(@.price$<$10)] & filter all books cheapier than 10 \\ \hline
+    //book[price$<$10] & \$..book[?(@.price$<$10)] & filter all books cheaper than 10 \\ \hline
     \end{tabular}
     \caption{Examples of irreversible source access in XPath and JSONPath}
     \label{table:irreversible_source_mapping}
@@ -94,7 +91,7 @@ First the endpoint is set up, if necessary. If the source is a file, it is uploa
 
 Next we load the mapping rules from the mapping(\acrshort{rml}) files using Morph-KGC's internal \texttt{retrieve\_mappings} function. This function takes a config file (.ini format) as input, which specifies the location of the mapping files and various other settings which can be used to configure the behavior of the mapping. The mappings are returned as a pandas DataFrame which we enrich with various helper columns. An example of a single mapping rule (row in the DataFrame) can be found in listing \ref{lst:mapping_rule}. Marked in bold are the helper columns we add.
 
-\begin{lstlisting}[caption={Example of a mapping rule in Morph-KGC}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example of a mapping rule in Morph-KGC}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 source_name: DataSource1
 triples_map_id: #TM0
 triples_map_type: http://w3id.org/rml/TriplesMap
@@ -224,7 +221,7 @@ The template map is more complex, as we have to split the value into the differe
     \end{algorithmic}
 \end{algorithm}
 
-\begin{lstlisting}[caption={Example mapping rule using all three map types}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example mapping rule using all three map types}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 @prefix rr: <http://www.w3.org/ns/r2rml#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix ex: <http://example.com/> .
@@ -256,26 +253,35 @@ rr:predicateObjectMap [
 ].
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Generated query for the mapping rule in listing \ref{lst:mapping_rule}}, label={lst:generated_query}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Generated query for the mapping rule in listing \ref{lst:mapping_rule}}, label={lst:generated_query}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 SELECT ?amount ?lname_encoded ?fname_encoded WHERE {
-    ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+    ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> 
+        <http://xmlns.com/foaf/0.1/Person> .
 
     OPTIONAL{?s <http://example.com/owes> ?amount_temp}
     OPTIONAL{BIND(?amount_temp as ?amount)}
-    FILTER(!BOUND(?amount) || !BOUND(?amount_temp) || ?amount_temp = ?amount)
+    FILTER(!BOUND(?amount) || 
+            !BOUND(?amount_temp) || 
+            ?amount_temp = ?amount)
 
     OPTIONAL{?s <http://example.com/firstName> ?fname_temp1}
     OPTIONAL{BIND(ENCODE_FOR_URI(?fname_temp1) as ?fname_encoded)}
-    FILTER(!BOUND(?fname_encoded) || !BOUND(?fname_temp1) || ENCODE_FOR_URI(?fname_temp1) = ?fname_encoded)
+    FILTER(!BOUND(?fname_encoded) || 
+            !BOUND(?fname_temp1) || 
+            ENCODE_FOR_URI(?fname_temp1) = ?fname_encoded)
 
     FILTER(REGEX(STR(?s), 'http://example.com/([^\\/]*);([^\\/]*)'))
     {} OPTIONAL{BIND(STRAFTER(STR(?s), 'http://example.com/') as ?temp)}
     BIND(STRBEFORE(STR(?temp), ';') AS ?fname_temp2)
     {} OPTIONAL{BIND(?fname_temp2 as ?fname_encoded)}
-    FILTER(!BOUND(?fname_encoded) || !BOUND(?fname_temp2) || ?fname_temp2 = ?fname_encoded)
+    FILTER(!BOUND(?fname_encoded) || 
+            !BOUND(?fname_temp2) || 
+            ?fname_temp2 = ?fname_encoded)
     {} OPTIONAL{BIND(STRAFTER(STR(?temp), ';') as ?lname_temp)}
     {} OPTIONAL{BIND(?lname_temp as ?lname_encoded)}
-    FILTER(!BOUND(?lname_encoded) || !BOUND(?lname_temp) || ?lname_temp = ?lname_encoded)
+    FILTER(!BOUND(?lname_encoded) || 
+            !BOUND(?lname_temp) || 
+            ?lname_temp = ?lname_encoded)
 }
 \end{lstlisting}
 
@@ -286,17 +292,18 @@ We generate a query to retrieve the whole source at once, this can lead to issue
 
 This is solvable by analysing the mapping rules to look for disjointed mappings and split them into separate queries. At the templating stage we could then merge the results back together. This would solve the issue of duplicated fragments, but the unmapped connections that may have been present in the source file will be lost. An example for how the result would look can be found in listing \ref{lst:better_bad_join_result}.
 
-\begin{listing}
+\begin{listing}[!ht]
     \refstepcounter{lstlisting}
-    \noindent\begin{minipage}[b]{.45\textwidth}
-        \begin{lstlisting}[basicstyle=\small]
+    \noindent\begin{minipage}[b]{.49\textwidth}
+        \begin{lstlisting}[basicstyle=\small, frame=single]
 <TriplesMap1> a rr:TriplesMap;
 rml:logicalSource [ 
     rml:source "student_sport.csv";
     rml:referenceFormulation ql:CSV
 ];
 rr:subjectMap [ 
-    rr:template "http://example.com/{Student}";
+    rr:template 
+        "http://example.com/{Student}";
     rr:class ex:Student
 ];
 rr:predicateObjectMap [ 
@@ -308,15 +315,16 @@ rr:predicateObjectMap [
         \end{lstlisting}      
     \end{minipage}
     \hfill
-    \begin{minipage}[b]{.45\textwidth}
-        \begin{lstlisting}[basicstyle=\small]
+    \begin{minipage}[b]{.47\textwidth}
+        \begin{lstlisting}[basicstyle=\small, frame=single]
 <TriplesMap2> a rr:TriplesMap;
 rml:logicalSource [ 
     rml:source "student_sport.csv";
     rml:referenceFormulation ql:CSV
 ];
 rr:subjectMap [ 
-    rr:template "http://example.com/{Sport}";
+    rr:template 
+        "http://example.com/{Sport}";
     rr:class ex:Sport
 ];
 rr:predicateObjectMap [ 
@@ -332,7 +340,7 @@ rr:predicateObjectMap [
     \label{lst:bad_join_example}
 \end{listing}
 
-\begin{lstlisting}[caption={Bad join query (trimmed)}, label={lst:bad_join_query}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Bad join query (trimmed)}, label={lst:bad_join_query}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 
 SELECT DISTINCT ?Student_name ?Sport
 WHERE {
@@ -347,7 +355,7 @@ WHERE {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Bad join knowledge graph}, label={lst:bad_join_kg}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Bad join knowledge graph}, label={lst:bad_join_kg}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 @prefix ex: <http://example.com/> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
@@ -361,7 +369,7 @@ ex:Football a ex:Sport ;
     foaf:name "Football" .
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Bad join result}, label={lst:bad_join_result}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Bad join result}, label={lst:bad_join_result}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 Student,Sport
 Venus,Tennis
 Venus,Football
@@ -369,13 +377,13 @@ Tom,Tennis
 Tom,Football
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Bad join original source}, label={lst:bad_join_expected_result}, captionpos=b]
+\begin{lstlisting}[caption={Bad join original source}, label={lst:bad_join_expected_result}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 Student,Sport
 Venus,Tennis
 Tom,Football
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Better bad join result}, label={lst:better_bad_join_result}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Better bad join result}, label={lst:better_bad_join_result}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 Student,Sport
 Venus,
 Tom,
@@ -394,7 +402,7 @@ As each referenceFormulation or even source type has its reference syntax, we ta
 \label{subsection:csv}
 The CSV referenceFormulation not only applies to CSV files, but also for any two-dimensional table-like structure like TSV, databases, Excel, etc. We however only implement the CSV source type, implementing other CSV-like sources would be very similar or simply more specific without adding any new insights. The example TriplesMap in listing \ref{lst:csv_file_mapping} results in the CSV template in listing \ref{lst:csv_file}.
 
-\begin{lstlisting}[caption={Example mapping for a CSV file}, label={lst:csv_file_mapping}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example mapping for a CSV file}, label={lst:csv_file_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 <TriplesMap1> a rr:TriplesMap;
 
 rml:logicalSource [
@@ -419,7 +427,7 @@ rr:predicateObjectMap [
 ].
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 [*ID,Name*]
 <ID>,<Name>
 \end{lstlisting}
@@ -431,7 +439,7 @@ To apply the CSV data to the template we have to take no further steps, after th
 We use the JSON referenceFormulation as an example of a nested source. We don't think implementing other nested sources like XML would bring any new challenges or insights. 
 The example YARRRML mapping in listing \ref{lst:json_file_mapping} generates the JSON template in listing \ref{lst:json_template}, we use YARRRML here to keep the example concise.
 
-\begin{lstlisting}[caption={Example YARRRML mapping for a JSON file}, label={lst:json_file_mapping}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example YARRRML mapping for a JSON file}, label={lst:json_file_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 prefixes:
     ex: "http://example.com/"
 
@@ -462,7 +470,7 @@ mappings:
                     - [str2, $(Courses.CourseName)]
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Example JSON template}, label={lst:json_template}, captionpos=b, basicstyle=\small]
+\begin{lstlisting}[caption={Example JSON template}, label={lst:json_template}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
 {
     "Programs": [
         {

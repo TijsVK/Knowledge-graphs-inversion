@@ -5,37 +5,107 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Evaluation}
 \label{chapter:evaluation}
-In this chapter we will evaluate our implementation. We will do this by testing it again various datasets, comparing the expected results with the actual results. For each dataset we will go over our testing methodology and its results. For the PoC implementation we only test the RML test cases. The implementation is under constant development, as such we hope to be able to show better results in the presentation.
+In this chapter we will evaluate our implementation. We will do this by testing it again various datasets, comparing the expected results with the actual results. For each dataset we will go over our testing methodology and its results.
 
 \section{RML test cases}
 \label{section:rml_test_cases}
-The RML test cases \citep{rml-test-cases} are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, making them a good set of test cases to test a mapper. Using them to test inversion, however, is stretching their purpose a bit. As such we have to filter out test cases that are expected to fail, as they do not produce a result. As the reading of the mappings is handled by Morph-KGC, some test cases that test things like alternative syntax look the same to us, providing little value.
+The RML test cases \citep{rml-test-cases} are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, making them a good set of test cases to test a mapper, using them to test inversion is stretching their purpose a bit. As they are made to check if the full specification is implemented, many tests having duplicate inputs and outputs with differently written mapping rules to test the lexer, which we didn't make ourselves. They also do not conform to the limitations discussed in Section \ref{section:limitations}. As such, if we were to simply take these test cases and invert them, we will get many generated source files that do not match the originals. Instead we try generating the knowledge graph again from our generated source files and compare the results with the original knowledge graph. We only test the CSV and JSON test cases, as those are the ones we implemented. 
 
-In table \ref{tab:rml_test_cases} the results of the RML test cases can be found. The failed tests are divided into categories with colors according to the reason they failed. The red failures are caused by solvable issues in the implementation. Tests marked orange are flawed but solvable in some cases, \texttt{0002b-CSV} has disconnected mappings as discussed in section \ref{section:retrieving_data}, it only passes the test because only a single row of data is mapped. In the other orange test, \texttt{0004a-CSV} the data would only be retrievable from a blank node identifier. The light-red failures are because of the limitations of the Morph-KGC library as it does not support reference-type subjects. Finally, the blue failures are impossible due to incompatibility with inversion. Many blue tests contain duplicated data, which gets removed when materializing.
+\subsection{CSV test cases}
+For the CSV test cases 23 out of 32 tests pass, the full breakdown can be found in List \ref{itemize:rml_test_cases}. Most of the failures are limitations of the mapping processor, which we can not solve. A future update to the Morph-KGC library or a change to a different processor could solve this. One tests uses a blank node to store data, but no guarantees are made about the blank node's identifier in the RDF specification. For specific triple stores, it might be possible to retrieve the data from the identifier, but it is not generally possible. The other two failures are due to the data not being stored at the subject, but being used for a join condition. In this specific case the data could be retrieved as the join condition is an 'equals' function and the data is stored in the joined subject.
 
-\begin{table}[]
+\begin{figure}[h]
     \centering
-    \begin{tabular}{ll
-    >{\columncolor[HTML]{FFFFFF}}l ll}
-    Test                              & Status                         & {\color[HTML]{000000} } & Test                              & Status                         \\
-    \cellcolor[HTML]{00FF00}0000-CSV  & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0008a-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FF00}0001a-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0008b-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FF00}0001b-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0008c-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FF00}0002a-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0009a-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{FF9900}0002b-CSV & \cellcolor[HTML]{FF9900}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0009b-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FF00}0003c-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0010a-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
-    \cellcolor[HTML]{FF9900}0004a-CSV & \cellcolor[HTML]{FF9900}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0010b-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
-    \cellcolor[HTML]{00FFFF}0005a-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0010c-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FFFF}0006a-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0011b-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
-    \cellcolor[HTML]{00FFFF}0007a-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0012a-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
-    \cellcolor[HTML]{00FFFF}0007b-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FFFF}0012b-CSV & \cellcolor[HTML]{00FFFF}\xmark \\
-    \cellcolor[HTML]{00FFFF}0007c-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{FF0000}0015a-CSV & \cellcolor[HTML]{FF0000}\xmark \\
-    \cellcolor[HTML]{00FFFF}0007d-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{EA9999}0019a-CSV & \cellcolor[HTML]{EA9999}\xmark \\
-    \cellcolor[HTML]{00FF00}0007e-CSV & \cellcolor[HTML]{00FF00}\cmark & {\color[HTML]{000000} } & \cellcolor[HTML]{EA9999}0019b-CSV & \cellcolor[HTML]{EA9999}\xmark \\
-    \cellcolor[HTML]{00FFFF}0007f-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{00FF00}0020a-CSV & \cellcolor[HTML]{00FF00}\cmark \\
-    \cellcolor[HTML]{00FFFF}0007g-CSV & \cellcolor[HTML]{00FFFF}\xmark & {\color[HTML]{000000} } & \cellcolor[HTML]{EA9999}0020b-CSV & \cellcolor[HTML]{EA9999}\xmark
+    \fbox{
+    \begin{minipage}{\textwidth}
+    Out of 32 tests:
+    \begin{itemize}
+        \item 23 tests pass
+        \item 2 fail due to data being stored in a blank node
+        \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
+        \item 5 fail because the mapping processor does not support them
+    \end{itemize}
+    \end{minipage}
+    }
+    \caption{Results of the CSV RML test cases}
+    \label{itemize:rml_test_cases}
+\end{figure}
+
+\subsection{JSON test cases}
+For the JSON test cases 24 out of 34 tests pass, the full breakdown can be found in List \ref{itemize:rml_test_cases}. The failures are similar to the CSV test cases, aside from an extra failure due to the mapping containing no references, crashing the templating engine (for CSV an empty file is generated without crashing)
+
+\begin{figure}[h]
+    \centering
+    \fbox{
+    \begin{minipage}{\textwidth}
+    Out of 34 tests:
+    \begin{itemize}
+        \item 24 tests pass
+        \item 2 fail due to data being stored in a blank node
+        \item 1 fails because the mapping contains no references, crashing the templating engine
+        \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
+        \item 5 fail because the mapping processor does not support them
+    \end{itemize}
+    \end{minipage}
+    }
+    \caption{Results of the JSON RML test cases}
+    \label{itemize:rml_test_cases}
+\end{figure}
+
+
+\section{LUBM4OBDA}
+\label{section:lubm4obda}
+The \acrfull{lubm4obda} benchmark \citep{LUBM4OBDA} is an extension of the \acrfull{lubm} benchmark \citep{LUBM}. Instead of generating OWL data it generates sql data, which paired with R2RML and RML mappings can be used to test \acrshort{odba} systems. We use the generated sql data to test the performance of our implementation on different scales. As we have not implemented a database module to recreate databases from a graph we instead reconstruct the views over the database which are used in the mappings. Comparing the speed the inversion is done for different scales of the benchmark gives us an idea of how well our implementation scales. 
+
+\subsection{Correctness}
+We compare the generated source files with the views of the mapping. We find that 15 out 22 source files are successfully generated. The issues are caused by the mapping rules having duplicate subject-predicate-object maps generated by different sources without constants to differentiate them. An example conflict can be seen in Listing \ref{listing:lubm4obda_conflict}. As this is a flaw in the mapping rules, we can not solve this issue.
+
+\begin{lstlisting}[caption={Example of a duplicate mapping pattern in the LUBM4OBDA benchmark}, captionpos=b, label={listing:lubm4obda_conflict}, basicstyle=\small, float=!ht, frame=single]
+<#GraduateStudentAdvisor>
+    rml:logicalSource [ 
+        rml:source "graduatestudentadvisor.csv" ;
+        rml:referenceFormulation ql:CSV ;
+    ];
+    rr:subjectMap [
+        rr:template "http://www.department{dnr}.university{unr}.edu/{gname}";
+    ];
+    rr:predicateObjectMap [
+        rr:predicate ub:advisor;
+        rr:objectMap [ rr:template 
+                "http://www.department{dnr}.university{unr}.edu/{fname}" ];
+    ].
+
+<#UndergraduateStudentAdvisor>
+    rml:logicalSource [ 
+        rml:source "undergraduatestudentadvisor.csv" ;
+        rml:referenceFormulation ql:CSV ;
+    ];
+    rr:subjectMap [
+        rr:template "http://www.department{dnr}.university{unr}.edu/{ugname}";
+    ];
+    rr:predicateObjectMap [
+        rr:predicate ub:advisor;
+        rr:objectMap [ rr:template 
+                "http://www.department{dnr}.university{unr}.edu/{fname}" ];
+    ].
+\end{lstlisting}
+
+\subsection{Performance}
+We run our program on the LUBM4OBDA benchmark for different scales. The test is run on a machine with a Ryzen 7 7800x3D processor and 64GB of RAM. We use the free version of GraphDB as our triple store, this limits us to single threaded performance. The results can be found in Table \ref{table:lubm4obda_performance}. We find that the time it takes to invert the mappings scales linearly with the scale of the benchmark. The time spent within the program is minimal by design, leaving the majority of the computations to the triple store. As such, the time it takes to invert the mappings is mostly dependent on the triple store's performance. The time required to convert the mappings to the query is minimal. Even at the smallest scale, it constitutes less than 0.2\% of the total time. For CSV files, minimal conversion is needed to transform the data to the source files. Although this time scales linearly with the benchmark scale, it accounts for less than 0.1\% of the total time.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \textbf{Scale} & \textbf{Time} & \textbf{Triples/s} & \textbf{Triples per second} \\
+        \hline
+        1 & 12.49s & 8,966.69 & 8,966.69 \\
+        10 & 127.61s & 11,117.26 & 11,117.26 \\
+        100 & 1379.26s & 10,839.10 & 10,839.10 \\
+        1000 & 13826.61s & 10,774.27 & 10,774.27 \\
+        \hline
     \end{tabular}
-    \captionsetup{justification=centering}
-    \caption{Results of the RML test cases}
-    \label{tab:rml_test_cases}
+    \caption{Performance on the LUBM4OBDA benchmark}
+    \label{table:lubm4obda_performance}
 \end{table}
+
