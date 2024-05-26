@@ -83,13 +83,15 @@ MORPH_CONFIG_GENERATED = """
 SOURCE_REGEX = 'rml:source "([0-z]*).([0-z]*)";'
 
 def create_check_mapping():
-    
     with open("mapping.ttl", "r") as file:
         mapping = file.read()
     # replace source match 1 with source_generated
-    source = re.search(SOURCE_REGEX, mapping).group(1)
-    extension = re.search(SOURCE_REGEX, mapping).group(2)
-    mapping = re.sub(SOURCE_REGEX, f'rml:source "{source}_generated.{extension}";', mapping)
+    sources_list = []
+    for match in re.finditer(SOURCE_REGEX, mapping):
+        sources_list.append(match.group(1))
+    sources_list = list(set(sources_list))
+    for source in sources_list:
+        mapping = mapping.replace(source, f"{source}_generated")
     with open("mapping_test.ttl", "w") as file:
         file.write(mapping)
     
@@ -111,20 +113,16 @@ class Validator:
         df1.sort_index(axis=1, inplace=True)
         df1.sort_values(by=list(df1.columns), inplace=True)
         df1.drop_duplicates(inplace=True)
+        df1.index = range(df1.shape[0])
         df2.sort_index(axis=1, inplace=True)
         df2.sort_values(by=list(df2.columns), inplace=True)
         df2.drop_duplicates(inplace=True)
-        if df1.shape != df2.shape:
+        df2.index = range(df2.shape[0])
+        try:
+            pd.testing.assert_frame_equal(df1, df2, check_like=False, check_dtype=False)
+            return True
+        except AssertionError:
             return False
-        # for each row in df1, check if it exists in df2
-        for row in df1.itertuples():
-            if row not in df2.itertuples():
-                return False
-
-        for row in df2.itertuples():
-            if row not in df1.itertuples():
-                return False
-        return True
     
     
     @staticmethod
@@ -192,8 +190,6 @@ class Validator:
         Returns:
             bool: True if the graphs are equal, False otherwise
         """
-        g1t = graph1.serialize(format="nt")
-        g2t = graph2.serialize(format="nt")
         return rdflib.compare.isomorphic(graph1, graph2)
 
 
@@ -293,36 +289,43 @@ def test_json_test_case(
     except Exception as e:
         os.chdir(original_dir)
         pytest.fail(f"Test case {rml_id} failed with error: {e}")
+    passed = 0
     for source, source_result in results.items():
         with open(source, "r") as file:
             expected_source = file.read()
         logger.debug("Generated: " + source_result)
         logger.debug("Original:" + expected_source)
+        file_name = source.split(".")[0]
+        generated_source = f"{file_name}_generated.json"
+        with open(generated_source, "w") as file:
+            file.write(source_result)
         if Validator.json_equals(source_result, expected_source):
             logger.debug(f"JSONs are equal for {source}")
             logger.debug("Test passed")
-            return
+            passed += 1
         else:
             logger.debug(f"JSONs are not equal for {source}")
             logger.debug("Test failed, checking if the re-generated graph is equal to the original graph")
-            file_name = source.split(".")[0]
-            generated_source = f"{file_name}_generated.json"
-            with open(generated_source, "w") as file:
-                file.write(source_result)
+    if passed == len(results):
+        return
             
     
     # If the JSONs are not equal, check if the re-generated graph is equal to the original graph
     create_check_mapping()
     morph_graph = morph_kgc.materialize(MORPH_CONFIG_GENERATED)
     with open("output_generated.nt", "w") as file:
-        serialized = morph_graph.serialize(format="nt")
-        file.write(serialized)
-        
+        morph_triples = morph_graph.serialize(format="nt")
+        file.write(morph_triples)
     original_graph = Graph()
     with open("output.nq", "r") as file:
         content = file.read()
         content = content.replace("E0", "")
         original_graph.parse(data=content, format="nquads")
+    if morph_triples.strip().count("\n") != content.strip().count("\n"):
+        logger.debug("Number of triples is different")
+        logger.debug("Test failed")
+        os.chdir(original_dir)
+        pytest.fail(f"Test case {rml_id} failed")
     if Validator.graph_equals(morph_graph, original_graph):
         logger.debug("Graphs are equal")
         logger.debug("Test passed")
