@@ -14,55 +14,52 @@
 
 \usepackage{graphicx}
 %\usepackage[latin1]{inputenc}           % om niet ascii karakters rechtstreeks te kunnen inputten
-\usepackage[utf8]{inputenc}            % commentarieer deze regel uit als je utf8 encoded files gebruikt in plaats van latin1
+% \usepackage[utf8]{inputenc}            % commentarieer deze regel uit als je utf8 encoded files gebruikt in plaats van latin1
 \usepackage[authoryear, round]{natbib}
 \usepackage{listings}             		% voor het weergeven van broncode
 \usepackage{verbatim}					% weergeven van code, commando's, ...
 \usepackage[hidelinks]{hyperref}		% maak PDF van de thesis navigeerbaar without boxes
 %\usepackage{hyperref}					% maak PDF van de thesis navigeerbaar
-\usepackage{url}						% URL's invoegen in tekst met behulp van \url{http://}
+% \usepackage{url}						% URL's invoegen in tekst met behulp van \url{http://}
 \usepackage[small,bf,hang]{caption}     % om de captions wat te verbeteren
 \usepackage[final]{pdfpages}            % gebruikt voor het invoegen van het artikel in pdf-formaat
 \usepackage{pslatex}					% andere lettertype's dan de standaard types
-\usepackage{lipsum}
+% \usepackage{lipsum}
 \usepackage{sectsty}					% aanpassen van de fonts van sections en chapters
 %\usepackage[nottoc,numbib]{tocbibind}	% Bibliography mee in de ToC
-\usepackage{tikz}
-\usepackage[table,xcdraw]{xcolor}
-\usepackage{standalone}
+% \usepackage{tikz}
+% \usepackage[table,xcdraw]{xcolor}
+% \usepackage{standalone}
 \usepackage{enumitem}
-\usepackage{multirow}
-\usepackage{chngpage}
-\usepackage[svgpath=fig/]{svg}
+% \usepackage{multirow}
+% \usepackage{chngpage}
+% \usepackage[svgpath=fig/]{svg}
 % \usepackage{pdflscape}
-\usepackage{rotating}
+% \usepackage{rotating}
 \usepackage{newfloat}
-\usepackage{subcaption}
+% \usepackage{subcaption}
 \DeclareFloatingEnvironment[fileext=frm,placement={!ht},name=Listing,within=chapter]{listing}
 
 \setlist{nosep}
 %\usetikzlibrary{external}
+\usepackage{mdframed}
 \usepackage[acronym]{glossaries}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
-\usepackage{amssymb}% http://ctan.org/pkg/amssymb
+% \usepackage{amssymb}% http://ctan.org/pkg/amssymb
 \usepackage{pifont}% http://ctan.org/pkg/pifont
 \newcommand{\cmark}{\ding{51}}%
 \newcommand{\xmark}{\ding{55}}%
 
-\input{abreviations.tex}
-
-
 \allsectionsfont{\sffamily}
 \chapterfont{\raggedleft\sffamily}
 
-\usepackage{float}                      % De optie H voor de plaatsing van figuren op de plaats waar je ze invoegt. bvb. \begin{figure}[H]
+% \usepackage{float}                      % De optie H voor de plaatsing van figuren op de plaats waar je ze invoegt. bvb. \begin{figure}[H]
 %\usepackage{longtable}					% tabellen die over meerdere pagina's gespreid worden
 %\usepackage[times]{quotchap}           % indien je fancy hoofdstuktitels wil
 %\usepackage[none]{hyphenat}
 %\usepackage{latexsym}
-\usepackage{amsmath}
-\usepackage{amssymb}
+% \usepackage{amsmath}
 
 % MFA: zet zoekpad voor figure
 \usepackage{subcaption}
@@ -91,7 +88,8 @@
 %lijst van symbolen toevoegen?
 %\listofsymbolspagetrue
 %\listofsymbols{symbolen}				%.tex file met daarin de lijst van symbolen
-
+\listofabbrevspagetrue
+\listofabbrevs{abreviations}			%.tex file met daarin de lijst van afkortingen
 
 
 %informatie over het eindwerk, de promotor, ...
@@ -102,7 +100,7 @@
 \campus{denayereng} %denayer,denayereng,geel,geeleng,gent,ghenteng,groept,groupteng,brugge,brugeseng
 
 \title{Inverting knowledge graphs back to raw data}
-\subtitle{How can we leverage the rules we use to construct knowledge graphs to do the inverse?} 
+\subtitle{How can we leverage the rules we use to construct knowledge graphs to do the inverse?}
 % \author{naam student}
 \forenameA{ }
 \surnameA{ }
@@ -115,17 +113,15 @@
 \promotorA[Promotor]{Prof dr. ir. Anastasia Dimou}
 \promotorB[Co-Promotor]{}
 
-
-
 \begin{document}
-%\selectlanguage{dutch} %due to incompatible syntax with the English style library and the extended features of the dutch library, I'll be modifying the dutch library to be English
 \selectlanguage{english} % For the English version
-\preface
+
+\preface 
+
+% \printglossary[type=\acronymtype, title=List of abbreviations, toctitle=List of abbreviations]
 
 \lstset{moredelim=[is][\bfseries]{[*}{*]}}
 
-%\addcontentsline{toc}{chapter}{List of abbreviations} % As this doesnt work, I'll leave it commented out for now
-% \printglossary[title=List of abbreviations, type=\acronymtype]
 \input{chapter_1_introduction}
 \input{chapter_2_related_work}
 \input{chapter_3_implementation}
@@ -136,7 +132,6 @@
 % Eventueel enkele appendices
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\appendix
-\input{bijlage_1}
 
 % Bibliografie: referenties. De items zitten in bibliografie.bib
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -148,15 +143,6 @@
 \end{document}
 
 % Back cover: change according to the correct campus
-%\includepdf{private/back_fiiw_denayer.pdf}
 \includepdf{private/back_fiiw_denayer_eng.pdf} % For the English version
-%\includepdf{private/back_fiiw_geel.pdf}
-% \includepdf{private/back_fiiw_geel_eng.pdf} % For the English version
-%\includepdf{private/back_fiiw_gent.pdf}
-% \includepdf{private/back_fiiw_ghent_eng.pdf} % For the English version
-%\includepdf{private/back_fiiw_brugge.pdf}
-% \includepdf{private/back_fiiw_bruges_eng.pdf} % For the English version
-%\includepdf{private/back_fiiw_groept.pdf}
-% \includepdf{private/back_fiiw_groupt_eng.pdf} % For the English version
 
 % \end{document}

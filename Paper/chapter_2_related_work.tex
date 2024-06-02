@@ -94,7 +94,7 @@ In its simplest form turtle consists of triple statements, sequences of subject-
 The example in listing \ref{lst:basic_turtle_example} can be rewritten using these features, as shown in listing \ref{lst:basic_turtle_example_concise}.
 
 
-\begin{lstlisting}[caption={Basic naive turtle document}, label={lst:basic_turtle_example}, captionpos=b, breaklines=true, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Basic naive turtle document}, label={lst:basic_turtle_example}, captionpos=b, breaklines=true, basicstyle=\small, frame=single]
     <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .
     <http://example.com/r0785695> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Student> .
     <http://example.com/r0785695> <http://schema.org/givenName> "Tijs" .
@@ -106,7 +106,7 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
     <http://example.com/addrr0785695> <http://schema.org/addressCountry> "Belgium" .
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Basic turtle document using turtle features}, label={lst:basic_turtle_example_concise}, captionpos=b, breaklines=true, float=!ht, frame=single]
+\begin{lstlisting}[caption={Basic turtle document using turtle features}, label={lst:basic_turtle_example_concise}, captionpos=b, breaklines=true, frame=single]
     @prefix schema: <https://schema.org/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
     @base <http://example.com/> .
@@ -125,7 +125,7 @@ The example in listing \ref{lst:basic_turtle_example} can be rewritten using the
 \section{SPARQL}
 \acrfull{sparql} is the \acrshort{w3c} standard query language for \acrshort{rdf}. It is the main way to query \acrshort{rdf} data and shows many similarities to SQL. \acrshort{sparql} queries mostly consist of a pattern of triples, which are matched against the \acrshort{rdf} graph, a basic example can be found in listing \ref{lst:sparql_select_query}. Querying is very feature-rich, with support for aggregation, subqueries, negation, regex, string manipulation, etc. It also supports different return types, federated queries, entailment, etc \citep{SPARQL1.1QL}. Aside from the query protocol it also defines the graph store protocol, which can be used to manipulate graph databases directly \citep{SPARQL1.1}.
 
-\begin{lstlisting}[language=SPARQL, caption={Example of a basic \acrshort{sparql} SELECT query}, label={lst:sparql_select_query}, captionpos=b, float=!ht, frame=single]
+\begin{lstlisting}[language=SPARQL, caption={Example of a basic \acrshort{sparql} SELECT query}, label={lst:sparql_select_query}, captionpos=b, frame=single]
     PREFIX schema: <https://schema.org/>
     SELECT ?name ?address
     WHERE {
@@ -140,7 +140,7 @@ We will discuss both \acrshort{r2rml} and \acrshort{rml} in more detail, as one 
 Most \acrshort{rml} implementations also support \acrshort{r2rml}, as \acrshort{rml} is a nearly superset of \acrshort{r2rml}.
 
 \subsection{\acrshort{r2rml}}
-\acrfull{r2rml} is a mapping language for mapping relational databases to \acrshort{rdf}. As opposed to \acrfull{dm}, which results in a direct mapping from the relational database to \acrshort{rdf} without any changes to structure or naming, \acrshort{r2rml} allows for more flexibility. R2RML mappings consist of zero or more TriplesMaps, which are used to map a table to \acrshort{rdf}. A TriplesMap consists of a logical table, a subject map, and one or more \acrfullpl{pom}.
+\acrfull{r2rml} is a mapping language for mapping relational databases to \acrshort{rdf}. As opposed to \acrfull{dm}, which results in a direct mapping from the relational database to \acrshort{rdf} without any changes to structure or naming, \acrshort{r2rml} allows for more flexibility. R2RML mappings consist of zero or more TriplesMaps, which are used to map a table to \acrshort{rdf}. A TriplesMap consists of a logical table, a subject map, and one or more \acrfullpl{pom}. An example of an \acrshort{r2rml} mapping can be seen in listing \ref{lst:r2rml_mapping}.
 
 The logical table is used to define the table that is being mapped, with each row in the table being mapped to a subject and its corresponding \acrshortpl{pom}. It is possible to create a view of a table by using a SQL query, and then map this view. This allows for more complex mappings, e.g. mapping a join of two tables or a computed column.
 % Could add this, but as we don't actually support R2RML in our implementation for now this is not really relevant
@@ -180,7 +180,7 @@ Each of the SubjectMap, PredicateMap, ObjectMap, (and GraphMap) is a subclass of
 
 A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template is a string with placeholders, which are replaced by values from the logical row. A column is the value of a column in the logical row.
 
-\begin{lstlisting}[language=XML, caption={Example of an \acrshort{r2rml} mapping}, label={lst:r2rml_mapping}, captionpos=b, float=!ht, frame=single]
+\begin{lstlisting}[language=XML, caption={Example of an \acrshort{r2rml} mapping}, label={lst:r2rml_mapping}, captionpos=b, frame=single]
 @prefix rr: <http://www.w3.org/ns/r2rml#>.
 @prefix ex: <http://example.com/ns#>.
 
@@ -223,9 +223,9 @@ A constant value is a fixed value, e.g. a \acrshort{uri} or a string. A template
 The state of the art in updating or creating the data source from a knowledge graph can be split in two categories, depending on the methodology used. The first methodology applies to virtualization, where the data is exposed as a virtual knowledge graph over the source data. The other methodology is for materialized knowledge graphs, where the knowledge graph is created as a file that can be loaded into a triple store. We will discuss the state of the art in both methodologies, concluding with the relevance of this work.
 
 \subsection{Virtualization}
-Virtualization is the process of exposing a virtual knowledge graph over the source data. This virtual knowledge graph can be queried as if it were a real knowledge graph. To achieve this mappings are used to translate queries over the knowledge graph to queries over the source data.
+Virtualization is the process of exposing a virtual knowledge graph over the source data. This virtual knowledge graph can be queried as if it were a real knowledge graph. To achieve this, mappings are used to translate queries over the knowledge graph to queries over the source data.
 
-This is most commonly used to expose a database as a virtual knowledge graph. This way an organization can expose a knowledge graph without having to completely transition to a new system. Most implementations of virtualization layers are read-only though, as the translation of SELECT queries is relatively easy but translating INSERT, DELETE or DELETE/INSERT (update) queries is much less straightforward, or even impossible in many cases. Though propagating changes trough the virtualization layer to the source data could be a big part of the linked data lifecycle, related work on this is scarce. In both ``SPARQL Update queries over R2RML mapped data sources" \citep{unbehauen-k-2017--sparqlUpdate} and ``Practical Update Management in Ontology-Based Data Access" \citep{practical_update_management_in_ontology_based_data_access} the authors propose a similar way of handling updates. Compatible updates are propagated to the source data, while incompatible updates(updates which can not be translated back to the source because of conflicts) are held in an 'overflow' triple store. Further changes may make the incompatible updates compatible, at which point they too are propagated to the source data. Larger changes affecting the general structure of the data are not stored, but instead the mapping is updated to reflect the new structure. The handling of updates is shown in figure \ref{fig:virtualization_update}.
+This is most commonly used to expose a database as a virtual knowledge graph. This way an organization can expose a knowledge graph without having to completely transition to a new system. Most implementations of virtualization layers are read-only though, as the translation of SELECT queries is relatively easy but translating INSERT, DELETE or DELETE/INSERT (update) queries is much less straightforward, or even impossible in many cases. Though propagating changes trough the virtualization layer to the source data could be a big part of the linked data lifecycle, related work on this is scarce. In both ``SPARQL Update queries over R2RML mapped data sources" \citep{unbehauen-k-2017--sparqlUpdate} and ``Practical Update Management in Ontology-Based Data Access" \citep{practical_update_management_in_ontology_based_data_access} the authors propose a similar way of handling updates. Compatible updates are propagated to the source data, while incompatible updates (updates which can not be translated back to the source because of conflicts) are held in an 'overflow' triple store. Further changes may make the incompatible updates compatible, at which point they too are propagated to the source data. Larger changes affecting the general structure of the data are not stored, but instead the mapping is updated to reflect the new structure. The handling of updates is shown in figure \ref{fig:virtualization_update}.
 
 \begin{figure}
     \centering
@@ -242,7 +242,7 @@ Materialization allows for a wider range of source formats, as the knowledge gra
 \subsubsection{\acrshort*{xsparql}}
 \acrshort{xsparql} is a mapping language that allows for the transformation of \acrshort{xml} to and back from \acrshort{rdf}. It expands XQUERY with SPARQL-like syntax, structure and features. Its predecessors would do lifting by querying the source \acrshort{xml} using \acrshort{xquery} to transform it into the \acrshort{xml} serialization of \acrshort{rdf}, while lowering was done using XSLT to do the inverse. Using its combined vocabulary \acrshort{xsparql} simplifies lifting and lowering, using a single language for both and having the ability to target the turtle serialization \citep{xsparql}. An example lifting and lowering query can be found in listing \ref{lst:xsparql_lifting} and listing \ref{lst:xsparql_lowering} respectively.
 
-\begin{lstlisting}[caption={Example of \acrshort{xsparql} lifting}, label={lst:xsparql_lifting}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example of \acrshort{xsparql} lifting}, label={lst:xsparql_lifting}, captionpos=b, basicstyle=\small, frame=single]
 declare namespace foaf="http://xmlns.com/foaf/0.1/";
 declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 let $persons := //*[@name or ../knows]
@@ -277,7 +277,7 @@ construct {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Example of \acrshort{xsparql} lowering}, label={lst:xsparql_lowering}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example of \acrshort{xsparql} lowering}, label={lst:xsparql_lowering}, captionpos=b, basicstyle=\small, frame=single]
 <relations>{
     for $Person $Name from <relations.rdf>
     where {$Person foaf:name $Name}
@@ -299,7 +299,7 @@ construct {
 \subsubsection{POSER: A Semantic Payload Lowering Service \citep{poser}}
 POSER(Payload lOwering SERvice) is a service that lowers \acrshort{rdf} to \acrshort{json}. To achieve this a mapping is created in two parts: first the source patterns are defined from which to extract the data, then the json structure is defined. The mapping is written in turtle, using a custom json ontology describing the json structure. A proof of concept implementation was made, but never got out of the prototype phase. It also only handles direct literal types, more complex composite values that are generated from templates are not supported. An example mapping is shown in listing \ref{lst:poser_mapping}.
 
-\begin{lstlisting}[caption={Example of a POSER mapping}, label={lst:poser_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example of a POSER mapping}, label={lst:poser_mapping}, captionpos=b, basicstyle=\small, frame=single]
 @prefix ctd: <http://connectd.api/> .
 @prefix onto: <http://ontodm.com/OntoDT#> .
 @prefix iots: <http://iotschema.org/> .

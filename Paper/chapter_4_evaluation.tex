@@ -9,44 +9,44 @@ In this chapter we will evaluate our implementation. We will do this by testing 
 
 \section{RML test cases}
 \label{section:rml_test_cases}
-The RML test cases \citep{rml-test-cases} are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, making them a good set of test cases to test a mapper, using them to test inversion is stretching their purpose a bit. As they are made to check if the full specification is implemented, many tests having duplicate inputs and outputs with differently written mapping rules to test the lexer, which we didn't make ourselves. They also do not conform to the limitations discussed in Section \ref{section:limitations}. As such, if we were to simply take these test cases and invert them, we will get many generated source files that do not match the originals. Instead we try generating the knowledge graph again from our generated source files and compare the results with the original knowledge graph. We only test the CSV and JSON test cases, as those are the ones we implemented. 
+The RML test cases \citep{rml-test-cases} are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, and while they are an appropriate set of test cases to test a mapper, using them to test inversion is stretching their purpose a bit. As they are made to check if the full specification is implemented, many tests having duplicate inputs and outputs with differently written mapping rules to test the lexer, which we didn't make ourselves. They also do not conform to the limitations discussed in section \ref{section:limitations}. As such, if we were to simply take these test cases and invert them, we will get many generated source files that do not match the originals. Instead we try generating the knowledge graph again from our generated source files and compare the results with the original knowledge graph. We test the CSV and JSON test cases, as those are the ones we implemented.
 
 \subsection{CSV test cases}
-For the CSV test cases 23 out of 32 tests pass, the full breakdown can be found in List \ref{itemize:rml_test_cases}. Most of the failures are limitations of the mapping processor, which we can not solve. A future update to the Morph-KGC library or a change to a different processor could solve this. One tests uses a blank node to store data, but no guarantees are made about the blank node's identifier in the RDF specification. For specific triple stores, it might be possible to retrieve the data from the identifier, but it is not generally possible. The other two failures are due to the data not being stored at the subject, but being used for a join condition. In this specific case the data could be retrieved as the join condition is an 'equals' function and the data is stored in the joined subject.
+For the CSV test cases 23 out of 32 tests pass, the full breakdown can be found in figure \ref{itemize:rml_test_cases}. Most of the failures are limitations of the mapping processor, which only future update to the Morph-KGC library or a change to a different processor could solve. Another failure is due to data being stored in a blank node identifier, but no guarantees are made about the blank node's identifier in the RDF specification. For specific triple stores, it might be possible to retrieve the data from the identifier, but it is not generally possible. The other two failures are due to the data not being stored at the subject, but being used for a join condition. In this specific case the data could be retrieved as the join condition is an 'equals' function and the data is stored in the joined subject.
 
 \begin{figure}[h]
     \centering
     \fbox{
-    \begin{minipage}{\textwidth}
-    Out of 32 tests:
-    \begin{itemize}
-        \item 23 tests pass
-        \item 2 fail due to data being stored in a blank node
-        \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
-        \item 5 fail because the mapping processor does not support them
-    \end{itemize}
-    \end{minipage}
+        \begin{minipage}{\textwidth}
+            Out of 32 tests:
+            \begin{itemize}
+                \item 23 tests pass
+                \item 2 fail due to data being stored in a blank node
+                \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
+                \item 5 fail because the mapping processor does not support them
+            \end{itemize}
+        \end{minipage}
     }
     \caption{Results of the CSV RML test cases}
     \label{itemize:rml_test_cases}
 \end{figure}
 
 \subsection{JSON test cases}
-For the JSON test cases 24 out of 34 tests pass, the full breakdown can be found in List \ref{itemize:rml_test_cases}. The failures are similar to the CSV test cases, aside from an extra failure due to the mapping containing no references, crashing the templating engine (for CSV an empty file is generated without crashing)
+For the JSON test cases 24 out of 34 tests pass, the full breakdown can be found in figure \ref{itemize:rml_test_cases}. The failures are similar to the CSV test cases, aside from an extra failure due to the mapping containing no references, crashing the templating engine (for CSV an empty file is generated without crashing)
 
 \begin{figure}[h]
     \centering
     \fbox{
-    \begin{minipage}{\textwidth}
-    Out of 34 tests:
-    \begin{itemize}
-        \item 24 tests pass
-        \item 2 fail due to data being stored in a blank node
-        \item 1 fails because the mapping contains no references, crashing the templating engine
-        \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
-        \item 5 fail because the mapping processor does not support them
-    \end{itemize}
-    \end{minipage}
+        \begin{minipage}{\textwidth}
+            Out of 34 tests:
+            \begin{itemize}
+                \item 24 tests pass
+                \item 2 fail due to data being stored in a blank node
+                \item 1 fails because the mapping contains no references, crashing the templating engine
+                \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
+                \item 5 fail because the mapping processor does not support them
+            \end{itemize}
+        \end{minipage}
     }
     \caption{Results of the JSON RML test cases}
     \label{itemize:rml_test_cases}
@@ -55,12 +55,12 @@ For the JSON test cases 24 out of 34 tests pass, the full breakdown can be found
 
 \section{LUBM4OBDA}
 \label{section:lubm4obda}
-The \acrfull{lubm4obda} benchmark \citep{LUBM4OBDA} is an extension of the \acrfull{lubm} benchmark \citep{LUBM}. Instead of generating OWL data it generates sql data, which paired with R2RML and RML mappings can be used to test \acrshort{odba} systems. We use the generated sql data to test the performance of our implementation on different scales. As we have not implemented a database module to recreate databases from a graph we instead reconstruct the views over the database which are used in the mappings. Comparing the speed the inversion is done for different scales of the benchmark gives us an idea of how well our implementation scales. 
+The \acrfull{lubm4obda} benchmark \citep{LUBM4OBDA} is an extension of the \acrfull{lubm} benchmark \citep{LUBM}. Instead of generating OWL data it generates sql data, which paired with R2RML and RML mappings can be used to test \acrshort{odba} systems. We use the generated sql data to test the performance of our implementation on different scales. As we have not implemented a database module to recreate databases from a graph we instead reconstruct the views over the database which are used in the mappings. Comparing the speed the inversion is done for different scales of the benchmark gives us an idea of how well our implementation scales.
 
 \subsection{Correctness}
-We compare the generated source files with the views of the mapping. We find that 15 out 22 source files are successfully generated. The issues are caused by the mapping rules having duplicate subject-predicate-object maps generated by different sources without constants to differentiate them. An example conflict can be seen in Listing \ref{listing:lubm4obda_conflict}. As this is a flaw in the mapping rules, we can not solve this issue.
+We compare the generated source files with the views of the mapping. We find that 15 out 22 source files are successfully generated. The issues are caused by the mapping rules having duplicate subject-predicate-object maps generated by different sources without constants to differentiate them. An example conflict can be seen in Listing \ref{listing:lubm4obda_conflict}. As this is a flaw in the mapping rules, we can not mitigate this issue.
 
-\begin{lstlisting}[caption={Example of a duplicate mapping pattern in the LUBM4OBDA benchmark}, captionpos=b, label={listing:lubm4obda_conflict}, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example of a duplicate mapping pattern in the LUBM4OBDA benchmark}, captionpos=b, label={listing:lubm4obda_conflict}, basicstyle=\small, frame=single]
 <#GraduateStudentAdvisor>
     rml:logicalSource [ 
         rml:source "graduatestudentadvisor.csv" ;
@@ -91,21 +91,53 @@ We compare the generated source files with the views of the mapping. We find tha
 \end{lstlisting}
 
 \subsection{Performance}
-We run our program on the LUBM4OBDA benchmark for different scales. The test is run on a machine with a Ryzen 7 7800x3D processor and 64GB of RAM. We use the free version of GraphDB as our triple store, this limits us to single threaded performance. The results can be found in Table \ref{table:lubm4obda_performance}. We find that the time it takes to invert the mappings scales linearly with the scale of the benchmark. The time spent within the program is minimal by design, leaving the majority of the computations to the triple store. As such, the time it takes to invert the mappings is mostly dependent on the triple store's performance. The time required to convert the mappings to the query is minimal. Even at the smallest scale, it constitutes less than 0.2\% of the total time. For CSV files, minimal conversion is needed to transform the data to the source files. Although this time scales linearly with the benchmark scale, it accounts for less than 0.1\% of the total time.
+We run our program on the LUBM4OBDA benchmark for different scales. The test is run on a machine with a Ryzen 7 7800x3D processor and 64GB of RAM. We use the free version of GraphDB as our triple store, this limits us to single threaded performance. The results can be found in Table \ref{table:lubm4obda_performance}. We find that the time it takes to invert the mappings scales linearly with the scale of the benchmark. The time spent within the program for data retrieval is minimal by design, leaving the majority of the computations to the triple store. As such, inverting the mappings is mostly dependent on the triple store's performance. The time required to convert the mappings to the query is minimal, even at the smallest scale it constitutes less than 0.2\% of the total time. For CSV files, minimal conversion is needed to transform the data to the source files. Although this time scales linearly with the benchmark scale, it accounts for less than 0.1\% of the total time.
 
 \begin{table}[h]
     \centering
-    \begin{tabular}{|c|c|c|c|}
+    \begin{tabular}{|c|c|}
         \hline
-        \textbf{Scale} & \textbf{Time} & \textbf{Triples/s} & \textbf{Triples per second} \\
+        \textbf{Scale} & \textbf{Time} \\
         \hline
-        1 & 12.49s & 8,966.69 & 8,966.69 \\
-        10 & 127.61s & 11,117.26 & 11,117.26 \\
-        100 & 1379.26s & 10,839.10 & 10,839.10 \\
-        1000 & 13826.61s & 10,774.27 & 10,774.27 \\
+        1              & 12.49s        \\
+        10             & 127.61s       \\
+        100            & 1379.26s      \\
+        1000           & 13826.61s     \\
         \hline
     \end{tabular}
-    \caption{Performance on the LUBM4OBDA benchmark}
+    \caption{\centering Performance on the LUBM4OBDA benchmark}
     \label{table:lubm4obda_performance}
 \end{table}
 
+\section{GTFS-Madrid-Bench}
+\label{section:gtfs-madrid-bench}
+The GTFS-Madrid-Bench \citep{gtfs-bench} benchmark is a benchmark for benchmark evaluating declarative KG construction engines. The data sources are based on the \acrfull{gtfs} data files of the subway network of Madrid. This data can be transformed into several formats such as CSV, JSON, SQL and XML. A scaling factor can also be applied to the data, allowing for different sizes of the benchmark. We use the CSV and JSON data sources to test our implementation on various scales. This is a good benchmark to test the performance of our JSON templating engine, as we have a baseline for the duration of the data retrieval with the CSV files.
+
+\subsection{Correctness}
+Comparing the generated to the original source files, we find that 7 out of 10 source files fully match for CSV, and 5 out of 10 source files match for JSON. The extra mismatches in JSON are due to the formatting of numbers, which is not guaranteed to be the same. In the original data the number are formatted as integers even though they are converted to doubles in the RDF, when converting back to JSON the exponent notation is used instead.
+
+Of the three remaining mismatches, two are caused by part of the data only being used for a join condition. The last one is a bug caused by the mapping doing a join between entities of the same type. This is something we failed to take into account when making the implementation.
+
+\subsection{Performance}
+The same testing setup as the LUBM4OBDA benchmark is used for the GTFS-Madrid-Bench. As such we observe the same limitation on the total performance due to the single threaded nature of the triple store. The results can be found in Table \ref{table:gtfs-madrid-bench_performance}. We find that the time to invert scales linearly with the scale of the benchmark.
+
+% csv-1: 6.75s
+% csv-10: 60.49s
+% csv-100: 641.00s
+% json-1: 12.08s
+% json-10: 109.60s
+% json-100: 1126.07s
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \textbf{Scale} & \textbf{CSV} & \textbf{JSON} \\
+        \hline
+        1              & 6.75s        & 12.08s        \\
+        10             & 60.49s       & 109.60s       \\
+        100            & 641.00s      & 1126.07s      \\
+        \hline
+    \end{tabular}
+    \caption{\centering Performance on the GTFS-Madrid-Bench benchmark}
+    \label{table:gtfs-madrid-bench_performance}
+\end{table}

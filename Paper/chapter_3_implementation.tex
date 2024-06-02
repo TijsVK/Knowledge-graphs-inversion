@@ -8,7 +8,7 @@
 In this chapter we present the design, limitations and implementation of the proposed system. The design and any of its components are not bound to any specific technology, as such they can be implemented using any programming language, framework or mapping language. Using a mapping outside its intended purpose has some limitations, we present these fundamental limitations in their own section. For the implementation we first present the general setup of the environment. We then present the implementation of the data retrieval. Lastly we present some implementations of template creation and filling.
 
 \section{System Design}
-The system we propose is a pipeline that takes as input a knowledge graph and set of mapping rules and outputs the source files from which it would have been constructed. It has the advantage of being very modular, consisting of separate data retrieval and template creation/filling modules. The data retrieval module takes a mapping file and a knowledge graph and outputs a table with the necessary data. The templating module will take the same mapping file and the table outputted by the data retrieval module and output a source file. Depending on the mapping rules and config files different modules will be used. The graph source will decide the data retrieval strategy while the output file will determine the templating engine to be used. An overview of the design can be seen in figure \ref{fig:design}.
+The system we propose is a pipeline that takes as input a knowledge graph and set of mapping rules and outputs the source files from which it would have been constructed. It has the advantage of being very modular, consisting of separate data retrieval and template creation/filling modules. The data retrieval module takes a mapping file and a knowledge graph, and outputs a table with the necessary data. The templating module will take the same mapping file and the table outputted by the data retrieval module and output a source file. Depending on the mapping rules and config files different modules will be used. The graph source will decide the data retrieval strategy while the output file will determine the templating engine to be used. An overview of the design can be seen in figure \ref{fig:design}.
 
 We will implement the system in Python, using the Morph-KGC library to process the mapping rules. For the data retrieval module, we use RML to generate SPARQL queries to execute on a SPARQL endpoint (which we set up if necessary). This gives us a single table of data in CSV format for each source which we load into a Pandas DataFrame, which is then passed on to one of two templating modules we implement: one for tabular data (CSV) and one for nested/tree data (JSON). The structure for the templates is reconstructed from the RML mapping rules. Our specific implementation is shown in figure \ref{fig:specific_design}.
 
@@ -29,13 +29,13 @@ We will implement the system in Python, using the Morph-KGC library to process t
 \section{System limitations}
 \label{section:limitations}
 
-We observe three types of limitation inherent to the system. As they stem from the very basis of the system, some are impossible to overcome while others can be mitigated. The first two are caused by irreversible processing, transforming the data in such a way that it is impossible to reconstruct the original data. The third is caused by the design of nested data structures, where the method of data access can limit the ability to reconstruct the source.
+We observe three types of limitation inherent to the system. As they stem from the very basis of the system, some are impossible to overcome while others can be mitigated. The first two are caused by irreversible processing, transforming the source or data in such a way that it is impossible to reconstruct the original. The third is caused by the design of nested data structures, where the method of data access can limit the ability to reconstruct the source.
 
 \subsection{Irreversible source transformation}
 \label{subsection:irreversible_source_transformation}
 The first limitation is caused by the transformation of the source data before mapping. The most common irreversible transformation of a source in RML is a view over a database. While some views could be reversible, like a simple projection, many are not. To be able to fully recreate a static source it must be passed on in full to the mapper, without any aggregation, filtering, or other irreversible transformations. To update an existing source, having a unique identifying (set of) reference would suffice, for databases this would be the primary key(s). The mapping must also use all the data in the table. An example irreversible source mapping on a database can be found in listing \ref{lst:irreversible_source_mapping}. This limitation is not limited to database sources. Query languages working on data formats like JSON or XML also have the capability to filter or select data, making full reconstruction impossible. Some examples of this can be found in table \ref{table:irreversible_source_mapping}.
 
-\begin{lstlisting}[caption={Irreversible source mapping from R2RML Test cases}, label={lst:irreversible_source_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Irreversible source mapping from R2RML Test cases}, label={lst:irreversible_source_mapping}, captionpos=b, basicstyle=\small, frame=single]
 <TriplesMap1>
     a rr:TriplesMap;
         
@@ -78,20 +78,20 @@ The first limitation is caused by the transformation of the source data before m
 \label{subsection:irreversible_data_transformation}
 The second limitation is caused by the transformation of data during mapping. RML allows for the transformation of data using functions. These functions offer a lot of functionality, from string functions (concat, replace, etc.) to math to custom (self-defined) functions. The result of these functions can either be stored in the graph as a value or used to join data. This transformation is often irreversible, with information from the original data lost. Take for example \texttt{grel:toUpperCase}: this function transforms the string to an all uppercase string, here we lose information about the original case. 
 
-A special case of this is the use of template maps. Template maps are a feature of most mapping languages, either explicitly (\texttt{d2rq:pattern}, \texttt{rr:template}) or implicitly through custom functions. These maps allow for the composition of multiple references into a single value using a template. This can be used to create both \acrshortpl{uri} (e.g. \texttt{http://example.com/resource/student\_\{"Name"\}\_\{"First Name"\}}) or literal values (e.g. \texttt{"\{"Name"\} \{"First Name"\}"}). For literal values this operation is theoretically irreversible as no guarantees can be made about the contents of the original data. Only by being sure the separator between the references consist of a pattern not present in the theoretical reconstructed source can we reliably split the value back into its original references. So to find out if we can reliably reconstruct the source we need the source, creating a chicken and egg problem. For \acrshortpl{uri} the operation is reversible if the separator consists of ``reserved characters" defined by rfc3986 \citep{rfc3986}, these are as follows: \texttt{:/?\#[]@!\$\&'()*+,;=}.
+A special instance of this is the use of template maps. Template maps are a feature of most mapping languages, either explicitly (\texttt{d2rq:pattern}, \texttt{rr:template}) or implicitly through custom functions. These maps allow for the composition of multiple references into a single value using a template. This can be used to create both \acrshortpl{uri} (e.g. \texttt{http://example.com/resource/student\_\{"Name"\}\_\{"First Name"\}}) or literal values (e.g. \texttt{"\{"Name"\} \{"First Name"\}"}). For literal values this operation is theoretically irreversible as no guarantees can be made about the contents of the original data. Only by being sure the separator between the references consist of a pattern not present in the theoretical reconstructed source can we reliably split the value back into its original references. So to find out if we can reliably reconstruct the source we need the source, creating a chicken and egg problem. For \acrshortpl{uri} the operation is reversible if the separator consists of ``reserved characters" defined by rfc3986 \citep{rfc3986}, these are as follows: \texttt{:/?\#[]@!\$\&'()*+,;=}.
 
 \subsection{Unreconstructable data structures}
-The third limitation is caused by the design of nested data structures. To access the data multiple paths are valid to retrieve the data. The examples in table \ref{table:irreversible_source_mapping} also apply here, as the examples use 'recursive descent' to access the data. In the example any element with the name 'book' is taken from the JSON, no matter the depth. Alternatively a direct path could be written out like \texttt{\$.store.book.title}. Another valid option for this particular dataset would be to use wildcard operators like \texttt{\$.*.*.title}. Only a direct path gives us enough information to reconstruct the source file using the mapping rules. A recursive descent gives no indications as to the depth of the results, and using wildcards gives no information about the naming of the elements. While a 'suggested' source file could still be reconstructed, and it would still work with the mapping rules, it would almost certainly not share the same structure as the original source.
+The third limitation is caused by the design of nested data structures. To access the data multiple paths are valid to retrieve the data. The examples in table \ref{table:irreversible_source_mapping} also apply here, as they use 'recursive descent' to access the data. In the example any element with the name 'book' is taken from the JSON, no matter the depth. Alternatively a direct path could be written out like \texttt{\$.store.book.title}. Another valid option for this particular dataset would be to use wildcard operators like \texttt{\$.*.*.title}. Only a direct path gives us enough information to reconstruct the source file using the mapping rules. A recursive descent gives no indications as to the depth of the results, and using wildcards gives no information about the naming of the elements. While a 'suggested' source file could still be reconstructed, and it would still work with the mapping rules, it would almost certainly not share the same structure as the original source.
 
 \section{Setup}
 
-We choose to make our implementation in Python as it both has an extensive set of libraries and is well suited for rapid development. We use Morph-KGC to process the mapping rules for its ease of use, being well made and its use of the pandas library to represent the mapping rules. As the graph source we choose a standalone SPARQL endpoint on a triple store. For working with graph(\acrshort{rdf}) files, we first upload them to a triple store.
+We choose to make our implementation in Python as it both has an extensive set of libraries and is well suited for rapid development. We use Morph-KGC to process the mapping rules for its ease of use, being well made and its use of the pandas library to represent the mapping rules. As the graph source we choose a standalone SPARQL endpoint on a triple store. For working with graph (\acrshort{rdf}) files, we first upload them to a triple store.
 
 First the endpoint is set up, if necessary. If the source is a file, it is uploaded to the endpoint using the SPARQL 1.1 Graph Store HTTP Protocol. In our setup this is a locally running free version of GraphDB. The url of the repository is then wrapped using the SPARQLWrapper library and some settings are set.
 
 Next we load the mapping rules from the mapping(\acrshort{rml}) files using Morph-KGC's internal \texttt{retrieve\_mappings} function. This function takes a config file (.ini format) as input, which specifies the location of the mapping files and various other settings which can be used to configure the behavior of the mapping. The mappings are returned as a pandas DataFrame which we enrich with various helper columns. An example of a single mapping rule (row in the DataFrame) can be found in listing \ref{lst:mapping_rule}. Marked in bold are the helper columns we add.
 
-\begin{lstlisting}[caption={Example of a mapping rule in Morph-KGC}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example of a mapping rule in Morph-KGC}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small, frame=single]
 source_name: DataSource1
 triples_map_id: #TM0
 triples_map_type: http://w3id.org/rml/TriplesMap
@@ -180,12 +180,12 @@ As mentioned in subsection \ref{subsection:irreversible_data_transformation} tem
 % }
 % \end{lstlisting}
 
-The algorithm for generating the queries can be found in algorithm \ref{alg:generate_query}. While abstracting some details, this follows the flow of the implementation. To give an example we will analyse and generate the query for the mapping rule in listing \ref{lst:mapping_rule}. The mapping rule consists of 4 triple maps: 1 constant, 2 reference, and 1 template. 
+The algorithm for generating the queries can be found in algorithm \ref{alg:generate_query}. While abstracting some details, this follows the flow of the implementation. To give an example we will analyse and generate the query for the mapping rule in listing \ref{lst:mapping_rule_all_types}. The mapping rule consists of 4 triple maps: 1 constant, 2 reference, and 1 template. 
 \subsubsection{SPARQL query generation example}
 
 Translating the constant map is simple, we add the triple pattern \texttt{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns\#type> <http://xmlns.com/foaf/0.1/Person> .}. 
 
-The first reference map uses a value not used in an encoded format, as such we do not have to encode it. We ensure that each value of ?amount is the same, to achieve this we first assign it to a temporary variable with \texttt{OPTIONAL\{?s <http://example.com/owes> ?amount\_temp\}} and then try to bind it to ?amount with \texttt{OPTIONAL\{BIND(?amount\_temp as ?amount)\}}. We then filter to make sure that if the value is present it matches all occurances with: \texttt{FILTER(!BOUND(?amount) || !BOUND(?amount\_temp) || ?amount\_temp = ?amount)}. If \texttt{?s <http://example.com/owes>} has no value \texttt{?amount\_temp} will be unbound, making \texttt{?amound} unbound too, making the filter pass. If \texttt{?s <http://example.com/owes>} does have a value, but \texttt{?amount} is already bound, the binding will fail but the filter will check if the values match. Lastly if \texttt{?s <http://example.com/owes>} has a value and \texttt{?amount} is unbound, the binding will succeed and the filter will (redundantly) check if the values match. 
+The first reference map uses a value not used in an encoded format, as such we do not have to encode it. We ensure that each value of \texttt{?amount} is the same, to achieve this we first assign it to a temporary variable with \texttt{OPTIONAL\{?s <http://example.com/owes> ?amount\_temp\}} and then try to bind it to \texttt{?amount} with \texttt{OPTIONAL\{BIND(?amount\_temp as ?amount)\}}. We then filter to make sure that if the value is present it matches all occurances with: \texttt{FILTER(!BOUND(?amount) || !BOUND(?amount\_temp) || ?amount\_temp = ?amount)}. If \texttt{?s <http://example.com/owes>} has no value \texttt{?amount\_temp} will be unbound, making \texttt{?amound} unbound too, making the filter pass. If \texttt{?s <http://example.com/owes>} does have a value, but \texttt{?amount} is already bound, the binding will fail but the filter will check if the values match. Lastly if \texttt{?s <http://example.com/owes>} has a value and \texttt{?amount} is unbound, the binding will succeed and the filter will (redundantly) check if the values match. 
 
 The second reference will be very similar to the first, but as the value is used in an encoded format in the template map we encode it using \texttt{ENCODE\_FOR\_URI} before binding and filtering.
 
@@ -221,7 +221,7 @@ The template map is more complex, as we have to split the value into the differe
     \end{algorithmic}
 \end{algorithm}
 
-\begin{lstlisting}[caption={Example mapping rule using all three map types}, label={lst:mapping_rule}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example mapping rule using all three map types}, label={lst:mapping_rule_all_types}, captionpos=b, basicstyle=\small, frame=single]
 @prefix rr: <http://www.w3.org/ns/r2rml#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix ex: <http://example.com/> .
@@ -253,7 +253,7 @@ rr:predicateObjectMap [
 ].
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Generated query for the mapping rule in listing \ref{lst:mapping_rule}}, label={lst:generated_query}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Generated query for the mapping rule in listing \ref{lst:mapping_rule_all_types}}, label={lst:generated_query}, captionpos=b, basicstyle=\small, frame=single]
 SELECT ?amount ?lname_encoded ?fname_encoded WHERE {
     ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> 
         <http://xmlns.com/foaf/0.1/Person> .
@@ -335,12 +335,12 @@ rr:predicateObjectMap [
 ].
         \end{lstlisting}
     \end{minipage}
-    \addtocounter{listing}{5}
+    \addtocounter{listing}{4}
     \caption{Bad join mapping}
     \label{lst:bad_join_example}
 \end{listing}
 
-\begin{lstlisting}[caption={Bad join query (trimmed)}, label={lst:bad_join_query}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Bad join query (trimmed)}, label={lst:bad_join_query}, captionpos=b, basicstyle=\small, frame=single]
 
 SELECT DISTINCT ?Student_name ?Sport
 WHERE {
@@ -355,7 +355,7 @@ WHERE {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Bad join knowledge graph}, label={lst:bad_join_kg}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Bad join knowledge graph}, label={lst:bad_join_kg}, captionpos=b, basicstyle=\small, frame=single]
 @prefix ex: <http://example.com/> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
@@ -369,7 +369,7 @@ ex:Football a ex:Sport ;
     foaf:name "Football" .
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Bad join result}, label={lst:bad_join_result}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Bad join result}, label={lst:bad_join_result}, captionpos=b, basicstyle=\small, frame=single]
 Student,Sport
 Venus,Tennis
 Venus,Football
@@ -377,13 +377,13 @@ Tom,Tennis
 Tom,Football
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Bad join original source}, label={lst:bad_join_expected_result}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Bad join original source}, label={lst:bad_join_expected_result}, captionpos=b, basicstyle=\small, frame=single]
 Student,Sport
 Venus,Tennis
 Tom,Football
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Better bad join result}, label={lst:better_bad_join_result}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Better bad join result}, label={lst:better_bad_join_result}, captionpos=b, basicstyle=\small, frame=single]
 Student,Sport
 Venus,
 Tom,
@@ -402,7 +402,7 @@ As each referenceFormulation or even source type has its reference syntax, we ta
 \label{subsection:csv}
 The CSV referenceFormulation not only applies to CSV files, but also for any two-dimensional table-like structure like TSV, databases, Excel, etc. We however only implement the CSV source type, implementing other CSV-like sources would be very similar or simply more specific without adding any new insights. The example TriplesMap in listing \ref{lst:csv_file_mapping} results in the CSV template in listing \ref{lst:csv_file}.
 
-\begin{lstlisting}[caption={Example mapping for a CSV file}, label={lst:csv_file_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example mapping for a CSV file}, label={lst:csv_file_mapping}, captionpos=b, basicstyle=\small, frame=single]
 <TriplesMap1> a rr:TriplesMap;
 
 rml:logicalSource [
@@ -427,7 +427,7 @@ rr:predicateObjectMap [
 ].
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example CSV template}, label={lst:csv_file}, captionpos=b, basicstyle=\small, frame=single]
 [*ID,Name*]
 <ID>,<Name>
 \end{lstlisting}
@@ -436,10 +436,10 @@ To apply the CSV data to the template we have to take no further steps, after th
 
 \subsection{JSON}
 \label{subsection:json}
-We use the JSON referenceFormulation as an example of a nested source. We don't think implementing other nested sources like XML would bring any new challenges or insights. 
+We use the JSON referenceFormulation as an example of a nested source. We don't think implementing other nested sources like XML would bring many new challenges or insights. 
 The example YARRRML mapping in listing \ref{lst:json_file_mapping} generates the JSON template in listing \ref{lst:json_template}, we use YARRRML here to keep the example concise.
 
-\begin{lstlisting}[caption={Example YARRRML mapping for a JSON file}, label={lst:json_file_mapping}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example YARRRML mapping for a JSON file}, label={lst:json_file_mapping}, captionpos=b, basicstyle=\small, frame=single]
 prefixes:
     ex: "http://example.com/"
 
@@ -470,7 +470,7 @@ mappings:
                     - [str2, $(Courses.CourseName)]
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Example JSON template}, label={lst:json_template}, captionpos=b, basicstyle=\small, float=!ht, frame=single]
+\begin{lstlisting}[caption={Example JSON template}, label={lst:json_template}, captionpos=b, basicstyle=\small, frame=single]
 {
     "Programs": [
         {
@@ -488,7 +488,7 @@ mappings:
 
 The templating module receives the data in form of a table. Each row contains the values for a full path into the nested structure. An example of a table for the mapping in listing \ref{lst:json_file_mapping} can be found in table \ref{table:json_table}. In the JSON structure we define two types of nodes, Objects and Arrays. Objects contain key-value pairs, each value being either a primitive or another node. Arrays contain a list of components sharing the same form. To fill the template we pass the data to the root node of the template, from there it is recursively passed down to the children. At each array node rows are grouped and split by the primitives filled in the layers below the array node up to the next array node and then iteratively passed down to its child node.
 
-For the simple example below the template will recursively pass on the data until it reaches the array in the ``Programs" key. It will then check which primitives will be filled up to the next array node, in this case just the ``ProgramName". The array node then groups the rows by the ``ProgramName" column and then iteratively passes each group to its child node. The child node will fill the ``ProgramName" key and then pass the data to the ``Courses" keys value. The array node in the ``Courses" key will then group the rows by the ``CourseName" and ``Credits" columns and then iteratively pass each group to its child node. Each node ensures that the returned string from its child node is properly formatted and then returns it to its parent. The iteration steps can be found in itemize \ref{itemize:json_iteration}.
+For the simple example below the template will recursively pass on the data until it reaches the array in the ``Programs" key. It will then check which primitives will be filled up to the next array node, in this case just the ``ProgramName". The array node then groups the rows by the ``ProgramName" column and then iteratively passes each group to its child node. The child node will fill the ``ProgramName" key and then pass the data to the ``Courses" keys value. The array node in the ``Courses" key will then group the rows by the ``CourseName" and ``Credits" columns and then iteratively pass each group to its child node. Each node ensures that the returned string from its child node is properly formatted and then returns it to its parent. The iteration steps can be found in figure \ref{itemize:json_iteration}.
 
 \begin{table}[]
     \begin{tabular}{|lll|}
@@ -505,26 +505,28 @@ For the simple example below the template will recursively pass on the data unti
 \end{table}
 
 \begin{figure}[]
-    \begin{itemize}
-        \item Program passes full table to root node
-        \item Root node passes full table to ``Programs" key child node (Array)
-        \item Programs array node finds the primitives to fill before the next array node, in this case ``ProgramName"
-        \item Programs array node groups the rows by the ``ProgramName" column
-        \item Programs array node passes group with ``ProgramName" = ``Program1" to its child node (3 rows)
-        \item Program object fills the ``ProgramName" key and passes the data to the ``Courses" key
-        \item Courses array node finds the primitives to fill before the next array node, in this case ``CourseName" and ``Credits"
-        \item Courses array node groups the rows by the ``CourseName" and ``Credits" columns
-        \item Courses array node passes group with ``CourseName" = ``Course1" and ``Credits" = ``3" to its child node (1 row)
-        \item Course object fills the ``CourseName" and ``Credits" keys and returns its string to the Courses array node
-        \item Courses array node passes group with ``CourseName" = ``Course2" and ``Credits" = ``4" to its child node (1 row)
-        \item \dots
-        \item After filling all rows the Courses array node returns its string to the Program object node
-        \item The Program object node returns its string to the Programs array node
-        \item Programs array node passes group with ``ProgramName" = ``Program2" to its child node (2 rows)
-        \item \dots
-        \item After filling all rows the Programs array node returns its string to the root node
-        \item The root node returns the full string
-    \end{itemize}
+    \begin{mdframed}
+        \begin{itemize}
+            \item Program passes full table to root node
+            \item Root node passes full table to ``Programs" key child node (Array)
+            \item Programs array node finds the primitives to fill before the next array node, in this case ``ProgramName"
+            \item Programs array node groups the rows by the ``ProgramName" column
+            \item Programs array node passes group with ``ProgramName" = ``Program1" to its child node (3 rows)
+            \item Program object fills the ``ProgramName" key and passes the data to the ``Courses" key
+            \item Courses array node finds the primitives to fill before the next array node, in this case ``CourseName" and ``Credits"
+            \item Courses array node groups the rows by the ``CourseName" and ``Credits" columns
+            \item Courses array node passes group with ``CourseName" = ``Course1" and ``Credits" = ``3" to its child node (1 row)
+            \item Course object fills the ``CourseName" and ``Credits" keys and returns its string to the Courses array node
+            \item Courses array node passes group with ``CourseName" = ``Course2" and ``Credits" = ``4" to its child node (1 row)
+            \item \dots
+            \item After filling all rows the Courses array node returns its string to the Program object node
+            \item The Program object node returns its string to the Programs array node
+            \item Programs array node passes group with ``ProgramName" = ``Program2" to its child node (2 rows)
+            \item \dots
+            \item After filling all rows the Programs array node returns its string to the root node
+            \item The root node returns the full string
+        \end{itemize}
+    \end{mdframed}
     \caption{Iteration steps for the JSON template}
     \label{itemize:json_iteration}
 \end{figure}
