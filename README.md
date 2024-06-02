@@ -1,6 +1,6 @@
 # Inverting knowledge graph mappings
 
-A master thesis by Tijs Van Kampen
+A monorepo for a master thesis by Tijs Van Kampen. Contains both the implementation and the paper
 
 ## Getting started
 
@@ -18,42 +18,20 @@ Install the base requirements.
 pip install -r ./Implementation/requirements.txt
 ```
 
-Run initialization.py (which adds some config files to pyrdf4j).
-
-This should be distributed as part of the pyrdf4j package, but for now, it is not as it deviates from the original package. This will be changed in the future.
+If you want to invert local graph files, run initialization.py (which adds some config files to pyrdf4j).
 
 ```bash
 python ./Implementation/initialise.py
 ```
 
-Build the pyrdf4j package and install it. Additionally, a triplestore implementing the [rdf4j API](https://rdf4j.org/documentation/reference/rest-api/) is required. This comes down to implementing both a [SPARQL endpoint](https://www.w3.org/TR/sparql11-protocol/) and the [SPARQL Graph Store HTTP Protocol](https://www.w3.org/TR/sparql11-http-rdf-update/). For this project, [GraphDB](https://graphdb.ontotext.com/) was used, but any triplestore implementing these protocols, ~~like blazegraph~~[deprecated], should work. For now, the triplestore is assumed to be running on localhost:7200, in later versions this will be configurable.
+Build the pyrdf4j package and install it. To invert local rdf files, a triplestore implementing the [rdf4j API](https://rdf4j.org/documentation/reference/rest-api/) is required. This comes down to implementing both a [SPARQL endpoint](https://www.w3.org/TR/sparql11-protocol/) and the [SPARQL Graph Store HTTP Protocol](https://www.w3.org/TR/sparql11-http-rdf-update/). For this project, [GraphDB](https://graphdb.ontotext.com/) was used, but any triplestore implementing these protocols, ~~like blazegraph~~[deprecated], should work. The triplestore is assumed to be running on localhost:7200.
 
 
-# TODO's:
-## Implementation
-- [ ] Generate the source files (basic version)
-- [ ] Add the option to use RDFLib's build-in triplestore instead of pyrdf4j (it offers both in-memory and on-disk stores)*
-  - [ ] Need to check how supporting blank nodes would work here
-- [ ] Mapping the graph 
-  - [ ] For smarter data extraction
-  - [ ] For join conditions
-- [ ] Remote sources
-- [ ] Preview of single collumn or row (or for different source types different previews)
-- [ ] Smarter querying
-  - [ ] Only get required subjects matching the mapping (using triple patterns)
-  - [ ] Direct data extraction via SPARQL functions (if possible)
+# Known issues
+- Same-type referencing joins do not work
 
-## Paper
-- [ ] Create general structure
-- [ ] Write introduction
-- [ ] Write related work
-- [ ] Write limitations (entropy in join conditions, blank nodes, ...) [maybe this should be in the implementation section]
-- [ ] Write implementation
-  - [ ] High-level algorithm
-- [ ] Evaluation
-  - [ ] Test cases
-  - [ ] Larger experiments
-  - [ ] Results
-  - [ ] Discussion
-- [ ] Conclusion
-  - [ ] Future work
+
+# Roadmap
+- Update demo with latest features
+  - JSON sources
+  - Remote sources
