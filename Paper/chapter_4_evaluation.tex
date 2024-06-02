@@ -5,14 +5,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \chapter{Evaluation}
 \label{chapter:evaluation}
-In this chapter we will evaluate our implementation. We will do this by testing it again various datasets, comparing the expected results with the actual results. For each dataset we will go over our testing methodology and its results.
+In this chapter we will evaluate our implementation. This will be done by testing it again various datasets, comparing the expected results with the actual results. For each dataset we go over our testing methodology and its results.
 
 \section{RML test cases}
 \label{section:rml_test_cases}
-The RML test cases \citep{rml-test-cases} are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, and while they are an appropriate set of test cases to test a mapper, using them to test inversion is stretching their purpose a bit. As they are made to check if the full specification is implemented, many tests having duplicate inputs and outputs with differently written mapping rules to test the lexer, which we didn't make ourselves. They also do not conform to the limitations discussed in section \ref{section:limitations}. As such, if we were to simply take these test cases and invert them, we will get many generated source files that do not match the originals. Instead we try generating the knowledge graph again from our generated source files and compare the results with the original knowledge graph. We test the CSV and JSON test cases, as those are the ones we implemented.
+The RML test cases \citep{rml-test-cases} are a set of test cases to evaluate the conformity of an RML processor. Though these test cases are not a perfect match, they offer expected outputs for certain inputs and mapping rules, making them a good starting point for testing our implementation. The test cases are designed with edge cases in mind, and while they are an appropriate set of test cases to test a mapper, using them to test inversion is stretching their purpose a bit. 
+As they are made to check if the full specification is implemented, many tests have duplicate inputs and outputs with differently written mapping rules to test the lexer, which we didn't make ourselves. They also do not conform to the limitations discussed in section \ref{section:limitations}. As such, if we were to simply take these test cases and invert them, we will get many generated source files that do not match the originals. Instead we try generating the knowledge graph again from our generated source files and compare the results with the original knowledge graph. We test the CSV and JSON test cases, as those are the ones we implemented.
 
 \subsection{CSV test cases}
-For the CSV test cases 23 out of 32 tests pass, the full breakdown can be found in figure \ref{itemize:rml_test_cases}. Most of the failures are limitations of the mapping processor, which only future update to the Morph-KGC library or a change to a different processor could solve. Another failure is due to data being stored in a blank node identifier, but no guarantees are made about the blank node's identifier in the RDF specification. For specific triple stores, it might be possible to retrieve the data from the identifier, but it is not generally possible. The other two failures are due to the data not being stored at the subject, but being used for a join condition. In this specific case the data could be retrieved as the join condition is an 'equals' function and the data is stored in the joined subject.
+For the CSV test cases 23 out of 32 tests pass, the full breakdown can be found in figure \ref{itemize:rml_test_cases}. Most of the failures are limitations of the mapping processor, which only future update to the Morph-KGC library or a change to a different processor could solve. Another failure is due to data being stored in a blank node identifier, but no guarantees are made about the blank node's identifier in the RDF specification. For specific triple stores, it might be possible to retrieve the data from the identifier, but this is not possible as a general approach. The other two failures are due to the data not being stored at the subject, rather only being used for a join condition. In this specific case the data could be retrieved as the join condition is an 'equals' function and the data is stored in the joined subject.
 
 \begin{figure}[h]
     \centering
@@ -21,8 +22,8 @@ For the CSV test cases 23 out of 32 tests pass, the full breakdown can be found 
             Out of 32 tests:
             \begin{itemize}
                 \item 23 tests pass
-                \item 2 fail due to data being stored in a blank node
-                \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
+                \item 2 fail due to data being stored in a blank node (e.g. listing \ref{lst:blank_node_data_store_mapping})
+                \item 2 fail due to data not being directly stored at the subject, but being used for a join condition (e.g. listing \ref{lst:only_join})
                 \item 5 fail because the mapping processor does not support them
             \end{itemize}
         \end{minipage}
@@ -41,9 +42,9 @@ For the JSON test cases 24 out of 34 tests pass, the full breakdown can be found
             Out of 34 tests:
             \begin{itemize}
                 \item 24 tests pass
-                \item 2 fail due to data being stored in a blank node
-                \item 1 fails because the mapping contains no references, crashing the templating engine
-                \item 2 fail due to data not being directly stored at the subject, but being used for a join condition
+                \item 2 fail due to data being stored in a blank node (e.g. listing \ref{lst:blank_node_data_store_mapping})
+                \item 1 fails because the mapping contains no references, crashing the templating engine (e.g. listing \ref{lst:no_references_mapping})
+                \item 2 fail due to data not being directly stored at the subject, but being used for a join condition (e.g. listing \ref{lst:only_join})
                 \item 5 fail because the mapping processor does not support them
             \end{itemize}
         \end{minipage}
@@ -52,12 +53,71 @@ For the JSON test cases 24 out of 34 tests pass, the full breakdown can be found
     \label{itemize:rml_test_cases}
 \end{figure}
 
+\begin{lstlisting}[caption={Example RML mapping with data being stored only in a blank node}, label={lst:blank_node_data_store_mapping}, captionpos=b, basicstyle=\small, frame=single]
+<TriplesMap1> a rr:TriplesMap;
+    rml:logicalSource [
+        rml:source "student.csv";
+        rml:referenceFormulation ql:CSV
+    ];
+
+    rr:subjectMap [ 
+        rr:template "students{ID}";
+        rr:termType rr:BlankNode
+    ];
+
+    rr:predicateObjectMap [ 
+        rr:predicate foaf:name; 
+        rr:objectMap [ rml:reference "Name" ]
+    ].
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Example RML mapping with no references}, label={lst:no_references_mapping}, captionpos=b, basicstyle=\small, frame=single]
+<TriplesMap1> a rr:TriplesMap;
+    rml:logicalSource [ 
+        rml:source "student.json";
+        rml:referenceFormulation ql:JSONPath;
+        rml:iterator "$.students[ * ]"
+    ];
+
+    rr:subjectMap [ 
+        rr:constant ex:BadStudent;  
+        rr:graphMap [ rr:constant <http://example.com/graph/student> ];
+    ];
+
+    rr:predicateObjectMap [ 
+        rr:predicateMap [ rr:constant ex:description ]; 
+        rr:objectMap [ rr:constant "Bad Student"; ]
+    ].
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Example YARRRML mapping with data only being used in a join condition}, label={lst:only_join}, captionpos=b, basicstyle=\small, frame=single]
+TriplesMap1:
+    sources:
+    - [student.csv~csv]
+    s: http://example.com/resource/student_$(ID)
+    po:
+    - [http://xmlns.com/foaf/0.1/name, $(Name)]
+    - p: http://example.com/ontology/practises
+        o:
+        mapping: TriplesMap2
+        condition:
+            function: equal
+            parameters:
+            - [str1, $(Sport)]
+            - [str2, $(ID)]
+TriplesMap2:
+    sources:
+    - [sport.csv~csv]
+    s: http://example.com/resource/sport_$(ID)
+    po:
+    - [http://www.w3.org/2000/01/rdf-schema#label, $(Name)]
+\end{lstlisting}
 
 \section{LUBM4OBDA}
 \label{section:lubm4obda}
-The \acrfull{lubm4obda} benchmark \citep{LUBM4OBDA} is an extension of the \acrfull{lubm} benchmark \citep{LUBM}. Instead of generating OWL data it generates sql data, which paired with R2RML and RML mappings can be used to test \acrshort{odba} systems. We use the generated sql data to test the performance of our implementation on different scales. As we have not implemented a database module to recreate databases from a graph we instead reconstruct the views over the database which are used in the mappings. Comparing the speed the inversion is done for different scales of the benchmark gives us an idea of how well our implementation scales.
+The \acrfull{lubm4obda} benchmark \citep{LUBM4OBDA} is an extension of the \acrfull{lubm} benchmark \citep{LUBM}. Instead of generating OWL data it generates sql data, which paired with R2RML and RML mappings can be used to test \acrshort{odba} systems. We use the generated sql data to test the performance of our implementation on different scales. As we do not implement a database module to recreate databases from a graph we instead reconstruct the views over the database which are used in the mappings. Comparing the speed the inversion is done for different scales of the benchmark gives us an idea of how well our implementation scales.
 
-\subsection{Correctness}
+\subsection{Accuracy}
 We compare the generated source files with the views of the mapping. We find that 15 out 22 source files are successfully generated. The issues are caused by the mapping rules having duplicate subject-predicate-object maps generated by different sources without constants to differentiate them. An example conflict can be seen in Listing \ref{listing:lubm4obda_conflict}. As this is a flaw in the mapping rules, we can not mitigate this issue.
 
 \begin{lstlisting}[caption={Example of a duplicate mapping pattern in the LUBM4OBDA benchmark}, captionpos=b, label={listing:lubm4obda_conflict}, basicstyle=\small, frame=single]
@@ -99,7 +159,7 @@ We run our program on the LUBM4OBDA benchmark for different scales. The test is 
         \hline
         \textbf{Scale} & \textbf{Time} \\
         \hline
-        1              & 12.49s        \\
+        1              & 12.49s        \\ 
         10             & 127.61s       \\
         100            & 1379.26s      \\
         1000           & 13826.61s     \\
@@ -113,7 +173,7 @@ We run our program on the LUBM4OBDA benchmark for different scales. The test is 
 \label{section:gtfs-madrid-bench}
 The GTFS-Madrid-Bench \citep{gtfs-bench} benchmark is a benchmark for benchmark evaluating declarative KG construction engines. The data sources are based on the \acrfull{gtfs} data files of the subway network of Madrid. This data can be transformed into several formats such as CSV, JSON, SQL and XML. A scaling factor can also be applied to the data, allowing for different sizes of the benchmark. We use the CSV and JSON data sources to test our implementation on various scales. This is a good benchmark to test the performance of our JSON templating engine, as we have a baseline for the duration of the data retrieval with the CSV files.
 
-\subsection{Correctness}
+\subsection{Accuracy}
 Comparing the generated to the original source files, we find that 7 out of 10 source files fully match for CSV, and 5 out of 10 source files match for JSON. The extra mismatches in JSON are due to the formatting of numbers, which is not guaranteed to be the same. In the original data the number are formatted as integers even though they are converted to doubles in the RDF, when converting back to JSON the exponent notation is used instead.
 
 Of the three remaining mismatches, two are caused by part of the data only being used for a join condition. The last one is a bug caused by the mapping doing a join between entities of the same type. This is something we failed to take into account when making the implementation.
@@ -133,9 +193,9 @@ The same testing setup as the LUBM4OBDA benchmark is used for the GTFS-Madrid-Be
         \hline
         \textbf{Scale} & \textbf{CSV} & \textbf{JSON} \\
         \hline
-        1              & 6.75s        & 12.08s        \\
-        10             & 60.49s       & 109.60s       \\
-        100            & 641.00s      & 1126.07s      \\
+        1              & 6.75s        & 12.08s        \\ % 0.756s multicore-csv  3.009s singlecore-csv
+        10             & 60.49s       & 109.60s       \\ % 6.960s multicore-csv  25.252 singlecore-csv
+        100            & 641.00s      & 1126.07s      \\ 
         \hline
     \end{tabular}
     \caption{\centering Performance on the GTFS-Madrid-Bench benchmark}
