@@ -1,0 +1,250 @@
+prefixes:
+  owl: http://www.w3.org/2002/07/owl#
+  rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#
+  rdfs: http://www.w3.org/2000/01/rdf-schema#
+  xsd: http://www.w3.org/2001/XMLSchema#
+  xml: http://www.w3.org/XML/1998/namespace
+  rml: http://semweb.mmlab.be/ns/rml#
+  rr: http://www.w3.org/ns/r2rml#
+  ql: http://semweb.mmlab.be/ns/ql#
+  purl: http://purl.org/dc/terms/
+
+mappings:
+  map_feed_0:
+    sources:
+    - [FEED_INFO.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/feed/$(feed_publisher_name)
+    po:
+    - [rdf:type, http://vocab.gtfs.org/terms#Feed]
+    - [http://schema.org/version, $(feed_version)]
+    - [http://purl.org/dc/terms/publisher, $(feed_publisher_name)]
+    - [http://xmlns.com/foaf/0.1/page, $(feed_publisher_url)]
+    - [http://purl.org/dc/terms/language, $(feed_lang)]
+    - [http://schema.org/startDate, $(feed_start_date), http://www.w3.org/2001/XMLSchema#date]
+    - [http://schema.org/endDate, $(feed_end_date), http://www.w3.org/2001/XMLSchema#date]
+  map_frequencies_0:
+    sources:
+    - [FREQUENCIES.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/frequency/$(trip_id)-$(start_time)
+    po:
+    - [http://vocab.gtfs.org/terms#headwaySeconds, $(headway_secs), http://www.w3.org/2001/XMLSchema#integer]
+    - p: http://vocab.gtfs.org/terms#trip
+      o:
+        mapping: map_trips_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(trip_id)]
+          - [str2, $(trip_id)]
+    - [http://vocab.gtfs.org/terms#endTime, $(end_time)]
+    - [http://vocab.gtfs.org/terms#startTime, $(start_time)]
+    - [rdf:type, http://vocab.gtfs.org/terms#Frequency]
+    - [http://vocab.gtfs.org/terms#exactTimes, $(exact_times), http://www.w3.org/2001/XMLSchema#boolean]
+  map_stoptimes_0:
+    sources:
+    - [STOP_TIMES.json~jsonpath, '$.[*]']
+    s: 
+      http://transport.linkeddata.es/madrid/metro/stoptimes/$(trip_id)-$(stop_id)-$(arrival_time)
+    po:
+    - [http://vocab.gtfs.org/terms#departureTime, $(departure_time), http://www.w3.org/2001/XMLSchema#duration]
+    - [http://vocab.gtfs.org/terms#headsign, $(stop_headsign)]
+    - [http://vocab.gtfs.org/terms#pickupType, 'http://transport.linkeddata.es/resource/PickupType/{pickup_type}']
+    - [http://vocab.gtfs.org/terms#arrivalTime, $(arrival_time), http://www.w3.org/2001/XMLSchema#duration]
+    - p: http://vocab.gtfs.org/terms#stop
+      o:
+        mapping: map_stops_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(stop_id)]
+          - [str2, $(stop_id)]
+    - p: http://vocab.gtfs.org/terms#trip
+      o:
+        mapping: map_trips_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(trip_id)]
+          - [str2, $(trip_id)]
+    - [http://vocab.gtfs.org/terms#stopSequence, $(stop_sequence), http://www.w3.org/2001/XMLSchema#integer]
+    - [rdf:type, http://vocab.gtfs.org/terms#StopTime]
+    - [http://vocab.gtfs.org/terms#dropOffType, 'http://transport.linkeddata.es/resource/DropOffType/{drop_off_type}']
+    - [http://vocab.gtfs.org/terms#distanceTraveled, $(shape_dist_traveled)]
+  map_agency_0:
+    sources:
+    - [AGENCY.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/agency/$(agency_id)
+    po:
+    - [http://xmlns.com/foaf/0.1/phone, $(agency_phone)]
+    - [http://vocab.gtfs.org/terms#fareUrl, $(agency_fare_url)]
+    - [http://xmlns.com/foaf/0.1/name, $(agency_name)]
+    - [http://xmlns.com/foaf/0.1/page, $(agency_url)]
+    - [rdf:type, http://vocab.gtfs.org/terms#Agency]
+    - [http://purl.org/dc/terms/language, $(agency_lang)]
+    - [http://vocab.gtfs.org/terms#timeZone, $(agency_timezone)]
+  map_calendar_date_rules_0:
+    sources:
+    - [CALENDAR_DATES.json~jsonpath, '$.[*]']
+    s: 
+      http://transport.linkeddata.es/madrid/metro/calendar_date_rule/$(service_id)-$(date)
+    po:
+    - [http://purl.org/dc/terms/date, $(date), http://www.w3.org/2001/XMLSchema#date]
+    - [rdf:type, http://vocab.gtfs.org/terms#CalendarDateRule]
+    - [http://vocab.gtfs.org/terms#dateAddition, $(exception_type), http://www.w3.org/2001/XMLSchema#integer]
+  map_calendar_rules_0:
+    sources:
+    - [CALENDAR.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/calendar_rules/$(service_id)
+    po:
+    - [http://schema.org/endDate, $(end_date), http://www.w3.org/2001/XMLSchema#date]
+    - [http://vocab.gtfs.org/terms#sunday, $(sunday), http://www.w3.org/2001/XMLSchema#boolean]
+    - [http://schema.org/startDate, $(start_date), http://www.w3.org/2001/XMLSchema#date]
+    - [http://vocab.gtfs.org/terms#friday, $(friday), http://www.w3.org/2001/XMLSchema#boolean]
+    - [rdf:type, http://vocab.gtfs.org/terms#CalendarRule]
+    - [http://vocab.gtfs.org/terms#thursday, $(thursday), http://www.w3.org/2001/XMLSchema#boolean]
+    - [http://vocab.gtfs.org/terms#saturday, $(saturday), http://www.w3.org/2001/XMLSchema#boolean]
+    - [http://vocab.gtfs.org/terms#wednesday, $(wednesday), http://www.w3.org/2001/XMLSchema#boolean]
+    - [http://vocab.gtfs.org/terms#monday, $(monday), http://www.w3.org/2001/XMLSchema#boolean]
+    - [http://vocab.gtfs.org/terms#tuesday, $(tuesday), http://www.w3.org/2001/XMLSchema#boolean]
+  map_routes_0:
+    sources:
+    - [ROUTES.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/routes/$(route_id)
+    po:
+    - [http://vocab.gtfs.org/terms#routeUrl, $(route_url)]
+    - p: http://vocab.gtfs.org/terms#agency
+      o:
+        mapping: map_agency_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(agency_id)]
+          - [str2, $(agency_id)]
+    - [rdf:type, http://vocab.gtfs.org/terms#Route]
+    - [http://vocab.gtfs.org/terms#textColor, $(route_text_color)]
+    - [http://vocab.gtfs.org/terms#longName, $(route_long_name)]
+    - [http://vocab.gtfs.org/terms#shortName, $(route_short_name)]
+    - [http://purl.org/dc/terms/description, $(route_desc)]
+    - [http://vocab.gtfs.org/terms#color, $(route_color)]
+    - [http://vocab.gtfs.org/terms#routeType, 'http://transport.linkeddata.es/resource/RouteType/{route_type}']
+  map_services1_0:
+    sources:
+    - [CALENDAR.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/services/$(service_id)
+    po:
+    - p: http://vocab.gtfs.org/terms#serviceRule
+      o:
+        mapping: map_calendar_rules_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(service_id)]
+          - [str2, $(service_id)]
+    - [rdf:type, http://vocab.gtfs.org/terms#Service]
+  map_services2_0:
+    sources:
+    - [CALENDAR_DATES.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/services/$(service_id)
+    po:
+    - [rdf:type, http://vocab.gtfs.org/terms#Service]
+    - p: http://vocab.gtfs.org/terms#serviceRule
+      o:
+        mapping: map_calendar_date_rules_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(service_id)]
+          - [str2, $(service_id)]
+  map_shape_points_0:
+    sources:
+    - [SHAPES.json~jsonpath, '$.[*]']
+    s: 
+      http://transport.linkeddata.es/madrid/metro/shape_point/$(shape_id)-$(shape_pt_sequence)
+    po:
+    - [http://www.w3.org/2003/01/geo/wgs84_pos#long, $(shape_pt_lon), http://www.w3.org/2001/XMLSchema#double]
+    - [http://www.w3.org/2003/01/geo/wgs84_pos#lat, $(shape_pt_lat), http://www.w3.org/2001/XMLSchema#double]
+    - [rdf:type, http://vocab.gtfs.org/terms#ShapePoint]
+    - [http://vocab.gtfs.org/terms#pointSequence, $(shape_pt_sequence)]
+    - [http://vocab.gtfs.org/terms#distanceTraveled, $(shape_dist_traveled)]
+  map_shapes_0:
+    sources:
+    - [SHAPES.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/shape/$(shape_id)
+    po:
+    - p: http://vocab.gtfs.org/terms#shapePoint
+      o:
+        mapping: map_shape_points_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(shape_id)]
+          - [str2, $(shape_id)]
+    - [rdf:type, http://vocab.gtfs.org/terms#Shape]
+  map_stops_0:
+    sources:
+    - [STOPS.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/stops/$(stop_id)
+    po:
+    - [http://vocab.gtfs.org/terms#zone, $(zone_id)]
+    - [http://xmlns.com/foaf/0.1/name, $(stop_name)]
+    - [http://purl.org/dc/terms/description, $(stop_desc)]
+    - [http://www.w3.org/2003/01/geo/wgs84_pos#long, $(stop_lon), http://www.w3.org/2001/XMLSchema#double]
+    - [http://www.w3.org/2003/01/geo/wgs84_pos#lat, $(stop_lat), http://www.w3.org/2001/XMLSchema#double]
+    - [http://vocab.gtfs.org/terms#code, $(stop_code)]
+    - [http://vocab.gtfs.org/terms#locationType, 'http://transport.linkeddata.es/resource/LocationType/{location_type}']
+    - [rdf:type, http://vocab.gtfs.org/terms#Stop]
+    - p: http://vocab.gtfs.org/terms#parentStation
+      o:
+        mapping: map_stops_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(parent_station)]
+          - [str2, $(stop_id)]
+    - [http://vocab.gtfs.org/terms#wheelchairAccessible, 'http://transport.linkeddata.es/resource/WheelchairBoardingStatus/{wheelchair_boarding}']
+    - [http://vocab.gtfs.org/terms#timeZone, $(stop_timezone)]
+    - [http://xmlns.com/foaf/0.1/page, $(stop_url)]
+    - [http://purl.org/dc/terms/identifier, $(stop_id)]
+  map_trips_0:
+    sources:
+    - [TRIPS.json~jsonpath, '$.[*]']
+    s: http://transport.linkeddata.es/madrid/metro/trips/$(trip_id)
+    po:
+    - p: http://vocab.gtfs.org/terms#route
+      o:
+        mapping: map_routes_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(route_id)]
+          - [str2, $(route_id)]
+    - p: http://vocab.gtfs.org/terms#service
+      o:
+        mapping: map_services1_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(service_id)]
+          - [str2, $(service_id)]
+    - p: http://vocab.gtfs.org/terms#service
+      o:
+        mapping: map_services2_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(service_id)]
+          - [str2, $(service_id)]
+    - [http://vocab.gtfs.org/terms#block, $(block_id)]
+    - [http://vocab.gtfs.org/terms#shortName, $(trip_short_name)]
+    - p: http://vocab.gtfs.org/terms#shape
+      o:
+        mapping: map_shapes_0
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(shape_id)]
+          - [str2, $(shape_id)]
+    - [http://vocab.gtfs.org/terms#wheelchairAccessible, 'http://transport.linkeddata.es/resource/WheelchairBoardingStatus/{wheelchair_accessible}']
+    - [rdf:type, http://vocab.gtfs.org/terms#Trip]
+    - [http://vocab.gtfs.org/terms#headsign, $(trip_headsign)]
+    - [http://vocab.gtfs.org/terms#direction, $(direction_id)]

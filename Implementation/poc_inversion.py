@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
+import functools
 import time
 from typing import Any
-from xml.dom.minidom import Document
 
 import morph_kgc.config
 from morph_kgc.mapping.mapping_parser import retrieve_mappings
@@ -15,7 +15,6 @@ import os
 import pyrdf4j.rdf4j
 import pyrdf4j.errors
 import pyrdf4j.repo_types
-import rdflib
 from SPARQLWrapper import SPARQLWrapper, CSV
 import re
 from urllib.parse import ParseResult, urlparse, unquote
@@ -185,7 +184,7 @@ class Identifier:
             try:
                 object_identifier = JSONPathFunctions.extend_string_path(rule["iterator"], value)
             except Exception as e:
-                return rule["iterator"] + value
+                return value
                 
         else:
             inversion_logger.error(f"Unsupported source type: {source_type}")
@@ -195,6 +194,7 @@ class Identifier:
 class Codex:
     def __init__(self):
         self.codex: dict[str, str] = {}
+        self.subjects: set[str] = set()
         self.idGenerator = IdGenerator()
     
     def get_id(self, key: str) -> str:
@@ -202,7 +202,11 @@ class Codex:
             return self.codex[key]
         else:
             self.codex[key] = str(self.idGenerator.get_id())
-            return self.codex[key]        
+            return self.codex[key]
+        
+    def get_id_and_is_bound(self, key: str) -> tuple[str, bool]:
+        is_bound = key in self.codex.keys()
+        return self.get_id(key), is_bound
     
 # endregion
 
@@ -282,38 +286,42 @@ class QueryTriple(Triple):
 
         if object_map_type == RML_REFERENCE:
             object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
-            object_reference = codex.get_id(object_identifier)
+            object_reference, already_bound = codex.get_id_and_is_bound(object_identifier)
             if object_identifier in encoded_references:
                 lines = []
-                plain_object_reference = codex.get_id(f"{object_identifier}_plain_{IdGenerator.get_id()}")
-                lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference}}}")
-                lines.append(f"OPTIONAL{{BIND(ENCODE_FOR_URI(?{plain_object_reference}) as ?{object_reference}_encoded)}}")
-                lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || !BOUND(?{plain_object_reference}) || ENCODE_FOR_URI(?{plain_object_reference}) = ?{object_reference}_encoded)")
+                plain_object_reference, already_bound = codex.get_id_and_is_bound(f"{object_identifier}_plain_{IdGenerator.get_id()}")
+                if already_bound:
+                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference}}}")
+                    lines.append(f"OPTIONAL{{BIND(ENCODE_FOR_URI(STR(?{plain_object_reference})) as ?{object_reference}_encoded)}}")
+                    lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || !BOUND(?{plain_object_reference}) || ENCODE_FOR_URI(STR(?{plain_object_reference})) = ?{object_reference}_encoded)")
+                else:
+                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference} . BIND(ENCODE_FOR_URI(STR(?{plain_object_reference})) as ?{object_reference}_encoded)}}")
                 return "\n".join(lines)
             else:
                 lines = []
-                temp_object_reference = codex.get_id(f"{object_identifier}_temp_{IdGenerator.get_id()}")
-                lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{temp_object_reference}}}")
-                lines.append(f"OPTIONAL{{BIND(?{temp_object_reference} as ?{object_reference})}}")
-                lines.append(f"FILTER(!BOUND(?{object_reference}) || !BOUND(?{temp_object_reference})  || ?{temp_object_reference} = ?{object_reference})")
+                temp_object_reference, already_bound = codex.get_id_and_is_bound(f"{object_identifier}_temp_{IdGenerator.get_id()}")
+                if already_bound:
+                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{temp_object_reference}}}")
+                    lines.append(f"OPTIONAL{{BIND(?{temp_object_reference} as ?{object_reference})}}")
+                    lines.append(f"FILTER(!BOUND(?{object_reference}) || !BOUND(?{temp_object_reference})  || ?{temp_object_reference} = ?{object_reference})")
+                else:
+                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{object_reference}}}")
                 return "\n".join(lines)
             
         elif object_map_type == RML_TEMPLATE:
             object_identifier:str = Identifier.generate_plain_identifier(self.rule, object_map_value)
-            object_reference = codex.get_id(object_identifier)
+            object_reference, already_bound = codex.get_id_and_is_bound(object_identifier)
             lines = []
-            full_template_identifier = f"{object_identifier}_full_{IdGenerator.get_id()}"
-            full_template_reference = codex.get_id(full_template_identifier)
-            lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{full_template_reference}}}")
-            lines.append(f"FILTER(!BOUND(?{full_template_reference}) || REGEX(STR(?{full_template_reference}), '{self.rule['object_references_template']}'))")
+            lines.append(f"?{subject_reference} {predicate} ?{object_reference}")
+            lines.append(f"FILTER(!BOUND(?{object_reference}) || REGEX(STR(?{object_reference}), '{self.rule['object_references_template']}'))")
             evaluated_template = object_references_template
-            current_slice = full_template_reference
+            current_slice = object_reference
             for object in self.rule["object_references"]: 
                 current_pre_string = evaluated_template.split("(", 1)[0]
                 current_post_string = evaluated_template.split(")", 1)[1]
                 next_pre_string = current_post_string.split("(", 1)[0]
                 object_identifier = Identifier.generate_plain_identifier(self.rule, object)
-                object_reference = codex.get_id(object_identifier)
+                object_reference, already_bound = codex.get_id_and_is_bound(object_identifier)
                 next_slice_identifier = f"{object_identifier}_slice_{IdGenerator.get_id()}"
                 next_slice = codex.get_id(next_slice_identifier)
                 unescaped_current_pre_string = current_pre_string.replace('\\', "")
@@ -387,7 +395,7 @@ class SubjectTriple(QueryTriple):
             current_post_string = evaluated_template.split(")", 1)[1]
             next_pre_string = current_post_string.split("(", 1)[0]
             reference_identifier = Identifier.generate_plain_identifier(self.rule, reference)
-            current_reference = codex.get_id(reference_identifier)
+            current_reference, already_bound = codex.get_id_and_is_bound(reference_identifier)
             next_slice_reference_identifier = f"{subject_map_value}_slice_subject_{IdGenerator.get_id()}"
             next_slice_reference = codex.get_id(next_slice_reference_identifier)
             lines.append(f"{{}} OPTIONAL{{BIND(STRAFTER(STR(?{current_slice_reference}), '{current_pre_string}') as ?{next_slice_reference})}}")
@@ -500,10 +508,29 @@ class Query:
                 {len(plain_references)} plain references: {plain_references}\n\
                 {len(all_references)} all references: {all_references}")
         triple_strings = []
-        for triple in selected_triples:
-            triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex, all_mapping_rules)
-            if triple_string is not None:
-                triple_strings.append(triple_string)
+        
+        constant_triples = [triple for triple in selected_triples if triple.rule["object_map_type"] == RML_CONSTANT]
+        reference_triples = [triple for triple in selected_triples if triple.rule["object_map_type"] == RML_REFERENCE]
+        template_triples = [triple for triple in selected_triples if triple.rule["object_map_type"] == RML_TEMPLATE]
+        parent_triples = [triple for triple in selected_triples if triple.rule["object_map_type"] == RML_PARENT_TRIPLES_MAP]
+        
+        inversion_logger.debug(f"Selected triples: {len(selected_triples)}")
+        inversion_logger.debug(f"Constant triples: {len(constant_triples)}")
+        inversion_logger.debug(f"Reference triples: {len(reference_triples)}")
+        inversion_logger.debug(f"Template triples: {len(template_triples)}")
+        inversion_logger.debug(f"Parent triples: {len(parent_triples)}")
+                            
+        # sorting might improve performance
+        for selected_triples in [constant_triples, parent_triples, template_triples, reference_triples]:
+            for triple in selected_triples:
+                triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex, all_mapping_rules)
+                if triple_string is not None:
+                    triple_strings.append(triple_string)
+        
+        # for triple in selected_triples:
+        #     triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex, all_mapping_rules)
+        #     if triple_string is not None:
+        #         triple_strings.append(triple_string)
                 
         pure_references = [f'?{self.codex.get_id(reference)}' for reference in self.pure_references]
         
@@ -635,6 +662,7 @@ class JSONPathFunctions:
         return current
     
     @staticmethod
+    @functools.cache
     def normalize_json_path(path: str) -> str:
         parsed:jsonpath_ng.Child = jsonpath_ng.parse(path)
         return str(parsed)
@@ -869,14 +897,9 @@ class Object(Node):
             str: The filled template
         """
         paths = [JSONPathFunctions.normalize_json_path(f"{self.path}.['{value}']") for value in self.values]
-        value_paths = zip(self.values, paths)
-        filled_values = [f'"{value}": "{data[path].iloc[0]}"' for value, path in value_paths]
-        # this might be unnecessary, so TODO: test if this is necessary
-        data = data.drop(columns=paths)
+        filled_values = [f'"{value}": "{data[path].iloc[0]}"' for value, path in zip(self.values, paths)]
         filled_children = [f'"{key}": {child.fill(data)}' for key, child in self.children.items()]
         return "{" + ", ".join(filled_values + filled_children) + "}"
-
-        
     
     def get_slice_columns(self) -> list[str]:
         columns = [JSONPathFunctions.normalize_json_path(f"{self.path}.['{value}']") for value in self.values]
@@ -919,16 +942,21 @@ class Array(Node):
     def fill(self, data: pd.DataFrame) -> str:
         if isinstance(self.content, Object):
             columns = self.content.get_slice_columns()
-            columns_data = data[columns].drop_duplicates()
-            filled_content = ""
-            for _, row in columns_data.iterrows():
-                # slice data is subset of data with the values of each row of the columns_data set
-                slice_data = data.copy(deep=True)
-                for column in columns:
-                    slice_data = slice_data[slice_data[column] == row[column]]
-                filled_content += self.content.fill(slice_data) + ", "
-            return "[" + filled_content[:-2] + "]"
+            
+            grouped_data = data.groupby(columns, dropna=False)
+            content_lines = []
+            
+            for _, group in grouped_data:
+                if len(group) == 0:
+                    continue
+                content_lines.append(self.content.fill(group))
+            
+            joined_content = ", ".join(content_lines)
+            return "[" + joined_content + "]"
+        
         return "[" + self.content.fill(data) + "]"
+
+
 
 class Root(Node):
     def __init__(self, child: Node = None):
@@ -1119,9 +1147,7 @@ def retrieve_data(
     )
     query = Query(triples)
     generated_query = query.generate(mapping_rules)
-    get_logger().debug(generated_query)
     # query = generate_query(mapping_rules, iterator_rules)
-    inversion_logger.debug(query)
     if generated_query is None:
         inversion_logger.warning("No query generated (no references found)")
         return None
@@ -1131,6 +1157,7 @@ def retrieve_data(
             source = source_rules.iloc[0]["logical_source_value"]
             if try_cached and pathlib.Path(f"{source}_table.csv").exists():
                 inversion_logger.info(f"Using cached data for {source}")
+                end_query_time = time.time()
             else:
                 start_query_time = time.time()
                 inversion_logger.debug(f"Time to generate query: {start_query_time - retrieve_data_start_time}s")
@@ -1139,7 +1166,7 @@ def retrieve_data(
                 inversion_logger.debug(f"Time to query endpoint: {end_query_time - start_query_time}s")
                 with open(f"{source}_table.csv", "w") as file:
                     file.write(result)
-            df = pd.read_csv(f"{source}_table.csv")
+            df = pd.read_csv(f"{source}_table.csv", dtype=str) # huge files would die when directly importing with StringIO
             if decode_columns:
                 df = query.decode_dataframe(df)
             convert_time = time.time()
