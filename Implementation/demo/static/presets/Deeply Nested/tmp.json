@@ -1,0 +1,160 @@
+{
+    "Countries": [
+        {
+            "Name": "Belgium",
+            "Country Code": "BE",
+            "Universities": [
+                {
+                    "Name": "KU Leuven",
+                    "Website": "https://www.kuleuven.be/english/",
+                    "Campuses": [
+                        {
+                            "Name": "Leuven",
+                            "Municipality": "Leuven",
+                            "Programs": [
+                                {
+                                    "Name": "Biomedical Engineering",
+                                    "Level": "Master",
+                                    "Courses": [
+                                        {
+                                            "Name": "Introduction to Biomedical Engineering",
+                                            "Credits": "8",
+                                            "Stats": {
+                                                "Standard_Deviation": "2",
+                                                "Average": "15"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.9",
+                                                "Lab": "0.1"
+                                            }
+                                        },
+                                        {
+                                            "Name": "Biomedical Instrumentation",
+                                            "Credits": "3",
+                                            "Stats": {
+                                                "Standard_Deviation": "3",
+                                                "Average": "13"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.2",
+                                                "Lab": "0.8"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Name": "Computer Science",
+                                    "Level": "Bachelor",
+                                    "Courses": [
+                                        {
+                                            "Name": "Data Structures",
+                                            "Credits": "5",
+                                            "Stats": {
+                                                "Standard_Deviation": "3",
+                                                "Average": "14"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.8",
+                                                "Lab": "0.2"
+                                            }
+                                        },
+                                        {
+                                            "Name": "Introduction to Programming",
+                                            "Credits": "4",
+                                            "Stats": {
+                                                "Standard_Deviation": "2",
+                                                "Average": "12"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.5",
+                                                "Lab": "0.5"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Name": "De Nayer",
+                            "Municipality": "Sint-Katelijne-Waver",
+                            "Programs": [
+                                {
+                                    "Name": "Industrial Engineering",
+                                    "Level": "Bachelor",
+                                    "Courses": [
+                                        {
+                                            "Name": "Introduction to Engineering",
+                                            "Credits": "3",
+                                            "Stats": {
+                                                "Standard_Deviation": "2",
+                                                "Average": "14"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.7",
+                                                "Lab": "0.3"
+                                            }
+                                        },
+                                        {
+                                            "Name": "Engineering Mathematics",
+                                            "Credits": "8",
+                                            "Stats": {
+                                                "Standard_Deviation": "3",
+                                                "Average": "10"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.6",
+                                                "Lab": "0.4"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Name": "VUB",
+                    "Website": "https://www.vub.be/en/",
+                    "Campuses": [
+                        {
+                            "Name": "Brussels",
+                            "Municipality": "Brussels",
+                            "Programs": [
+                                {
+                                    "Name": "Laboratory Technology",
+                                    "Level": "Bachelor",
+                                    "Courses": [
+                                        {
+                                            "Name": "Laboratory Techniques",
+                                            "Credits": "6",
+                                            "Stats": {
+                                                "Standard_Deviation": "3",
+                                                "Average": "12"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.4",
+                                                "Lab": "0.6"
+                                            }
+                                        },
+                                        {
+                                            "Name": "Introduction to Laboratory Technology",
+                                            "Credits": "6",
+                                            "Stats": {
+                                                "Standard_Deviation": "4",
+                                                "Average": "11"
+                                            },
+                                            "Weight": {
+                                                "Lecture": "0.3",
+                                                "Lab": "0.7"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

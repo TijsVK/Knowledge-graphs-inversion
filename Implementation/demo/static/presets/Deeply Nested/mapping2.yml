@@ -1,0 +1,29 @@
+prefixes:
+  ex: "http://example.com/"
+
+
+mappings:
+  program:
+    sources:
+        - ['data.json~jsonpath', '$.Programs[*]']
+    s: http://example.com/program/$(Name)
+    po:
+      - [a, ex:Program]
+      - [ex:name, $(Name)]
+
+  course:
+    sources:
+        - ['data.json~jsonpath', '$.Programs[*].Courses[*]']
+    s: http://example.com/course/$(Name)
+    po:
+      - [a, ex:Course]
+      - [ex:name, $(Name)]
+      - [ex:credits, $(Credits)]
+      - p: ex:partOf
+        o: 
+          - mapping: program
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Name)]
+                - [str2, $(Courses.Name)]

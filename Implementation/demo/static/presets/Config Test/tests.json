@@ -1,0 +1,32 @@
+[
+    {
+        "index": 0,
+        "name": "Config",
+        "folder": "Config Test",
+        "mapping_file": "mapping.yml",
+        "description": "Knowledge Graph describing the configuration of the tests (including itself)",
+        "sources": [
+            {
+                "name": "Tests",
+                "format": "json",
+                "file": "tests.json",
+                "location": "Config Test"
+            }
+        ]
+    },
+    {
+        "index": 1,
+        "name": "City Happiness Index",
+        "folder": "City Happiness Index",
+        "mapping_file": "yarrrml.yml",
+        "description": "Knowledge Graph of the City Happiness Index dataset, a simple single-subject csv test",
+        "sources": [
+            {
+                "name": "City Happiness Index",
+                "format": "csv",
+                "file": "chi.csv",
+                "location": "City Happiness Index"
+            }
+        ]
+    }
+]

@@ -1,0 +1,39 @@
+prefixes:
+  ex: "http://example.com/"
+  grel: http://users.ugent.be/~bjdmeest/function/grel.ttl#
+
+mappings:
+  country:
+    sources:
+      - ['data.json~jsonpath', '$.Countries[*]']
+    s: http://example.com/country/$(Name)
+    po:
+      - [a, ex:country]
+      - [ex:name, $(Name)]
+      - [ex:CountryCode, $(Country Code)]
+      - p: ex:hasUniversity
+        o: 
+          - mapping: university
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Universities.Name)]
+                - [str2, $(Name)]
+      
+  university:
+    sources:
+        - ['data.json~jsonpath', '$.Countries[*].Universities[*]']
+    s: http://example.com/university/$(Name)
+    po:
+      - [a, ex:University]
+      - [ex:name, $(Name)]
+      - [ex:website, $(Website)]
+      - p: ex:inCountry
+        o: 
+          - mapping: country
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Name)]
+                - [str2, $(Universities.Name)]
+      

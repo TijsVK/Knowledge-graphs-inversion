@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+
+<head>
+    <!-- Latest compiled and minified CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>KGI demo</title>
+    <style>
+        .load {
+            float: right;
+            width: 300px;
+            border: 1px solid black;
+            margin-left: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+
+        .load th,
+        .load td {
+            padding: 6px;
+            text-align: center;
+        }
+    </style>
+    <script src="/static/js/demo.js"></script>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <h1>KGI Demo</h1>
+        <p>Demo for Knowledge Graph Inversion. Supported source types are JSON and CSV</p>
+        <form id="DemoForm" onsubmit="return false;">
+            <div class="form-group row">
+                <label for="presetSelect">Preset:</label>
+                <select class="form-control col-md-10" id="presetSelect">
+                    <option value="None">None</option>
+                </select>
+                <input type="button" value="Reload preset" class="btn btn-primary col-md-2" id="reloadPresetButton">
+            </div>
+            <div class="form-group row">
+                <div class="col-md-4">
+                    <label for="yarrrml">Yarrrml mappings:</label>
+                    <textarea type="text" class="form-control" id="yarrrml" name="yarrrml" rows="12"></textarea>
+                </div>
+                <div class="col-md-7">
+                    <label for="knowledge_graph">Generated knowledge graph:</label>
+                    <textarea type="text" class="form-control" id="knowledge_graph" name="knowledge_graph" rows="12" placeholder="Generated knowledge graph" style="white-space: pre"></textarea>
+                </div>
+                <div class="col-md-1">
+                    <label for="knowledge_graph_stats">Knowledge graph statistics:</label>
+                    <div  id="knowledge_graph_stats">
+                        <style type="text/css">
+                            .tg  {border-collapse:collapse;border-spacing:0;}
+                            .tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+                            overflow:hidden;padding:10px 5px;word-break:normal;}
+                            .tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+                            font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+                            .tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
+                            .tg .tg-73oq{border-color:#000000;text-align:left;vertical-align:top}
+                        </style>
+                        <table class="tg" id="knowledge_graph_stats_table">
+                            <tbody>
+                            <tr>
+                                <td class="tg-0pky">#Subjects</td>
+                                <td class="tg-73oq" id="subject_count"></td>
+                            </tr>
+                            <tr>
+                                <td class="tg-0pky">#Triples</td>
+                                <td class="tg-73oq" id="triple_count"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <input type="button" value="Generate knowledge graph" class="btn btn-primary col-md-8"
+                    id="generateKnowledgeGraphButton">
+                <input type="button" value="Clear knowledge graph" class="btn btn-secondary col-md-4"
+                    id="clearKnowledgeGraphButton">
+            </div>
+            <div class="form-group row">
+                <div class="col-md-6">
+                    <label for="source_name">Original source name:</label>
+                    <select class="form-control col-md-10" id="originalSourceSelect">
+                    </select>
+                    <label for="source_content">Original source content:</label>
+                    <textarea type="text" class="form-control" id="original_source_content" name="original_source_content" rows="10" placeholder="Source contents"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label for="source_name">Inverted source name:</label>
+                    <select class="form-control col-md-10" id="invertedSourceSelect">
+                    </select>
+                    <label for="source_content">Inverted source content:</label>
+                    <textarea type="text" class="form-control" id="inverted_source_content" name="inverted_source_content" rows="10" placeholder="Source contents"></textarea>
+                </div>
+                
+            </div>
+            <div class="form-group row">
+                <input type="button" value="Invert knowledge graph" class="btn btn-primary col-md-8" id="invertKnowledgeGraphButton">
+                <input type="button" value="Copy inverted sources to original sources" class="btn btn-secondary col-md-4" id="copyGeneratedSourcesButton">
+            </div>
+
+        </form>
+    </div>
+</body>
+
+</html>

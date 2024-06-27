@@ -1,0 +1,93 @@
+prefixes:
+  ex: "http://example.com/"
+  grel: http://users.ugent.be/~bjdmeest/function/grel.ttl#
+
+mappings:
+  country:
+    sources:
+      - ['data.json~jsonpath', '$.Countries[*]']
+    s: http://example.com/country/$(Name)
+    po:
+      - [a, ex:country]
+      - [ex:name, $(Name)]
+      - [ex:CountryCode, $(Country Code)]
+      - p: ex:hasUniversity
+        o: 
+          - mapping: university
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Universities.Name)]
+                - [str2, $(Name)]
+      
+  university:
+    sources:
+        - ['data.json~jsonpath', '$.Countries[*].Universities[*]']
+    s: http://example.com/university/$(Name)
+    po:
+      - [a, ex:University]
+      - [ex:name, $(Name)]
+      - [ex:website, $(Website)]
+      - p: ex:inCountry
+        o: 
+          - mapping: country
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Name)]
+                - [str2, $(Universities.Name)]
+                
+  campus:
+    sources:
+        - ['data.json~jsonpath', '$.Countries[*].Universities[*].Campuses[*]']
+    s: http://example.com/campus/$(Name)
+    po:
+      - [a, ex:Campus]
+      - [ex:name, $(Name)]
+      - [ex:municipality, $(Municipality)]
+      - p: ex:partOf
+        o: 
+          - mapping: university
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Name)]
+                - [str2, $(Campuses.Name)]
+                
+  program:
+    sources:
+        - ['data.json~jsonpath', '$.Countries[*].Universities[*].Campuses[*].Programs[*]']
+    s: http://example.com/program/$(Name)
+    po:
+      - [a, ex:Program]
+      - [ex:name, $(Name)]
+      - [ex:level, $(Level)]
+      - p: ex:givenAt
+        o: 
+          - mapping: campus
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Name)]
+                - [str2, $(Programs.Name)]
+  
+  course:
+    sources:
+        - ['data.json~jsonpath', '$.Countries[*].Universities[*].Campuses[*].Programs[*].Courses[*]']
+    s: http://example.com/course/$(Name)
+    po:
+      - [a, ex:Course]
+      - [ex:name, $(Name)]
+      - [ex:credits, $(Credits)]
+      - [ex:LectureWeight, $(Weight.Lecture)]
+      - [ex:LabWeight, $(Weight.Lab)]
+      - [ex:AvgScore, $(Stats.Average)]
+      - [ex:StdDevScore, $(Stats.Standard_Deviation)]
+      - p: ex:partOf
+        o: 
+          - mapping: program
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(Name)]
+                - [str2, $(Courses.Name)]

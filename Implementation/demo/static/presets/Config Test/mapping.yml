@@ -1,0 +1,47 @@
+prefixes:
+  ex: "http://example.com/"
+  grel: http://users.ugent.be/~bjdmeest/function/grel.ttl#
+  schema: http://schema.org/
+  dcterms: http://purl.org/dc/terms/
+
+external:
+  NCIT_test: <http://purl.obolibrary.org/obo/NCIT_C47891>
+  NCIT_folder: <http://purl.obolibrary.org/obo/NCIT_C62486>
+  NCIT_file: <http://purl.obolibrary.org/obo/NCIT_C42883>
+  ECO_uses: <http://purl.obolibrary.org/obo/ECO_9000001>
+  NCIT_file_name: <http://purl.obolibrary.org/obo/NCIT_C171191>
+
+mappings:
+  test:
+    sources:
+      - ["tests.json~jsonpath", "$[*]"]
+    s: http://inversion.example.com/tests/$(index)
+    po:
+      - [a, $(_NCIT_test)]
+      - [$(_NCIT_folder), $(folder)]
+      - [schema:name, $(name)]
+      - [schema:description, $(description)]
+      - p: $(_ECO_uses)
+        o: 
+          - mapping: source
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(sources.name)]
+                - [str2, $(name)]
+            condition: 
+              function: equal
+              parameters:
+                - [str1, $(sources.location)]
+                - [str2, $(location)]
+
+  source:
+    sources:
+        - ["tests.json~jsonpath", "$[*].sources[*]"]
+    s: http://inversion.example.com/sources/$(location)/$(file)
+    po:
+      - [a, $(_NCIT_file)]
+      - [$(_NCIT_folder), $(folder)]
+      - [schema:name, $(name)]
+      - [schema:description, $(description)]
+      - [$(_NCIT_file_name), $(file)]

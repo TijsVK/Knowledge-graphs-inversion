@@ -1,0 +1,21 @@
+mappings:
+  TriplesMap1:
+    sources:
+    - [student.json~jsonpath, '$.students[*]']
+    s: http://example.com/resource/student_$(ID)
+    po:
+    - [http://xmlns.com/foaf/0.1/name, $(Name)]
+    - p: http://example.com/ontology/practises
+      o:
+        mapping: TriplesMap2
+        condition:
+          function: equal
+          parameters:
+          - [str1, $(Sport)]
+          - [str2, $(ID)]
+  TriplesMap2:
+    sources:
+    - [sport.json~jsonpath, '$.sports[*]']
+    s: http://example.com/resource/sport_$(ID)
+    po:
+    - [http://www.w3.org/2000/01/rdf-schema#label, $(Name)]
