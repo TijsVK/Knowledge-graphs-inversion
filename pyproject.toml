@@ -21,6 +21,8 @@ rdflib = "^6.0.0"
 jsonpath-ng = "^1.6.1"
 psycopg2 = "^2.9.9"
 sqlalchemy = "^2.0.34"
+docker = "^7.1.0"
+sql-metadata = "^2.13.0"
 
 
 [tool.poetry.group.test.dependencies]
