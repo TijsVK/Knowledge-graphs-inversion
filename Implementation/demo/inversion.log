@@ -1,0 +1,14 @@
+inversion - DEBUG - Creating repository: b9479fa9ee407adabdc6c04aed78dbe8
+inversion - DEBUG - SELECT ?Year ?Decibel_Level ?City ?Happiness_Score ?Green_Space_Area ?Air_Quality_Index ?Month ?Cost_of_Living_Index ?Traffic_Density ?Healthcare_Index WHERE {
+	?s0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/measurement> .
+	OPTIONAL{?s0 <http://schema.org/airQualityIndex> ?Air_Quality_Index} .
+	OPTIONAL{?s0 <http://schema.org/city> ?City} .
+	OPTIONAL{?s0 <http://schema.org/costOfLivingIndex> ?Cost_of_Living_Index} .
+	OPTIONAL{?s0 <http://schema.org/decibelLevel> ?Decibel_Level} .
+	OPTIONAL{?s0 <http://schema.org/greenSpaceArea> ?Green_Space_Area} .
+	OPTIONAL{?s0 <http://schema.org/happinessScore> ?Happiness_Score} .
+	OPTIONAL{?s0 <http://schema.org/healthcareIndex> ?Healthcare_Index} .
+	OPTIONAL{?s0 <http://schema.org/month> ?Month} .
+	OPTIONAL{?s0 <http://schema.org/trafficDensity> ?Traffic_Density} .
+	OPTIONAL{?s0 <http://schema.org/year> ?Year} .
+}

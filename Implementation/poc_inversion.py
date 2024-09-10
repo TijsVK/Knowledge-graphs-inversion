@@ -579,9 +579,28 @@ class LocalSparqlGraphStore(Endpoint):
         inversion_logger.debug(f"Creating repository: {self._repoid}")
         rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
         rdf4jconnector.empty_repository(self._repoid)
-        rdf4jconnector.create_repository(
-            self._repoid, accept_existing=True, repo_type="graphdb"
-        )
+        
+        # Create GraphDB repository configuration
+        config = f"""
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+        @prefix rep: <http://www.openrdf.org/config/repository#>.
+        @prefix sr: <http://www.openrdf.org/config/repository/sail#>.
+        @prefix sail: <http://www.openrdf.org/config/sail#>.
+        @prefix graphdb: <http://www.ontotext.com/config/graphdb#>.
+
+        [] a rep:Repository ;
+            rep:repositoryID "{self._repoid}" ;
+            rdfs:label "GraphDB Repository" ;
+            rep:repositoryImpl [
+                rep:repositoryType "graphdb:SailRepository" ;
+                sr:sailImpl [
+                    sail:sailType "graphdb:Sail" ;
+                    graphdb:entity-id-size  "32" ;
+                ]
+            ].
+        """
+        
+        rdf4jconnector.create_repository(self._repoid, config=config, accept_existing=True)
         rdf4jconnector.add_data_to_repo(self._repoid, data, "text/x-nquads")
         time.sleep(1)
         self._sparql = SPARQLWrapper(

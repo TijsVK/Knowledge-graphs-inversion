@@ -34,7 +34,7 @@ MORPH_CONFIG = f"""
 
     # MAPPINGS
     mapping_partitioning=PARTIAL-AGGREGATIONS
-    infer_sql_datatypes=no
+    infer_sql_datatypes=yes
 
     # MULTIPROCESSING
     number_of_processes=
