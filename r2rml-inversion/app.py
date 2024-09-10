@@ -38,6 +38,21 @@ def run_test():
     test_id = request.form['test_id']
     database_system = request.form['database_system']
     
+    return run_single_test(test_id, database_system)
+
+@app.route('/run_all_tests', methods=['POST'])
+def run_all_tests():
+    database_system = request.form['database_system']
+    tests = [f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')]
+    
+    all_results = []
+    for test_id in tests:
+        result = run_single_test(test_id, database_system)
+        all_results.append(result)
+    
+    return jsonify({'status': 'success', 'results': all_results})
+
+def run_single_test(test_id, database_system):
     test_dir = os.path.join(TEST_CASES_DIR)
     os.chdir(test_dir)
 
@@ -58,15 +73,16 @@ def run_test():
         
         os.chdir(os.path.dirname(__file__))
         
-        return jsonify({'status': 'success', 'results': results})
+        return {'status': 'success', 'test_id': test_id, 'results': results}
     except Exception as e:
         error_traceback = traceback.format_exc()
         os.chdir(os.path.dirname(__file__))
-        return jsonify({
+        return {
             'status': 'error',
+            'test_id': test_id,
             'message': str(e),
             'traceback': error_traceback
-        })
+        }
 
 @app.route('/get_mapping/<test_id>')
 def get_mapping(test_id):

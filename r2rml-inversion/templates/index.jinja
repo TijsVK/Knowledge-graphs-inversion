@@ -48,6 +48,7 @@
         <div class="row mb-3">
             <div class="col">
                 <button onclick="runTest()" class="btn btn-primary">Run Test</button>
+                <button onclick="runAllTests()" class="btn btn-success">Run All Tests</button>
                 <button onclick="viewMapping()" class="btn btn-secondary">View Mapping</button>
             </div>
         </div>
@@ -70,40 +71,75 @@
                 database_system: dbSystem
             })
             .done(function(response) {
+                displayTestResults(response);
+            })
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                resultsDiv.html('<p class="text-danger">Error: ' + textStatus + '</p>');
+            });
+        }
+
+        function runAllTests() {
+            const dbSystem = $('#dbSelect').val();
+            const resultsDiv = $('#results');
+            resultsDiv.html('<p class="text-info">Running all tests...</p>');
+
+            $.post('/run_all_tests', {
+                database_system: dbSystem
+            })
+            .done(function(response) {
                 if (response.status === 'success') {
-                    let resultsHtml = '<h2>Test Results:</h2>';
-                    resultsHtml += '<table class="table table-striped">';
-                    resultsHtml += '<thead><tr>';
-                    response.results[0].forEach(header => {
-                        resultsHtml += `<th>${header}</th>`;
+                    let allResultsHtml = '<h2>All Test Results:</h2>';
+                    response.results.forEach(testResult => {
+                        allResultsHtml += `<h3>${testResult.test_id}</h3>`;
+                        allResultsHtml += generateResultTable(testResult);
                     });
-                    resultsHtml += '</tr></thead><tbody>';
-                    response.results.slice(1).forEach(row => {
-                        resultsHtml += '<tr>';
-                        row.forEach((cell, index) => {
-                            if (index === 4) { // 'result' column
-                                resultsHtml += `<td class="result-${cell.toLowerCase()}">${cell}</td>`;
-                            } else {
-                                resultsHtml += `<td>${cell}</td>`;
-                            }
-                        });
-                        resultsHtml += '</tr>';
-                    });
-                    resultsHtml += '</tbody></table>';
-                    resultsDiv.html(resultsHtml);
+                    resultsDiv.html(allResultsHtml);
                 } else {
-                    let errorHtml = '<h2 class="text-danger">Error:</h2>';
-                    errorHtml += '<p>' + response.message + '</p>';
-                    if (response.traceback) {
-                        errorHtml += '<h3>Traceback:</h3>';
-                        errorHtml += '<pre>' + response.traceback + '</pre>';
-                    }
-                    resultsDiv.html(errorHtml);
+                    resultsDiv.html('<p class="text-danger">Error running all tests</p>');
                 }
             })
             .fail(function(jqXHR, textStatus, errorThrown) {
                 resultsDiv.html('<p class="text-danger">Error: ' + textStatus + '</p>');
             });
+        }
+
+        function displayTestResults(response) {
+            const resultsDiv = $('#results');
+            if (response.status === 'success') {
+                let resultsHtml = `<h2>Test Results for ${response.test_id}:</h2>`;
+                resultsHtml += generateResultTable(response);
+                resultsDiv.html(resultsHtml);
+            } else {
+                let errorHtml = `<h2 class="text-danger">Error in ${response.test_id}:</h2>`;
+                errorHtml += '<p>' + response.message + '</p>';
+                if (response.traceback) {
+                    errorHtml += '<h3>Traceback:</h3>';
+                    errorHtml += '<pre>' + response.traceback + '</pre>';
+                }
+                resultsDiv.html(errorHtml);
+            }
+        }
+
+        function generateResultTable(response) {
+            let resultsHtml = '<table class="table table-striped">';
+            resultsHtml += '<thead><tr>';
+            response.results[0].forEach(header => {
+                resultsHtml += `<th>${header}</th>`;
+            });
+            resultsHtml += '</tr></thead><tbody>';
+            response.results.slice(1).forEach(row => {
+                resultsHtml += '<tr>';
+                row.forEach((cell, index) => {
+                    if (index === 4) { // 'result' column
+                        resultsHtml += `<td class="result-${cell.toLowerCase()}">${cell}</td>`;
+                    } else {
+                        resultsHtml += `<td>${cell}</td>`;
+                    }
+                });
+                resultsHtml += '</tr>';
+            });
+            resultsHtml += '</tbody></table>';
+            return resultsHtml;
         }
 
         function viewMapping() {
