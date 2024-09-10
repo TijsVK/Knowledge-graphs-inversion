@@ -13,6 +13,8 @@
             border: 1px solid #e9ecef;
             border-radius: 0.25rem;
             padding: 1rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
     </style>
 </head>
@@ -65,7 +67,13 @@
                     resultsHtml += '<pre>' + JSON.stringify(response.results, null, 2) + '</pre>';
                     resultsDiv.html(resultsHtml);
                 } else {
-                    resultsDiv.html('<p class="text-danger">Error: ' + response.message + '</p>');
+                    let errorHtml = '<h2 class="text-danger">Error:</h2>';
+                    errorHtml += '<p>' + response.message + '</p>';
+                    if (response.traceback) {
+                        errorHtml += '<h3>Traceback:</h3>';
+                        errorHtml += '<pre>' + response.traceback + '</pre>';
+                    }
+                    resultsDiv.html(errorHtml);
                 }
             })
             .fail(function(jqXHR, textStatus, errorThrown) {
