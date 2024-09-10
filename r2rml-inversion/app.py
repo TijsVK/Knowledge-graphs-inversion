@@ -38,8 +38,9 @@ def run_test():
     with open('config.ini', 'w') as configfile:
         config.write(configfile)
 
-    test_dir = os.path.join(TEST_CASES_DIR, test_id)
-    
+    test_dir = os.path.join(TEST_CASES_DIR)
+    os.chdir(test_dir)
+
     try:
         database_up(database_system)
         results = test_one(test_id, database_system, config, manifest_graph)
@@ -50,7 +51,9 @@ def run_test():
         with open(os.path.join(TEST_CASES_DIR, f'results-{database_system}.csv'), 'r', encoding='utf8') as f:
             reader = csv.reader(f)
             results = list(reader)
-                
+        
+        os.chdir(os.path.dirname(__file__))
+        
         return jsonify({'status': 'success', 'results': results})
     except Exception as e:
         error_traceback = traceback.format_exc()

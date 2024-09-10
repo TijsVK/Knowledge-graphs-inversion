@@ -207,7 +207,7 @@ def generate_results(database_system, config, results):
          config["engine"]["engine_version"], config["engine"]["engine_name"], config["engine"]["engine_created"],
          config["engine"]["engine_url"], get_database_url(database_system), get_database_name(database_system)]]
 
-    with open('metadata.csv', 'w', newline='', encoding='utf8') as file:
+    with open(os.path.join(current_dir, 'metadata.csv'), 'w', newline='', encoding='utf8') as file:
         writer = csv.writer(file)
         writer.writerows(metadata)
 
