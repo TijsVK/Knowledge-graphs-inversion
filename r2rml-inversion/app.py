@@ -39,21 +39,18 @@ def run_test():
         config.write(configfile)
 
     test_dir = os.path.join(TEST_CASES_DIR, test_id)
-    os.chdir(test_dir)
     
     try:
         database_up(database_system)
-        test_one(test_id, database_system, config, manifest_graph)
-        generate_results(database_system, config)
+        results = test_one(test_id, database_system, config, manifest_graph)
+        generate_results(database_system, config, results)
         database_down(database_system)
         merge_results()
         
-        with open(f'results-{database_system}.csv', 'r') as f:
+        with open(os.path.join(TEST_CASES_DIR, f'results-{database_system}.csv'), 'r', encoding='utf8') as f:
             reader = csv.reader(f)
             results = list(reader)
-        
-        os.chdir(os.path.dirname(__file__))
-        
+                
         return jsonify({'status': 'success', 'results': results})
     except Exception as e:
         error_traceback = traceback.format_exc()

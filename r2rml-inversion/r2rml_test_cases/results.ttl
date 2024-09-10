@@ -1,0 +1,21 @@
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#Software>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#TestSubject>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://purl.org/dc/terms/hasPart> <https://www.postgresql.org/>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://purl.org/dc/terms/date> "2021-01-07"^^<http://www.w3.org/2001/XMLSchema#date>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://usefulinc.com/ns/doap#name> "Morph-RDB-PostgreSQL".
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://usefulinc.com/ns/doap#created> "2013-12-01"^^<http://www.w3.org/2001/XMLSchema#date>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://usefulinc.com/ns/doap#homepage> <https://morph.oeg.fi.upm.es/tool/morph-rdb>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL> <http://usefulinc.com/ns/doap#release> "3.12.5".
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/David%20Chaves> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/David%20Chaves> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#Assertor>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/David%20Chaves> <http://xmlns.com/foaf/0.1/name> "David Chaves".
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/David%20Chaves> <http://xmlns.com/foaf/0.1/mbox> "dchaves@fi.upm.es".
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/David%20Chaves> <http://xmlns.com/foaf/0.1/homepage> <https://dchaves.oeg-upm.net/>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#Assertion>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c> <http://www.w3.org/ns/earl#mode> <http://www.w3.org/ns/earl#automatic>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c> <http://www.w3.org/ns/earl#test> <http://www.w3.org/2001/sw/rdb2rdf/test-cases/#R2RMLTC0016c>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c> <http://www.w3.org/ns/earl#assertedBy> <http://kg-construct.github.io/r2rml-implementation-report/Assertor/David%20Chaves>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c> <http://www.w3.org/ns/earl#subject> <http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-RDB-PostgreSQL>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c> <http://www.w3.org/ns/earl#result> <http://kg-construct.github.io/r2rml-implementation-report/TestResult/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c-failed>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestResult/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c-failed> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#TestResult>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestResult/David%20Chaves-Morph-RDB-PostgreSQL-R2RMLTC0016c-failed> <http://www.w3.org/ns/earl#outcome> <http://www.w3.org/ns/earl#failed>.

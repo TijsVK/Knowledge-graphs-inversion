@@ -16,6 +16,9 @@ RDB2RDFTEST = Namespace("http://purl.org/NET/rdb2rdf-test#")
 TESTDEC = Namespace("http://www.w3.org/2006/03/test-description#")
 DCELEMENTS = Namespace("http://purl.org/dc/terms/")
 
+failed = "failed"
+passed = "passed"
+
 def get_database_path():
     return os.path.join(current_dir, 'databases')
 
@@ -52,7 +55,7 @@ def test_all(database_system, config, manifest_graph):
             print("-----------------------------------------------------------------")
             print("Testing R2RML test-case: " + t_identifier + " (" + t_title + ")")
             print("Purpose of this test is: " + purpose)
-            run_test(t_identifier, r2rml, test_uri, expected_output, database_system, config, manifest_graph)
+            return run_test(t_identifier, r2rml, test_uri, expected_output, database_system, config, manifest_graph)
 
 def test_one(identifier, database_system, config, manifest_graph):
     test_uri = manifest_graph.value(subject=None, predicate=DCELEMENTS.identifier, object=Literal(identifier))
@@ -70,7 +73,7 @@ def test_one(identifier, database_system, config, manifest_graph):
     print("Testing R2RML test-case: " + identifier + " (" + t_title + ")")
     print("Purpose of this test is: " + purpose)
     database_load(database, database_system)
-    run_test(identifier, r2rml, test_uri, expected_output, database_system, config, manifest_graph)
+    return run_test(identifier, r2rml, test_uri, expected_output, database_system, config, manifest_graph)
 
 def database_up(database_system):
     database_path = get_database_path()
@@ -121,13 +124,15 @@ def database_load(database_script, database_system):
         cnx.close()
 
 def run_test(t_identifier, mapping, test_uri, expected_output, database_system, config, manifest_graph):
+    results = [["tester", "platform", "rdbms", "testid", "result"]]
+
     if database_system == "mysql" and t_identifier in mysql_exceptions:
         mapping = mapping.replace(".ttl", "-mysql.ttl")
 
     if database_system == "mysql" and t_identifier in mysql_non_compliance:
         print(f"Skipped test {t_identifier} because MySQL non-compliance with ANSI SQL")
         results.append([config["tester"]["tester_name"], config["engine"]["engine_name"], get_database_name(database_system), t_identifier, "untested"])
-        return
+        return results
 
     os.system(f"cp {os.path.join(current_dir, t_identifier, mapping)} {os.path.join(current_dir, 'r2rml.ttl')}")
     expected_output_graph = ConjunctiveGraph()
@@ -187,12 +192,24 @@ def run_test(t_identifier, mapping, test_uri, expected_output, database_system, 
 
     results.append(
         [config["tester"]["tester_name"], config["engine"]["engine_name"], get_database_name(database_system), t_identifier, result])
-    print(t_identifier + "," + result)
+    return results
 
-def generate_results(database_system, config):
-    with open(os.path.join(current_dir, 'results.csv'), 'w', newline='') as file:
+def generate_results(database_system, config, results):
+    with open(os.path.join(current_dir, 'results.csv'), 'w', newline='', encoding='utf8') as file:
         writer = csv.writer(file)
         writer.writerows(results)
+
+    metadata = [
+        ["tester_name", "tester_url", "tester_contact", "test_date", "engine_version", "engine_name", "engine_created",
+         "engine_url", "database", "database_name"],
+        [config["tester"]["tester_name"], config["tester"]["tester_url"], config["tester"]["tester_contact"],
+         config["engine"]["test_date"],
+         config["engine"]["engine_version"], config["engine"]["engine_name"], config["engine"]["engine_created"],
+         config["engine"]["engine_url"], get_database_url(database_system), get_database_name(database_system)]]
+
+    with open('metadata.csv', 'w', newline='', encoding='utf8') as file:
+        writer = csv.writer(file)
+        writer.writerows(metadata)
 
     print("Generating the RDF results using EARL vocabulary")
     os.system(f"java -jar {os.path.join(current_dir, 'rmlmapper.jar')} -m {os.path.join(current_dir, 'mapping.rml.ttl')} -o {os.path.join(current_dir, f'results-{database_system}.ttl')} -d")
@@ -246,29 +263,15 @@ if __name__ == "__main__":
     config.read(config_file)
     database_system = config["properties"]["database_system"]
 
-    results = [["tester", "platform", "rdbms", "testid", "result"]]
-    metadata = [
-        ["tester_name", "tester_url", "tester_contact", "test_date", "engine_version", "engine_name", "engine_created",
-         "engine_url", "database", "database_name"],
-        [config["tester"]["tester_name"], config["tester"]["tester_url"], config["tester"]["tester_contact"],
-         config["engine"]["test_date"],
-         config["engine"]["engine_version"], config["engine"]["engine_name"], config["engine"]["engine_created"],
-         config["engine"]["engine_url"], get_database_url(database_system), get_database_name(database_system)]]
-    failed = "failed"
-    passed = "passed"
-    with open(os.path.join(current_dir, 'metadata.csv'), 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerows(metadata)
-
     print(f"Deployment docker container for {database_system}...")
     database_up(database_system)
 
     if config["properties"]["tests"] == "all":
-        test_all(database_system, config, manifest_graph)
-        generate_results(database_system, config)
+        results = test_all(database_system, config, manifest_graph)
+        generate_results(database_system, config, results)
     else:
-        test_one(config["properties"]["tests"], database_system, config, manifest_graph)
-        generate_results(database_system, config)
+        results = test_one(config["properties"]["tests"], database_system, config, manifest_graph)
+        generate_results(database_system, config, results)
 
     database_down(database_system)
     merge_results()
