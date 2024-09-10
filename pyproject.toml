@@ -19,6 +19,7 @@ yatter = "^1.1.4"
 pyyaml = "^6.0"
 rdflib = "^6.0.0"
 jsonpath-ng = "^1.6.1"
+psycopg2 = "^2.9.9"
 
 
 [tool.poetry.group.test.dependencies]
