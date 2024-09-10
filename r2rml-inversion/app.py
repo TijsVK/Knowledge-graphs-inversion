@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from configparser import ConfigParser
 import os
 from rdflib import ConjunctiveGraph, Namespace, Literal
 import traceback
 from r2rml_test_cases.test import test_one, generate_results, database_load
 from database_manager import DatabaseManager
+import json
 
 app = Flask(__name__)
 
@@ -40,17 +41,17 @@ def run_test():
     
     return run_single_test(test_id, database_system)
 
-@app.route('/run_all_tests', methods=['POST'])
+@app.route('/run_all_tests', methods=['GET'])
 def run_all_tests():
-    database_system = request.form['database_system']
+    database_system = request.args.get('database_system')
     tests = [f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')]
     
-    all_results = []
-    for test_id in tests:
-        result = run_single_test(test_id, database_system)
-        all_results.append(result)
+    def generate():
+        for test_id in tests:
+            result = run_single_test(test_id, database_system)
+            yield f"data: {json.dumps(result)}\n\n"
     
-    return jsonify({'status': 'success', 'results': all_results})
+    return Response(stream_with_context(generate()), content_type='text/event-stream')
 
 def run_single_test(test_id, database_system):
     test_dir = os.path.join(TEST_CASES_DIR)

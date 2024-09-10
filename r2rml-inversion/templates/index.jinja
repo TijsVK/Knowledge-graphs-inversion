@@ -81,26 +81,30 @@
         function runAllTests() {
             const dbSystem = $('#dbSelect').val();
             const resultsDiv = $('#results');
-            resultsDiv.html('<p class="text-info">Running all tests...</p>');
+            resultsDiv.html('<h2>All Test Results:</h2>');
 
-            $.post('/run_all_tests', {
-                database_system: dbSystem
-            })
-            .done(function(response) {
-                if (response.status === 'success') {
-                    let allResultsHtml = '<h2>All Test Results:</h2>';
-                    response.results.forEach(testResult => {
-                        allResultsHtml += `<h3>${testResult.test_id}</h3>`;
-                        allResultsHtml += generateResultTable(testResult);
-                    });
-                    resultsDiv.html(allResultsHtml);
-                } else {
-                    resultsDiv.html('<p class="text-danger">Error running all tests</p>');
-                }
-            })
-            .fail(function(jqXHR, textStatus, errorThrown) {
-                resultsDiv.html('<p class="text-danger">Error: ' + textStatus + '</p>');
-            });
+            const eventSource = new EventSource(`/run_all_tests?database_system=${dbSystem}`);
+
+            eventSource.onmessage = function(event) {
+                const testResult = JSON.parse(event.data);
+                const testResultHtml = `
+                    <div id="${testResult.test_id}">
+                        <h3>${testResult.test_id}</h3>
+                        ${generateResultTable(testResult)}
+                    </div>
+                `;
+                resultsDiv.append(testResultHtml);
+            };
+
+            eventSource.onerror = function(event) {
+                console.error('EventSource failed:', event);
+                eventSource.close();
+                resultsDiv.append('<p class="text-danger">Error: Failed to receive all test results</p>');
+            };
+
+            eventSource.onopen = function(event) {
+                console.log('EventSource connected.');
+            };
         }
 
         function displayTestResults(response) {
