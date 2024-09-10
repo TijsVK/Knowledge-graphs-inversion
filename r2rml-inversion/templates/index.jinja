@@ -16,6 +16,14 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+        .result-passed {
+            color: green;
+            font-weight: bold;
+        }
+        .result-failed {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -64,7 +72,24 @@
             .done(function(response) {
                 if (response.status === 'success') {
                     let resultsHtml = '<h2>Test Results:</h2>';
-                    resultsHtml += '<pre>' + JSON.stringify(response.results, null, 2) + '</pre>';
+                    resultsHtml += '<table class="table table-striped">';
+                    resultsHtml += '<thead><tr>';
+                    response.results[0].forEach(header => {
+                        resultsHtml += `<th>${header}</th>`;
+                    });
+                    resultsHtml += '</tr></thead><tbody>';
+                    response.results.slice(1).forEach(row => {
+                        resultsHtml += '<tr>';
+                        row.forEach((cell, index) => {
+                            if (index === 4) { // 'result' column
+                                resultsHtml += `<td class="result-${cell.toLowerCase()}">${cell}</td>`;
+                            } else {
+                                resultsHtml += `<td>${cell}</td>`;
+                            }
+                        });
+                        resultsHtml += '</tr>';
+                    });
+                    resultsHtml += '</tbody></table>';
                     resultsDiv.html(resultsHtml);
                 } else {
                     let errorHtml = '<h2 class="text-danger">Error:</h2>';

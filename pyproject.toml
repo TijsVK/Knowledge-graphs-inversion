@@ -23,6 +23,7 @@ psycopg2 = "^2.9.9"
 sqlalchemy = "^2.0.34"
 docker = "^7.1.0"
 sql-metadata = "^2.13.0"
+psutil = "^6.0.0"
 
 
 [tool.poetry.group.test.dependencies]
