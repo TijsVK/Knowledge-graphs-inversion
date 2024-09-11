@@ -201,7 +201,7 @@
                     // Set the header if it's empty
                     const resultsHeader = $('#results-header');
                     if (resultsHeader.is(":empty")) {
-                        let headerHtml = ['Test ID', 'Platform', 'RDBMS', 'Result', 'DB Structure', 'Mapping'].map(header => `<th>${header}</th>`).join('');
+                        let headerHtml = ['Test ID', 'Platform', 'RDBMS', 'Result', 'DB Content', 'Mapping'].map(header => `<th>${header}</th>`).join('');
                         resultsHeader.html(headerHtml);
                     }
                     // Add the loading row
@@ -314,7 +314,11 @@
                     tableData.data.forEach(row => {
                         contentHtml += '<tr>';
                         row.forEach(cell => {
-                            contentHtml += `<td class="px-4 py-2 whitespace-nowrap">${cell}</td>`;
+                            if (typeof cell === 'string' && cell.startsWith('data:image')) {
+                                contentHtml += `<td class="px-4 py-2 whitespace-nowrap"><img src="${cell}" alt="Photo" style="max-width: 100px; max-height: 100px;"></td>`;
+                            } else {
+                                contentHtml += `<td class="px-4 py-2 whitespace-nowrap">${cell}</td>`;
+                            }
                         });
                         contentHtml += '</tr>';
                     });
@@ -325,7 +329,7 @@
                 showModal('Error', 'Unable to display database content. Invalid data structure.');
             }
         }
-
+        
         function showMapping(testId) {
             const response = testResults[testId];
             if (response && response.results && response.results.data && response.results.data[0]) {
