@@ -8,6 +8,28 @@ from database_manager import DatabaseManager
 import json
 import threading
 import base64
+from datetime import date, datetime
+import math
+
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (date, datetime)):
+            return obj.isoformat()
+        elif isinstance(obj, float):
+            if math.isnan(obj):
+                return "NaN"
+            elif math.isinf(obj):
+                return "Infinity" if obj > 0 else "-Infinity"
+        elif hasattr(obj, '__dict__'):
+            return str(obj)
+        try:
+            iterable = iter(obj)
+        except TypeError:
+            pass
+        else:
+            return list(iterable)
+        return super().default(obj)
 
 
 app = Flask(__name__)
@@ -36,6 +58,21 @@ def get_mapping_filename(test_id):
     letter: str = test_id[-1].lower()
     return f'r2rml{letter}.ttl' if letter.isalpha() else 'r2rml.ttl'
 
+def sanitize_data(data):
+    if isinstance(data, dict):
+        return {k: sanitize_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_data(v) for v in data]
+    elif isinstance(data, float):
+        if math.isnan(data):
+            return "NaN"
+        elif math.isinf(data):
+            return "Infinity" if data > 0 else "-Infinity"
+    elif isinstance(data, (int, str, bool, type(None))):
+        return data
+    else:
+        return str(data)
+
 @app.route('/')
 def index():
     tests = sorted([f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')])
@@ -54,7 +91,22 @@ def run_test():
     tests_running.set()
     result = run_single_test(test_id, database_system)
     tests_running.clear()
-    return jsonify(result)
+    
+    try:
+        sanitized_result = sanitize_data(result)
+        json_result = json.dumps(sanitized_result, cls=CustomJSONEncoder)
+        return app.response_class(
+            response=json_result,
+            status=200,
+            mimetype='application/json'
+        )
+    except Exception as e:
+        error_msg = f"Error serializing result for test {test_id}: {str(e)}"
+        return jsonify({
+            'status': 'error',
+            'test_id': test_id,
+            'message': error_msg
+        }), 500
 
 @app.route('/run_all_tests', methods=['GET'])
 def run_all_tests():
@@ -74,12 +126,18 @@ def run_all_tests():
                 yield f"data: {json.dumps({'status': 'cancelled', 'message': 'Tests cancelled by user'})}\n\n"
                 break
             result = run_single_test(test_id, database_system)
-            yield f"data: {json.dumps(result)}\n\n"
+            try:
+                sanitized_result = sanitize_data(result)
+                json_result = json.dumps(sanitized_result, cls=CustomJSONEncoder)
+                yield f"data: {json_result}\n\n"
+            except Exception as e:
+                error_msg = f"Error serializing result for test {test_id}: {str(e)}"
+                yield f"data: {json.dumps({'status': 'error', 'test_id': test_id, 'message': error_msg})}\n\n"
         tests_running.clear()
         yield "event: complete\ndata: All tests completed\n\n"
     
     return Response(stream_with_context(generate()), content_type='text/event-stream')
-
+    
 def run_single_test(test_id, database_system):
     test_dir = os.path.join(TEST_CASES_DIR)
     os.chdir(test_dir)
