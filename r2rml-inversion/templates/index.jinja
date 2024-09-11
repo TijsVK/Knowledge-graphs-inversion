@@ -52,6 +52,36 @@
             60% { content: '...'; }
             80%, 100% { content: ''; }
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -90,10 +120,26 @@
                     <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
+            <table id="results-table" class="table table-striped" style="display: none;">
+                <thead>
+                    <tr id="results-header"></tr>
+                </thead>
+                <tbody id="results-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <pre id="modalContent"></pre>
         </div>
     </div>
 
     <script>
+        const testResults = {};
+
         function disableButtons() {
             $('#runTestBtn, #runAllTestsBtn, #viewMappingBtn').prop('disabled', true);
         }
@@ -116,6 +162,7 @@
                 database_system: dbSystem
             })
             .done(function(response) {
+                testResults[response.test_id] = response;
                 displayTestResults(response);
             })
             .fail(function(jqXHR, textStatus, errorThrown) {
@@ -144,6 +191,7 @@
 
             eventSource.onmessage = function(event) {
                 const testResult = JSON.parse(event.data);
+                testResults[testResult.test_id] = testResult;
                 
                 if (spinnerElement.is(":visible")) {
                     spinnerElement.hide();
@@ -152,7 +200,7 @@
                     // Set the header if it's empty
                     const resultsHeader = $('#results-header');
                     if (resultsHeader.is(":empty")) {
-                        let headerHtml = '<th>Test ID</th><th>Platform</th><th>RDBMS</th><th>Result</th>';
+                        let headerHtml = ['Test ID', 'Platform', 'RDBMS', 'Result', 'DB Structure', 'Mapping'].map(header => `<th>${header}</th>`).join('');
                         resultsHeader.html(headerHtml);
                     }
                     // Add the loading row
@@ -196,7 +244,7 @@
             const resultsDiv = $('#results');
             if (response.status === 'success') {
                 let resultsHtml = `<h2>Test Results for ${response.test_id}:</h2>`;
-                resultsHtml += generateResultTable(response);
+                resultsHtml += generateResultTable(response.results);
                 resultsDiv.html(resultsHtml);
             } else {
                 let errorHtml = `<h2 class="text-danger">Error in ${response.test_id}:</h2>`;
@@ -209,30 +257,70 @@
             }
         }
 
+        function generateResultTable(results) {
+            let tableHtml = '<table class="table table-striped">';
+            tableHtml += '<thead><tr>';
+            ['Test ID', 'Platform', 'RDBMS', 'Result', 'DB Structure', 'Mapping'].forEach(header => {
+                tableHtml += `<th>${header}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+            results.data.forEach(row => {
+                tableHtml += '<tr>';
+                tableHtml += `<td>${row.testid}</td>`;
+                tableHtml += `<td>${row.platform}</td>`;
+                tableHtml += `<td>${row.rdbms}</td>`;
+                tableHtml += `<td class="result-${row.result.toLowerCase()}">${row.result}</td>`;
+                tableHtml += `<td><button onclick="showDBStructure('${row.testid}')">View</button></td>`;
+                tableHtml += `<td><button onclick="showMapping('${row.testid}')">View</button></td>`;
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</tbody></table>';
+            return tableHtml;
+        }
+
         function generateResultRow(response) {
-            let result = response.results[0];  // Assuming single test result
-            let rowHtml = `<tr>
-                <td>${response.test_id}</td>
-                <td>${result.platform}</td>
-                <td>${result.rdbms}</td>
-                <td class="result-${result.result.toLowerCase()}">${result.result}</td>
-            </tr>`;
+            const row = response.results.data[0];
+            let rowHtml = '<tr>';
+            rowHtml += `<td>${row.testid}</td>`;
+            rowHtml += `<td>${row.platform}</td>`;
+            rowHtml += `<td>${row.rdbms}</td>`;
+            rowHtml += `<td class="result-${row.result.toLowerCase()}">${row.result}</td>`;
+            rowHtml += `<td><button onclick="showDBStructure('${row.testid}')">View</button></td>`;
+            rowHtml += `<td><button onclick="showMapping('${row.testid}')">View</button></td>`;
+            rowHtml += '</tr>';
             return rowHtml;
         }
 
-        function generateResultTable(response) {
-            let resultsHtml = '<table class="table table-striped">';
-            resultsHtml += '<thead><tr><th>Test ID</th><th>Platform</th><th>RDBMS</th><th>Result</th></tr></thead><tbody>';
-            response.results.forEach(result => {
-                resultsHtml += `<tr>
-                    <td>${response.test_id}</td>
-                    <td>${result.platform}</td>
-                    <td>${result.rdbms}</td>
-                    <td class="result-${result.result.toLowerCase()}">${result.result}</td>
-                </tr>`;
-            });
-            resultsHtml += '</tbody></table>';
-            return resultsHtml;
+        function showDBStructure(testId) {
+            const response = testResults[testId];
+            showModal('Database Structure', JSON.stringify(response.results.data[0].db_structure, null, 2));
+        }
+
+        function showMapping(testId) {
+            const response = testResults[testId];
+            showModal('R2RML Mapping', response.results.data[0].mapping);
+        }
+
+        function showModal(title, content) {
+            const modal = document.getElementById('infoModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalTitle.textContent = title;
+            modalContent.textContent = content;
+            
+            modal.style.display = 'block';
+
+            const span = document.getElementsByClassName('close')[0];
+            span.onclick = function() {
+                modal.style.display = 'none';
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
         }
 
         function viewMapping() {

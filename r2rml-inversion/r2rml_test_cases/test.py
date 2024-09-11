@@ -175,7 +175,43 @@ def database_load(database_script, database_system):
     
     else:
         raise ValueError(f"Unsupported database system: {database_system}")
-        
+
+def get_database_structure(database_system):
+    if database_system == "mysql":
+        host = os.environ.get('HOST', '127.0.0.1')
+        cnx = mysql.connector.connect(user='r2rml', password='r2rml', host=host, database='r2rml')
+        cursor = cnx.cursor()
+        cursor.execute("SHOW TABLES")
+        tables = cursor.fetchall()
+        structure = {}
+        for table in tables:
+            table_name = table[0]
+            cursor.execute(f"DESCRIBE {table_name}")
+            columns = cursor.fetchall()
+            structure[table_name] = [{'name': col[0], 'type': col[1]} for col in columns]
+        cursor.close()
+        cnx.close()
+        return structure
+    elif database_system == "postgresql":
+        host = os.environ.get('HOST', 'localhost')
+        cnx = psycopg2.connect("dbname='r2rml' user='r2rml' host='" + host + "' password='r2rml'")
+        cursor = cnx.cursor()
+        cursor.execute("""
+            SELECT table_name, column_name, data_type
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            ORDER BY table_name, ordinal_position
+        """)
+        columns = cursor.fetchall()
+        structure = {}
+        for table_name, column_name, data_type in columns:
+            if table_name not in structure:
+                structure[table_name] = []
+            structure[table_name].append({'name': column_name, 'type': data_type})
+        cursor.close()
+        cnx.close()
+        return structure
+
 def run_test(t_identifier, mapping, test_uri, expected_output, database_system, config, manifest_graph):
     results = [["tester", "platform", "rdbms", "testid", "result"]]
 

@@ -3,7 +3,7 @@ from configparser import ConfigParser
 import os
 from rdflib import ConjunctiveGraph, Namespace, Literal
 import traceback
-from r2rml_test_cases.test import test_one, generate_results, database_load
+from r2rml_test_cases.test import test_one, generate_results, database_load, get_database_structure
 from database_manager import DatabaseManager
 import json
 import threading
@@ -93,22 +93,28 @@ def run_single_test(test_id, database_system):
         test_uri = manifest_graph.value(subject=None, predicate=DCELEMENTS.identifier, object=Literal(test_id))
         database_uri = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.database, object=None)
         database = manifest_graph.value(subject=database_uri, predicate=RDB2RDFTEST.sqlScriptFile, object=None)
+        database_load(database, database_system)
         
-        if database is None:
-            raise ValueError(f"No database script found for test {test_id}")
+        # Get database structure
+        db_structure = get_database_structure(database_system)
         
-        database_load(database.toPython(), database_system)
+        # Get mapping content
+        mapping_filename = get_mapping_filename(test_id)
+        mapping_file = os.path.join(TEST_CASES_DIR, test_id, mapping_filename)
+        with open(mapping_file, 'r', encoding='utf-8') as f:
+            mapping_content = f.read()
         
         raw_results = test_one(test_id, database_system, config, manifest_graph)
-        
-        # Process the results to match the desired structure
-        processed_results = process_results(raw_results)
-        
-        generate_results(database_system, config, raw_results)  # Keep this for file generation if needed
+        processed_results = process_results(raw_results, db_structure, mapping_content)
+        generate_results(database_system, config, raw_results)
         
         os.chdir(os.path.dirname(__file__))
         
-        return {'status': 'success', 'test_id': test_id, 'results': processed_results}
+        return {
+            'status': 'success', 
+            'test_id': test_id, 
+            'results': processed_results,
+        }
     except Exception as e:
         error_traceback = traceback.format_exc()
         os.chdir(os.path.dirname(__file__))
@@ -119,17 +125,24 @@ def run_single_test(test_id, database_system):
             'traceback': error_traceback
         }
 
-def process_results(raw_results):
-    # Skip the header row and process each result row
-    processed = []
+def process_results(raw_results, db_structure, mapping_content):
+    processed_results = {
+        'headers': raw_results[0],
+        'data': []
+    }
+    
     for row in raw_results[1:]:
-        processed.append({
-            'test_id': row[3],  # Assuming test_id is at index 3
+        processed_row = {
+            'testid': row[3],
             'platform': row[1],
             'rdbms': row[2],
-            'result': row[4]
-        })
-    return processed
+            'result': row[4],
+            'db_structure': db_structure,
+            'mapping': mapping_content
+        }
+        processed_results['data'].append(processed_row)
+    
+    return processed_results
 
 @app.route('/get_mapping/<test_id>')
 def get_mapping(test_id):
