@@ -107,7 +107,6 @@
             <div class="col">
                 <button id="runTestBtn" onclick="runTest()" class="btn btn-primary">Run Test</button>
                 <button id="runAllTestsBtn" onclick="runAllTests()" class="btn btn-success">Run All Tests</button>
-                <button id="viewMappingBtn" onclick="viewMapping()" class="btn btn-secondary">View Mapping</button>
             </div>
         </div>
         <div id="mappingContent" class="mb-4" style="display: none;">
@@ -141,11 +140,11 @@
         const testResults = {};
 
         function disableButtons() {
-            $('#runTestBtn, #runAllTestsBtn, #viewMappingBtn').prop('disabled', true);
+            $('#runTestBtn, #runAllTestsBtn').prop('disabled', true);
         }
 
         function enableButtons() {
-            $('#runTestBtn, #runAllTestsBtn, #viewMappingBtn').prop('disabled', false);
+            $('#runTestBtn, #runAllTestsBtn').prop('disabled', false);
         }
 
         function runTest() {
@@ -279,26 +278,40 @@
         }
 
         function generateResultRow(response) {
+            // Check if the response has the expected structure
+            if (!response || !response.results || !Array.isArray(response.results.data) || response.results.data.length === 0) {
+                console.error('Invalid response structure:', response);
+                return `<tr><td colspan="6">Error: Invalid test result structure</td></tr>`;
+            }
+
             const row = response.results.data[0];
             let rowHtml = '<tr>';
-            rowHtml += `<td>${row.testid}</td>`;
-            rowHtml += `<td>${row.platform}</td>`;
-            rowHtml += `<td>${row.rdbms}</td>`;
-            rowHtml += `<td class="result-${row.result.toLowerCase()}">${row.result}</td>`;
-            rowHtml += `<td><button onclick="showDBStructure('${row.testid}')">View</button></td>`;
-            rowHtml += `<td><button onclick="showMapping('${row.testid}')">View</button></td>`;
+            rowHtml += `<td>${row.testid || 'N/A'}</td>`;
+            rowHtml += `<td>${row.platform || 'N/A'}</td>`;
+            rowHtml += `<td>${row.rdbms || 'N/A'}</td>`;
+            rowHtml += `<td class="result-${(row.result || '').toLowerCase()}">${row.result || 'N/A'}</td>`;
+            rowHtml += `<td><button onclick="showDBStructure('${row.testid || ''}')">View</button></td>`;
+            rowHtml += `<td><button onclick="showMapping('${row.testid || ''}')">View</button></td>`;
             rowHtml += '</tr>';
             return rowHtml;
         }
 
         function showDBStructure(testId) {
             const response = testResults[testId];
-            showModal('Database Structure', JSON.stringify(response.results.data[0].db_structure, null, 2));
+            if (response && response.results && response.results.data && response.results.data[0]) {
+                showModal('Database Structure', JSON.stringify(response.results.data[0].db_structure, null, 2));
+            } else {
+                showModal('Error', 'Unable to display database structure. Invalid data structure.');
+            }
         }
 
         function showMapping(testId) {
             const response = testResults[testId];
-            showModal('R2RML Mapping', response.results.data[0].mapping);
+            if (response && response.results && response.results.data && response.results.data[0]) {
+                showModal('R2RML Mapping', response.results.data[0].mapping);
+            } else {
+                showModal('Error', 'Unable to display mapping. Invalid data structure.');
+            }
         }
 
         function showModal(title, content) {
@@ -321,27 +334,6 @@
                     modal.style.display = 'none';
                 }
             }
-        }
-
-        function viewMapping() {
-            const testId = $('#testSelect').val();
-            if (!testId) {
-                alert('Please select a test first.');
-                return;
-            }
-
-            $.get('/get_mapping/' + testId)
-            .done(function(response) {
-                if (response.status === 'success') {
-                    $('#mappingCode').text(response.content);
-                    $('#mappingContent').show();
-                } else {
-                    alert('Error: ' + response.message);
-                }
-            })
-            .fail(function(jqXHR, textStatus, errorThrown) {
-                alert('Error: ' + textStatus);
-            });
         }
     </script>
 </body>

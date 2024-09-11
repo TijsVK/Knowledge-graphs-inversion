@@ -31,12 +31,12 @@ tests_running = threading.Event()
 cancel_tests = threading.Event()
 
 def get_mapping_filename(test_id):
-    letter = test_id[-1].lower()
-    return f'r2rml{letter}.ttl'
+    letter: str = test_id[-1].lower()
+    return f'r2rml{letter}.ttl' if letter.isalpha() else 'r2rml.ttl'
 
 @app.route('/')
 def index():
-    tests = [f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')]
+    tests = sorted([f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')])
     return render_template('index.jinja', tests=tests)
 
 @app.route('/run_test', methods=['POST'])
@@ -61,7 +61,7 @@ def run_all_tests():
         tests_running.clear()
     
     database_system = request.args.get('database_system')
-    tests = [f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')]
+    tests = sorted([f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')])
     
     cancel_tests.clear()
     tests_running.set()
@@ -144,17 +144,6 @@ def process_results(raw_results, db_structure, mapping_content):
     
     return processed_results
 
-@app.route('/get_mapping/<test_id>')
-def get_mapping(test_id):
-    mapping_filename = get_mapping_filename(test_id)
-    mapping_file = os.path.join(TEST_CASES_DIR, test_id, mapping_filename)
-    
-    if not os.path.exists(mapping_file):
-        return jsonify({'status': 'error', 'message': f"Mapping file not found: {mapping_filename}"})
-    
-    with open(mapping_file, 'r', encoding='utf-8') as f:
-        mapping_content = f.read()
-    return jsonify({'status': 'success', 'content': mapping_content})
 
 if __name__ == '__main__':
     app.run(debug=True)
