@@ -137,7 +137,27 @@ def run_all_tests():
         yield "event: complete\ndata: All tests completed\n\n"
     
     return Response(stream_with_context(generate()), content_type='text/event-stream')
+
+@app.route('/get_file_content', methods=['GET'])
+def get_file_content():
+    test_id = request.args.get('test_id')
+    file_type = request.args.get('type')  # 'expected' o 'actual'
+    database_system = request.args.get('database_system')
     
+    if file_type == 'expected':
+        file_path = os.path.join(TEST_CASES_DIR, test_id, 'output.ttl')
+    elif file_type == 'actual':
+        file_path = os.path.join(TEST_CASES_DIR, test_id, f'engine_output-{database_system}.ttl')
+    else:
+        return jsonify({'error': 'Invalid file type'}), 400
+
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+        return jsonify({'content': content})
+    except FileNotFoundError:
+        return jsonify({'error': 'File not found'}), 404
+
 def run_single_test(test_id, database_system):
     test_dir = os.path.join(TEST_CASES_DIR)
     os.chdir(test_dir)
@@ -165,7 +185,7 @@ def run_single_test(test_id, database_system):
             mapping_content = f.read()
         
         raw_results = test_one(test_id, database_system, config, manifest_graph)
-        processed_results = process_results(raw_results, db_content, mapping_content)
+        processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config)
         generate_results(database_system, config, raw_results)
         
         os.chdir(os.path.dirname(__file__))
@@ -185,24 +205,52 @@ def run_single_test(test_id, database_system):
             'traceback': error_traceback
         }
 
-def process_results(raw_results, db_content, mapping_content):
+def process_results(raw_results, db_content, mapping_content, test_id, database_system, config):
     processed_results = {
         'headers': raw_results[0],
         'data': []
     }
     
     for row in raw_results[1:]:
+        expected_content, actual_content = get_file_contents(test_id, database_system, config)
+        
         processed_row = {
-            'testid': row[3],
-            'platform': row[1],
-            'rdbms': row[2],
-            'result': row[4],
-            'db_content': process_db_content(db_content),
+            'testid': row[3] if len(row) > 3 else 'N/A',
+            'platform': row[1] if len(row) > 1 else 'N/A',
+            'rdbms': row[2] if len(row) > 2 else 'N/A',
+            'result': row[4] if len(row) > 4 else 'N/A',
+            'expected_result': expected_content,
+            'actual_result': actual_content,
+            'db_content': db_content,
             'mapping': mapping_content
         }
         processed_results['data'].append(processed_row)
     
     return processed_results
+
+def get_file_contents(test_id, database_system, config: ConfigParser):
+    output_format = config['properties'].get('output_format', 'ntriples')
+    ext = 'ttl' if output_format == 'turtle' else 'nt' if output_format == 'ntriples' else 'nq'
+    
+    # Get the last character of the test_id
+    last_char: str = test_id[-1]
+    
+    # Determine the suffix for the expected file
+    suffix = last_char.lower() if last_char.isalpha() else ''
+    
+    expected_file = os.path.join(TEST_CASES_DIR, test_id, f'mapped{suffix}.nq')
+    actual_file = os.path.join(TEST_CASES_DIR, test_id, f'engine_output-{database_system}.{ext}')
+
+    expected_content = read_file_content(expected_file)
+    actual_content = read_file_content(actual_file)
+    
+    return expected_content, actual_content
+
+def read_file_content(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    return "File not found"
 
 def process_db_content(db_content):
     processed_content = {}
