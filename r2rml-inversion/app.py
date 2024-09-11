@@ -74,6 +74,7 @@ def run_all_tests():
             result = run_single_test(test_id, database_system)
             yield f"data: {json.dumps(result)}\n\n"
         tests_running.clear()
+        yield "event: complete\ndata: All tests completed\n\n"
     
     return Response(stream_with_context(generate()), content_type='text/event-stream')
 

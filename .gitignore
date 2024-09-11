@@ -22,3 +22,5 @@ meeting_notes.md
 engine_output*
 results-postgresql*
 output.nt
+metadata.csv
+r2rml.ttl

@@ -17,12 +17,20 @@
             word-wrap: break-word;
         }
         .result-passed {
-            color: green;
+            color: green !important;
             font-weight: bold;
         }
         .result-failed {
-            color: red;
+            color: red !important;
             font-weight: bold;
+        }
+        .table-striped > tbody > tr:nth-of-type(odd) > * {
+            --bs-table-accent-bg: var(--bs-table-striped-bg);
+            color: var(--bs-table-striped-color);
+        }
+        .table-striped > tbody > tr:nth-of-type(odd) .result-passed,
+        .table-striped > tbody > tr:nth-of-type(odd) .result-failed {
+            color: inherit;
         }
     </style>
 </head>
@@ -47,9 +55,9 @@
         </div>
         <div class="row mb-3">
             <div class="col">
-                <button onclick="runTest()" class="btn btn-primary">Run Test</button>
-                <button onclick="runAllTests()" class="btn btn-success">Run All Tests</button>
-                <button onclick="viewMapping()" class="btn btn-secondary">View Mapping</button>
+                <button id="runTestBtn" onclick="runTest()" class="btn btn-primary">Run Test</button>
+                <button id="runAllTestsBtn" onclick="runAllTests()" class="btn btn-success">Run All Tests</button>
+                <button id="viewMappingBtn" onclick="viewMapping()" class="btn btn-secondary">View Mapping</button>
             </div>
         </div>
         <div id="mappingContent" class="mb-4" style="display: none;">
@@ -69,11 +77,21 @@
     </div>
 
     <script>
+        function disableButtons() {
+            $('#runTestBtn, #runAllTestsBtn, #viewMappingBtn').prop('disabled', true);
+        }
+
+        function enableButtons() {
+            $('#runTestBtn, #runAllTestsBtn, #viewMappingBtn').prop('disabled', false);
+        }
+
         function runTest() {
             const testId = $('#testSelect').val();
             const dbSystem = $('#dbSelect').val();
             const resultsDiv = $('#results');
             resultsDiv.html('<p class="text-info">Running test...</p>');
+
+            disableButtons();
 
             $.post('/run_test', {
                 test_id: testId,
@@ -84,6 +102,9 @@
             })
             .fail(function(jqXHR, textStatus, errorThrown) {
                 resultsDiv.html('<p class="text-danger">Error: ' + textStatus + '</p>');
+            })
+            .always(function() {
+                enableButtons();
             });
         }
 
@@ -97,6 +118,8 @@
             
             resultsDiv.append(waitingMessage);
             resultsDiv.append(resultsTable);
+
+            disableButtons();
 
             const eventSource = new EventSource(`/run_all_tests?database_system=${dbSystem}`);
 
@@ -131,6 +154,12 @@
             eventSource.onopen = function(event) {
                 console.log('EventSource connected.');
             };
+
+            eventSource.addEventListener('complete', function(event) {
+                console.log('All tests completed');
+                eventSource.close();
+                enableButtons();
+            }, false);
         }
 
         function displayTestResults(response) {
