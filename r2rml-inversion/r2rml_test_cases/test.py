@@ -58,22 +58,40 @@ def test_all(database_system, config, manifest_graph):
             return run_test(t_identifier, r2rml, test_uri, expected_output, database_system, config, manifest_graph)
 
 def test_one(identifier, database_system, config, manifest_graph):
-    test_uri = manifest_graph.value(subject=None, predicate=DCELEMENTS.identifier, object=Literal(identifier))
-    t_title = manifest_graph.value(subject=test_uri, predicate=DCELEMENTS.title, object=None)
-    t_title = t_title.toPython()
-    purpose = manifest_graph.value(subject=test_uri, predicate=TESTDEC.purpose, object=None)
-    purpose = purpose.toPython()
-    expected_output = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.hasExpectedOutput, object=None)
-    expected_output = expected_output.toPython()
-    r2rml = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.mappingDocument, object=None)
-    r2rml = r2rml.toPython()
-    database_uri = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.database, object=None)
-    database = manifest_graph.value(subject=database_uri, predicate=RDB2RDFTEST.sqlScriptFile, object=None)
-    database = database.toPython()
-    print("Testing R2RML test-case: " + identifier + " (" + t_title + ")")
-    print("Purpose of this test is: " + purpose)
-    database_load(database, database_system)
-    return run_test(identifier, r2rml, test_uri, expected_output, database_system, config, manifest_graph)
+    try:
+        test_uri = manifest_graph.value(subject=None, predicate=DCELEMENTS.identifier, object=Literal(identifier))
+        t_title = manifest_graph.value(subject=test_uri, predicate=DCELEMENTS.title, object=None)
+        t_title = t_title.toPython()
+        purpose = manifest_graph.value(subject=test_uri, predicate=TESTDEC.purpose, object=None)
+        purpose = purpose.toPython()
+        expected_output = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.hasExpectedOutput, object=None)
+        expected_output = expected_output.toPython()
+        r2rml = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.mappingDocument, object=None)
+        r2rml = r2rml.toPython()
+        database_uri = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.database, object=None)
+        database = manifest_graph.value(subject=database_uri, predicate=RDB2RDFTEST.sqlScriptFile, object=None)
+        database = database.toPython()
+        
+        print(f"Test identifier: {identifier}")
+        print(f"Database script from manifest: {database}")
+        
+        print("Testing R2RML test-case: " + identifier + " (" + t_title + ")")
+        print("Purpose of this test is: " + purpose)
+        
+        try:
+            database_load(database, database_system)
+        except Exception as e:
+            print(f"Error loading database: {str(e)}")
+            return [["tester", "platform", "rdbms", "testid", "result"], 
+                    [config["tester"]["tester_name"], config["engine"]["engine_name"], 
+                     get_database_name(database_system), identifier, "error"]]
+        
+        return run_test(identifier, r2rml, test_uri, expected_output, database_system, config, manifest_graph)
+    except Exception as e:
+        print(f"Error in test_one: {str(e)}")
+        return [["tester", "platform", "rdbms", "testid", "result"], 
+                [config["tester"]["tester_name"], config["engine"]["engine_name"], 
+                 get_database_name(database_system), identifier, "error"]]
 
 def database_up(database_system):
     database_path = get_database_path()
@@ -98,31 +116,66 @@ def database_down(database_system):
 def database_load(database_script, database_system):
     print(f"Loading in {database_system} system the file: {database_script}")
     database_path = get_database_path()
+    
+    # Check if there's a database system specific file
+    base_name, ext = os.path.splitext(database_script)
+    system_specific_script = f"{base_name}-{database_system}{ext}"
+    
+    if os.path.exists(os.path.join(database_path, system_specific_script)):
+        database_script = system_specific_script
+    
+    print(f"Using script file: {database_script}")
+    
+    full_path = os.path.join(database_path, database_script)
+    print(f"Full path of the script: {full_path}")
 
-    if database_system == "mysql":
-        host = os.environ.get('HOST', '127.0.0.1')
-        cnx = mysql.connector.connect(user='r2rml', password='r2rml', host=host, database='r2rml')
-        cursor = cnx.cursor()
-        with open(os.path.join(database_path, database_script), 'r') as f:
-            for statement in f:
-                cursor.execute(statement)
-        cnx.commit()
-        cursor.close()
-        cnx.close()
+    if not os.path.exists(full_path):
+        print(f"Error: File {full_path} does not exist!")
+        raise FileNotFoundError(f"SQL script file not found: {full_path}")
 
-    elif database_system == "postgresql":
+    with open(full_path, 'r') as f:
+        sql_script = f.read()
+        statements = sql_script.split(';')
+
+    if database_system == "postgresql":
         host = os.environ.get('HOST', 'localhost')
         cnx = psycopg2.connect("dbname='r2rml' user='r2rml' host='" + host + "' password='r2rml'")
         cursor = cnx.cursor()
-        if database_script == "d016.sql":
-            database_script = "d016-postgresql.sql"
-        with open(os.path.join(database_path, database_script), 'r') as f:
-            for statement in f:
-                cursor.execute(statement)
+        
+        for statement in statements:
+            if statement.strip():
+                try:
+                    cursor.execute(statement)
+                except psycopg2.Error as e:
+                    print(f"Error executing statement: {e}")
+                    print(f"Problematic statement: {statement}")
+                    cnx.rollback()
+                    raise
         cnx.commit()
         cursor.close()
         cnx.close()
-
+    
+    elif database_system == "mysql":
+        host = os.environ.get('HOST', '127.0.0.1')
+        cnx = mysql.connector.connect(user='r2rml', password='r2rml', host=host, database='r2rml')
+        cursor = cnx.cursor()
+        
+        for statement in statements:
+            if statement.strip():
+                try:
+                    cursor.execute(statement)
+                except mysql.connector.Error as e:
+                    print(f"Error executing statement: {e}")
+                    print(f"Problematic statement: {statement}")
+                    cnx.rollback()
+                    raise
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+    
+    else:
+        raise ValueError(f"Unsupported database system: {database_system}")
+        
 def run_test(t_identifier, mapping, test_uri, expected_output, database_system, config, manifest_graph):
     results = [["tester", "platform", "rdbms", "testid", "result"]]
 
