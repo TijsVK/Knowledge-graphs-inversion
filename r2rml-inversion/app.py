@@ -184,8 +184,12 @@ def run_single_test(test_id, database_system):
         with open(mapping_file, 'r', encoding='utf-8') as f:
             mapping_content = f.read()
         
+        # Get the purpose of the test
+        purpose = manifest_graph.value(subject=test_uri, predicate=TESTDEC.purpose, object=None)
+        purpose = purpose.toPython() if purpose else "Purpose not specified"
+        
         raw_results = test_one(test_id, database_system, config, manifest_graph)
-        processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config)
+        processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose)
         generate_results(database_system, config, raw_results)
         
         os.chdir(os.path.dirname(__file__))
@@ -205,19 +209,18 @@ def run_single_test(test_id, database_system):
             'traceback': error_traceback
         }
 
-def process_results(raw_results, db_content, mapping_content, test_id, database_system, config):
+def process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose):
     processed_results = {
-        'headers': raw_results[0],
+        'headers': ['Test ID', 'Purpose', 'Result'],
         'data': []
     }
     
-    for row in raw_results[1:]:
+    for row in raw_results[1:]:  # Skip the header row
         expected_content, actual_content = get_file_contents(test_id, database_system, config)
         
         processed_row = {
             'testid': row[3] if len(row) > 3 else 'N/A',
-            'platform': row[1] if len(row) > 1 else 'N/A',
-            'rdbms': row[2] if len(row) > 2 else 'N/A',
+            'purpose': purpose,
             'result': row[4] if len(row) > 4 else 'N/A',
             'expected_result': expected_content,
             'actual_result': actual_content,

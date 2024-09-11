@@ -260,7 +260,7 @@
         function generateResultTable(results) {
             let tableHtml = '<table class="table table-striped">';
             tableHtml += '<thead><tr>';
-            ['Test ID', 'Platform', 'RDBMS', 'Result', 'Expected Result', 'Actual Result', 'DB Structure', 'Mapping'].forEach(header => {
+            ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Structure', 'Mapping'].forEach(header => {
                 tableHtml += `<th>${header}</th>`;
             });
             tableHtml += '</tr></thead><tbody>';
@@ -274,14 +274,13 @@
         function generateResultRow(response) {
             if (!response || !response.results || !Array.isArray(response.results.data) || response.results.data.length === 0) {
                 console.error('Invalid response structure:', response);
-                return `<tr><td colspan="8">Error: Invalid test result structure</td></tr>`;
+                return `<tr><td colspan="7">Error: Invalid test result structure</td></tr>`;
             }
 
             const row = response.results.data[0];
             let rowHtml = '<tr>';
             rowHtml += `<td>${row.testid || 'N/A'}</td>`;
-            rowHtml += `<td>${row.platform || 'N/A'}</td>`;
-            rowHtml += `<td>${row.rdbms || 'N/A'}</td>`;
+            rowHtml += `<td>${row.purpose || 'N/A'}</td>`;
             rowHtml += `<td class="result-${(row.result || '').toLowerCase()}">${row.result || 'N/A'}</td>`;
             rowHtml += `<td><button onclick="showFileContent('${row.testid}', 'expected')">View</button></td>`;
             rowHtml += `<td><button onclick="showFileContent('${row.testid}', 'actual')">View</button></td>`;
@@ -311,7 +310,7 @@
         }
 
         function updateHeaderRow() {
-            const headerHtml = ['Test ID', 'Platform', 'RDBMS', 'Result', 'Expected Result', 'Actual Result', 'DB Content', 'Mapping']
+            const headerHtml = ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Content', 'Mapping']
                 .map(header => `<th>${header}</th>`)
                 .join('');
             $('#results-header').html(headerHtml);
@@ -417,38 +416,6 @@
         function truncateText(text, maxLength = 50) {
             return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
         }
-
-        // Function to export results to CSV
-        function exportToCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,";
-            
-            // Add headers
-            csvContent += "Test ID,Platform,RDBMS,Result,Expected Result,Actual Result\n";
-            
-            // Add data
-            Object.values(testResults).forEach(result => {
-                if (result.results && result.results.data) {
-                    result.results.data.forEach(row => {
-                        csvContent += `${row.testid},${row.platform},${row.rdbms},${row.result},"${row.expected_result}","${row.actual_result}"\n`;
-                    });
-                }
-            });
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "test_results.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        // Add export button to the page
-        $('<button>')
-            .text('Export Results')
-            .addClass('btn btn-secondary ml-2')
-            .on('click', exportToCSV)
-            .appendTo('.col:last');
     </script>
 </body>
 </html>
