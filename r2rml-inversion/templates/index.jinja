@@ -85,18 +85,11 @@
             <pre><code id="mappingCode"></code></pre>
         </div>
         <div id="results">
-            <h2>All Test Results:</h2>
             <div id="spinner" class="spinner-container" style="display: none;">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
-            <table id="results-table" class="table table-striped" style="display: none;">
-                <thead>
-                    <tr id="results-header"></tr>
-                </thead>
-                <tbody id="results-body"></tbody>
-            </table>
         </div>
     </div>
 
@@ -159,10 +152,7 @@
                     // Set the header if it's empty
                     const resultsHeader = $('#results-header');
                     if (resultsHeader.is(":empty")) {
-                        let headerHtml = '<th>Test ID</th>';
-                        testResult.results[0].forEach(header => {
-                            headerHtml += `<th>${header}</th>`;
-                        });
+                        let headerHtml = '<th>Test ID</th><th>Platform</th><th>RDBMS</th><th>Result</th>';
                         resultsHeader.html(headerHtml);
                     }
                     // Add the loading row
@@ -220,37 +210,26 @@
         }
 
         function generateResultRow(response) {
-            let rowHtml = `<tr><td>${response.test_id}</td>`;
-            response.results.slice(1).forEach(row => {
-                row.forEach((cell, index) => {
-                    if (index === 4) { // 'result' column
-                        rowHtml += `<td class="result-${cell.toLowerCase()}">${cell}</td>`;
-                    } else {
-                        rowHtml += `<td>${cell}</td>`;
-                    }
-                });
-            });
-            rowHtml += '</tr>';
+            let result = response.results[0];  // Assuming single test result
+            let rowHtml = `<tr>
+                <td>${response.test_id}</td>
+                <td>${result.platform}</td>
+                <td>${result.rdbms}</td>
+                <td class="result-${result.result.toLowerCase()}">${result.result}</td>
+            </tr>`;
             return rowHtml;
         }
 
         function generateResultTable(response) {
             let resultsHtml = '<table class="table table-striped">';
-            resultsHtml += '<thead><tr>';
-            response.results[0].forEach(header => {
-                resultsHtml += `<th>${header}</th>`;
-            });
-            resultsHtml += '</tr></thead><tbody>';
-            response.results.slice(1).forEach(row => {
-                resultsHtml += '<tr>';
-                row.forEach((cell, index) => {
-                    if (index === 4) { // 'result' column
-                        resultsHtml += `<td class="result-${cell.toLowerCase()}">${cell}</td>`;
-                    } else {
-                        resultsHtml += `<td>${cell}</td>`;
-                    }
-                });
-                resultsHtml += '</tr>';
+            resultsHtml += '<thead><tr><th>Test ID</th><th>Platform</th><th>RDBMS</th><th>Result</th></tr></thead><tbody>';
+            response.results.forEach(result => {
+                resultsHtml += `<tr>
+                    <td>${response.test_id}</td>
+                    <td>${result.platform}</td>
+                    <td>${result.rdbms}</td>
+                    <td class="result-${result.result.toLowerCase()}">${result.result}</td>
+                </tr>`;
             });
             resultsHtml += '</tbody></table>';
             return resultsHtml;

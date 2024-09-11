@@ -93,14 +93,22 @@ def run_single_test(test_id, database_system):
         test_uri = manifest_graph.value(subject=None, predicate=DCELEMENTS.identifier, object=Literal(test_id))
         database_uri = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.database, object=None)
         database = manifest_graph.value(subject=database_uri, predicate=RDB2RDFTEST.sqlScriptFile, object=None)
-        database_load(database, database_system)
         
-        results = test_one(test_id, database_system, config, manifest_graph)
-        generate_results(database_system, config, results)
+        if database is None:
+            raise ValueError(f"No database script found for test {test_id}")
+        
+        database_load(database.toPython(), database_system)
+        
+        raw_results = test_one(test_id, database_system, config, manifest_graph)
+        
+        # Process the results to match the desired structure
+        processed_results = process_results(raw_results)
+        
+        generate_results(database_system, config, raw_results)  # Keep this for file generation if needed
         
         os.chdir(os.path.dirname(__file__))
         
-        return {'status': 'success', 'test_id': test_id, 'results': results}
+        return {'status': 'success', 'test_id': test_id, 'results': processed_results}
     except Exception as e:
         error_traceback = traceback.format_exc()
         os.chdir(os.path.dirname(__file__))
@@ -110,6 +118,18 @@ def run_single_test(test_id, database_system):
             'message': str(e),
             'traceback': error_traceback
         }
+
+def process_results(raw_results):
+    # Skip the header row and process each result row
+    processed = []
+    for row in raw_results[1:]:
+        processed.append({
+            'test_id': row[3],  # Assuming test_id is at index 3
+            'platform': row[1],
+            'rdbms': row[2],
+            'result': row[4]
+        })
+    return processed
 
 @app.route('/get_mapping/<test_id>')
 def get_mapping(test_id):
