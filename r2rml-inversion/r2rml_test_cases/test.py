@@ -124,6 +124,8 @@ def database_load(database_script, database_system):
     
     if os.path.exists(os.path.join(database_path, system_specific_script)):
         database_script = system_specific_script
+    else:
+        print(f"Warning: No {database_system}-specific script found. Using generic script.")
     
     print(f"Using script file: {database_script}")
     
@@ -141,41 +143,30 @@ def database_load(database_script, database_system):
     if database_system == "postgresql":
         host = os.environ.get('HOST', 'localhost')
         cnx = psycopg2.connect("dbname='r2rml' user='r2rml' host='" + host + "' password='r2rml'")
-        cursor = cnx.cursor()
-        
-        for statement in statements:
-            if statement.strip():
-                try:
-                    cursor.execute(statement)
-                except psycopg2.Error as e:
-                    print(f"Error executing statement: {e}")
-                    print(f"Problematic statement: {statement}")
-                    cnx.rollback()
-                    raise
-        cnx.commit()
-        cursor.close()
-        cnx.close()
-    
     elif database_system == "mysql":
         host = os.environ.get('HOST', '127.0.0.1')
         cnx = mysql.connector.connect(user='r2rml', password='r2rml', host=host, database='r2rml')
-        cursor = cnx.cursor()
-        
+    else:
+        raise ValueError(f"Unsupported database system: {database_system}")
+
+    cursor = cnx.cursor()
+    
+    try:
         for statement in statements:
             if statement.strip():
                 try:
                     cursor.execute(statement)
-                except mysql.connector.Error as e:
+                except (psycopg2.Error, mysql.connector.Error) as e:
                     print(f"Error executing statement: {e}")
                     print(f"Problematic statement: {statement}")
                     cnx.rollback()
                     raise
         cnx.commit()
+    finally:
         cursor.close()
         cnx.close()
-    
-    else:
-        raise ValueError(f"Unsupported database system: {database_system}")
+
+    print(f"Successfully loaded {database_script} into {database_system}")
 
 def run_test(t_identifier, mapping, test_uri, expected_output, database_system, config, manifest_graph):
     results = [["tester", "platform", "rdbms", "testid", "result"]]

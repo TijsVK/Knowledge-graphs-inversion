@@ -24,6 +24,7 @@ sqlalchemy = "^2.0.34"
 docker = "^7.1.0"
 sql-metadata = "^2.13.0"
 psutil = "^6.0.0"
+pymysql = "^1.1.1"
 
 
 [tool.poetry.group.test.dependencies]

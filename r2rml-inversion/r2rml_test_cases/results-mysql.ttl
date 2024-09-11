@@ -1,0 +1,21 @@
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#Software>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#TestSubject>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://purl.org/dc/terms/hasPart> <https://www.mysql.com/>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://purl.org/dc/terms/date> "2024-10-09"^^<http://www.w3.org/2001/XMLSchema#date>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://usefulinc.com/ns/doap#name> "Morph-KGC-MySQL".
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://usefulinc.com/ns/doap#created> "2024-06-04"^^<http://www.w3.org/2001/XMLSchema#date>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://usefulinc.com/ns/doap#homepage> <https://morph-kgc.readthedocs.io/en/stable/>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL> <http://usefulinc.com/ns/doap#release> "2.8.0".
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/Arcangelo%20Massari> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/Arcangelo%20Massari> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#Assertor>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/Arcangelo%20Massari> <http://xmlns.com/foaf/0.1/name> "Arcangelo Massari".
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/Arcangelo%20Massari> <http://xmlns.com/foaf/0.1/mbox> "arcangelo.massari@unibo.it".
+<http://kg-construct.github.io/r2rml-implementation-report/Assertor/Arcangelo%20Massari> <http://xmlns.com/foaf/0.1/homepage> <https://www.unibo.it/sitoweb/arcangelo.massari>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#Assertion>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a> <http://www.w3.org/ns/earl#mode> <http://www.w3.org/ns/earl#automatic>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a> <http://www.w3.org/ns/earl#test> <http://www.w3.org/2001/sw/rdb2rdf/test-cases/#R2RMLTC0001a>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a> <http://www.w3.org/ns/earl#assertedBy> <http://kg-construct.github.io/r2rml-implementation-report/Assertor/Arcangelo%20Massari>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a> <http://www.w3.org/ns/earl#subject> <http://kg-construct.github.io/r2rml-implementation-report/TestSubject/Morph-KGC-MySQL>.
+<http://kg-construct.github.io/r2rml-implementation-report/Assertion/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a> <http://www.w3.org/ns/earl#result> <http://kg-construct.github.io/r2rml-implementation-report/TestResult/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a-error>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestResult/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a-error> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/earl#TestResult>.
+<http://kg-construct.github.io/r2rml-implementation-report/TestResult/Arcangelo%20Massari-Morph-KGC-MySQL-R2RMLTC0001a-error> <http://www.w3.org/ns/earl#outcome> <http://www.w3.org/ns/earl#error>.

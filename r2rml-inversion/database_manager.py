@@ -129,8 +129,8 @@ class DatabaseManager:
         if database_system == 'postgresql':
             return f"postgresql://r2rml:r2rml@localhost:{port}/r2rml"
         else:
-            return f"mysql://r2rml:r2rml@localhost:{port}/r2rml"
-
+            return f"mysql+pymysql://r2rml:r2rml@localhost:{port}/r2rml"
+            
     def get_database_content(self, database_system):
         connection_string = self.get_connection_string(database_system)
         engine = self.create_engine(connection_string)
@@ -166,12 +166,20 @@ class DatabaseManager:
                             """
                         
                         content = pd.read_sql(content_query, connection)
-                        datatypes = pd.read_sql(datatype_query, connection).set_index('column_name')['data_type']
+                        datatypes = pd.read_sql(datatype_query, connection)
+                        
+                        if datatypes.empty:
+                            raise Exception(f"No columns found for table {table}")
+                        
+                        datatypes = datatypes.set_index('column_name')['data_type']
                         
                         # Add datatypes to column names
                         content.columns = [f"{col} ({datatypes[col]})" for col in content.columns]
                         
-                        db_content[table] = content.to_dict(orient='split')
+                        db_content[table] = {
+                            'columns': content.columns.tolist(),
+                            'data': content.values.tolist()
+                        }
                     except Exception as e:
                         db_content[table] = f"Error reading table {table}: {str(e)}"
                 

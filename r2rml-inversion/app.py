@@ -149,20 +149,29 @@ def process_results(raw_results, db_content, mapping_content):
 def process_db_content(db_content):
     processed_content = {}
     for table_name, table_data in db_content.items():
-        processed_table = {
-            'columns': table_data['columns'],
-            'data': []
-        }
-        for row in table_data['data']:
-            processed_row = []
-            for value in row:
-                if isinstance(value, memoryview):
-                    # Aggiungiamo un prefisso per indicare che si tratta di un'immagine PNG
-                    processed_row.append("data:image/png;base64," + base64.b64encode(value.tobytes()).decode('utf-8'))
-                else:
-                    processed_row.append(value)
-            processed_table['data'].append(processed_row)
-        processed_content[table_name] = processed_table
+        if isinstance(table_data, str):
+            # Se table_data è una stringa, è probabilmente un messaggio di errore
+            processed_content[table_name] = {
+                'error': table_data,
+                'columns': [],
+                'data': []
+            }
+        else:
+            # Assumiamo che table_data sia un dizionario con 'columns' e 'data'
+            processed_table = {
+                'columns': table_data.get('columns', []),
+                'data': []
+            }
+            for row in table_data.get('data', []):
+                processed_row = []
+                for value in row:
+                    if isinstance(value, memoryview):
+                        # Aggiungiamo un prefisso per indicare che si tratta di un'immagine PNG
+                        processed_row.append("data:image/png;base64," + base64.b64encode(value.tobytes()).decode('utf-8'))
+                    else:
+                        processed_row.append(value)
+                processed_table['data'].append(processed_row)
+            processed_content[table_name] = processed_table
     return processed_content
 
 
