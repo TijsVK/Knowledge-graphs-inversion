@@ -151,9 +151,11 @@
             const testId = $('#testSelect').val();
             const dbSystem = $('#dbSelect').val();
             const resultsDiv = $('#results');
-            $('#spinner').show();
-            $('#results-table').hide();
-
+            
+            // Clear previous results and show spinner
+            resultsDiv.empty();
+            resultsDiv.append('<div id="spinner" class="spinner-container"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+            
             disableButtons();
 
             $.post('/run_test', {
@@ -168,7 +170,7 @@
                 resultsDiv.html('<p class="text-danger">Error: ' + textStatus + '</p>');
             })
             .always(function() {
-                $('#spinner').hide();
+                $('#spinner').remove();
                 enableButtons();
             });
         }
@@ -269,7 +271,7 @@
                 tableHtml += `<td>${row.platform}</td>`;
                 tableHtml += `<td>${row.rdbms}</td>`;
                 tableHtml += `<td class="result-${row.result.toLowerCase()}">${row.result}</td>`;
-                tableHtml += `<td><button onclick="showDBStructure('${row.testid}')">View</button></td>`;
+                tableHtml += `<td><button onclick="showDBContent('${row.testid}')">View</button></td>`;
                 tableHtml += `<td><button onclick="showMapping('${row.testid}')">View</button></td>`;
                 tableHtml += '</tr>';
             });
@@ -290,18 +292,37 @@
             rowHtml += `<td>${row.platform || 'N/A'}</td>`;
             rowHtml += `<td>${row.rdbms || 'N/A'}</td>`;
             rowHtml += `<td class="result-${(row.result || '').toLowerCase()}">${row.result || 'N/A'}</td>`;
-            rowHtml += `<td><button onclick="showDBStructure('${row.testid || ''}')">View</button></td>`;
+            rowHtml += `<td><button onclick="showDBContent('${row.testid || ''}')">View</button></td>`;
             rowHtml += `<td><button onclick="showMapping('${row.testid || ''}')">View</button></td>`;
             rowHtml += '</tr>';
             return rowHtml;
         }
 
-        function showDBStructure(testId) {
+        function showDBContent(testId) {
             const response = testResults[testId];
             if (response && response.results && response.results.data && response.results.data[0]) {
-                showModal('Database Structure', JSON.stringify(response.results.data[0].db_structure, null, 2));
+                const dbContent = response.results.data[0].db_content;
+                let contentHtml = '';
+                for (const [tableName, tableData] of Object.entries(dbContent)) {
+                    contentHtml += `<h3 class="mt-4 mb-2 text-xl font-bold">${tableName}</h3>`;
+                    contentHtml += '<div class="overflow-x-auto"><table class="min-w-full bg-white border border-gray-300">';
+                    contentHtml += '<thead class="bg-gray-100"><tr>';
+                    tableData.columns.forEach(col => {
+                        contentHtml += `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${col}</th>`;
+                    });
+                    contentHtml += '</tr></thead><tbody class="divide-y divide-gray-200">';
+                    tableData.data.forEach(row => {
+                        contentHtml += '<tr>';
+                        row.forEach(cell => {
+                            contentHtml += `<td class="px-4 py-2 whitespace-nowrap">${cell}</td>`;
+                        });
+                        contentHtml += '</tr>';
+                    });
+                    contentHtml += '</tbody></table></div>';
+                }
+                showModal('Database Content', contentHtml);
             } else {
-                showModal('Error', 'Unable to display database structure. Invalid data structure.');
+                showModal('Error', 'Unable to display database content. Invalid data structure.');
             }
         }
 
@@ -320,7 +341,7 @@
             const modalContent = document.getElementById('modalContent');
             
             modalTitle.textContent = title;
-            modalContent.textContent = content;
+            modalContent.innerHTML = content;
             
             modal.style.display = 'block';
 

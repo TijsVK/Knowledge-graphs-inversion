@@ -3,7 +3,7 @@ from configparser import ConfigParser
 import os
 from rdflib import ConjunctiveGraph, Namespace, Literal
 import traceback
-from r2rml_test_cases.test import test_one, generate_results, database_load, get_database_structure
+from r2rml_test_cases.test import test_one, generate_results, database_load
 from database_manager import DatabaseManager
 import json
 import threading
@@ -96,7 +96,7 @@ def run_single_test(test_id, database_system):
         database_load(database, database_system)
         
         # Get database structure
-        db_structure = get_database_structure(database_system)
+        db_content = db_manager.get_database_content(database_system)
         
         # Get mapping content
         mapping_filename = get_mapping_filename(test_id)
@@ -105,7 +105,7 @@ def run_single_test(test_id, database_system):
             mapping_content = f.read()
         
         raw_results = test_one(test_id, database_system, config, manifest_graph)
-        processed_results = process_results(raw_results, db_structure, mapping_content)
+        processed_results = process_results(raw_results, db_content, mapping_content)
         generate_results(database_system, config, raw_results)
         
         os.chdir(os.path.dirname(__file__))
@@ -125,7 +125,7 @@ def run_single_test(test_id, database_system):
             'traceback': error_traceback
         }
 
-def process_results(raw_results, db_structure, mapping_content):
+def process_results(raw_results, db_content, mapping_content):
     processed_results = {
         'headers': raw_results[0],
         'data': []
@@ -137,7 +137,7 @@ def process_results(raw_results, db_structure, mapping_content):
             'platform': row[1],
             'rdbms': row[2],
             'result': row[4],
-            'db_structure': db_structure,
+            'db_content': db_content,
             'mapping': mapping_content
         }
         processed_results['data'].append(processed_row)

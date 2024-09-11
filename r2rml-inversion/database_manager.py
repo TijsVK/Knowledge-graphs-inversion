@@ -3,12 +3,18 @@ import docker
 from docker.errors import NotFound, APIError
 import subprocess
 import psutil
+import pandas as pd
+from sqlalchemy import create_engine
+
 
 class DatabaseManager:
     def __init__(self):
         self.client = docker.from_env()
         self.containers = {}
         self.ports = {'postgresql': 5432, 'mysql': 3306}
+
+    def create_engine(self, connection_string):
+        return create_engine(connection_string)
 
     def get_container(self, database_system):
         if database_system not in self.containers or not self.container_is_running(database_system):
@@ -124,3 +130,53 @@ class DatabaseManager:
             return f"postgresql://r2rml:r2rml@localhost:{port}/r2rml"
         else:
             return f"mysql://r2rml:r2rml@localhost:{port}/r2rml"
+
+    def get_database_content(self, database_system):
+        connection_string = self.get_connection_string(database_system)
+        engine = self.create_engine(connection_string)
+        
+        try:
+            with engine.connect() as connection:
+                # Get all table names
+                if database_system == 'postgresql':
+                    table_query = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';"
+                else:  # MySQL
+                    table_query = "SHOW TABLES;"
+                
+                tables = pd.read_sql(table_query, connection)
+                table_names = tables.values.flatten()
+                
+                db_content = {}
+                for table in table_names:
+                    try:
+                        # Get table content and data types
+                        if database_system == 'postgresql':
+                            content_query = f'SELECT * FROM "{table}";'
+                            datatype_query = f"""
+                                SELECT column_name, data_type 
+                                FROM information_schema.columns 
+                                WHERE table_name = '{table}';
+                            """
+                        else:  # MySQL
+                            content_query = f"SELECT * FROM `{table}`;"
+                            datatype_query = f"""
+                                SELECT column_name, data_type 
+                                FROM information_schema.columns 
+                                WHERE table_name = '{table}' AND table_schema = DATABASE();
+                            """
+                        
+                        content = pd.read_sql(content_query, connection)
+                        datatypes = pd.read_sql(datatype_query, connection).set_index('column_name')['data_type']
+                        
+                        # Add datatypes to column names
+                        content.columns = [f"{col} ({datatypes[col]})" for col in content.columns]
+                        
+                        db_content[table] = content.to_dict(orient='split')
+                    except Exception as e:
+                        db_content[table] = f"Error reading table {table}: {str(e)}"
+                
+                return db_content
+        except Exception as e:
+            return {"error": f"Error getting database content: {str(e)}"}
+        finally:
+            engine.dispose()
