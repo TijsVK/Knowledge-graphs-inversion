@@ -6,6 +6,7 @@ import traceback
 from r2rml_test_cases.test import test_one, generate_results, database_load
 from database_manager import DatabaseManager
 import json
+import threading
 
 app = Flask(__name__)
 
@@ -25,6 +26,10 @@ manifest_graph.parse(os.path.join(TEST_CASES_DIR, "manifest.ttl"), format='turtl
 
 db_manager = DatabaseManager()
 
+# Add a flag to track if tests are running
+tests_running = threading.Event()
+cancel_tests = threading.Event()
+
 def get_mapping_filename(test_id):
     letter = test_id[-1].lower()
     return f'r2rml{letter}.ttl'
@@ -36,20 +41,39 @@ def index():
 
 @app.route('/run_test', methods=['POST'])
 def run_test():
+    if tests_running.is_set():
+        cancel_tests.set()
+        tests_running.clear()
+    
     test_id = request.form['test_id']
     database_system = request.form['database_system']
     
-    return run_single_test(test_id, database_system)
+    cancel_tests.clear()
+    tests_running.set()
+    result = run_single_test(test_id, database_system)
+    tests_running.clear()
+    return jsonify(result)
 
 @app.route('/run_all_tests', methods=['GET'])
 def run_all_tests():
+    if tests_running.is_set():
+        cancel_tests.set()
+        tests_running.clear()
+    
     database_system = request.args.get('database_system')
     tests = [f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')]
     
+    cancel_tests.clear()
+    tests_running.set()
+    
     def generate():
         for test_id in tests:
+            if cancel_tests.is_set():
+                yield f"data: {json.dumps({'status': 'cancelled', 'message': 'Tests cancelled by user'})}\n\n"
+                break
             result = run_single_test(test_id, database_system)
             yield f"data: {json.dumps(result)}\n\n"
+        tests_running.clear()
     
     return Response(stream_with_context(generate()), content_type='text/event-stream')
 
@@ -57,7 +81,10 @@ def run_single_test(test_id, database_system):
     test_dir = os.path.join(TEST_CASES_DIR)
     os.chdir(test_dir)
 
-    try:        
+    try:
+        if cancel_tests.is_set():
+            return {'status': 'cancelled', 'test_id': test_id, 'message': 'Test cancelled by user'}
+                
         # Reset the database for the new test
         db_manager.reset_database(database_system)
         

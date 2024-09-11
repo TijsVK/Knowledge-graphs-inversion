@@ -1,0 +1,2 @@
+tester_name,tester_url,tester_contact,test_date,engine_version,engine_name,engine_created,engine_url,database,database_name
+Arcangelo Massari,https://www.unibo.it/sitoweb/arcangelo.massari,arcangelo.massari@unibo.it,2024-10-09,2.8.0,Morph-KGC,2024-06-04,https://morph-kgc.readthedocs.io/en/stable/,https://www.postgresql.org/,PostgreSQL

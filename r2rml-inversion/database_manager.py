@@ -1,9 +1,8 @@
 import time
 import docker
-from docker.errors import NotFound
+from docker.errors import NotFound, APIError
 import subprocess
 import psutil
-
 
 class DatabaseManager:
     def __init__(self):
@@ -63,8 +62,14 @@ class DatabaseManager:
             for container_port, host_ports in container_ports.items():
                 if host_ports and int(host_ports[0]['HostPort']) == port:
                     print(f"Stopping Docker container {container.id} using port {port}")
-                    container.stop()
-                    container.remove()
+                    try:
+                        container.stop(timeout=10)
+                        container.remove(force=True)
+                    except APIError as e:
+                        if 'removal of container' in str(e) and 'is already in progress' in str(e):
+                            print(f"Container {container.id} is already being removed. Continuing...")
+                        else:
+                            raise
 
         # Stop system service (if running)
         if database_system == 'postgresql':

@@ -90,15 +90,13 @@
         function runAllTests() {
             const dbSystem = $('#dbSelect').val();
             const resultsDiv = $('#results');
-            const waitingMessage = $('#waiting-message');
-            const resultsTable = $('#results-table');
-            const resultsHeader = $('#results-header');
-            const resultsBody = $('#results-body');
-
-            resultsBody.empty();
-            resultsHeader.empty();
-            waitingMessage.show();
-            resultsTable.hide();
+            resultsDiv.empty(); // Pulisce completamente l'area dei risultati
+            
+            const waitingMessage = $('<div id="waiting-message">Please wait, running tests...</div>');
+            const resultsTable = $('<table id="results-table" class="table table-striped" style="display: none;"><thead><tr id="results-header"></tr></thead><tbody id="results-body"></tbody></table>');
+            
+            resultsDiv.append(waitingMessage);
+            resultsDiv.append(resultsTable);
 
             const eventSource = new EventSource(`/run_all_tests?database_system=${dbSystem}`);
 
@@ -107,8 +105,10 @@
                 
                 if (waitingMessage.is(":visible")) {
                     waitingMessage.hide();
+                    resultsDiv.prepend('<h2>All Test Results:</h2>'); // Aggiunge il titolo solo quando arriva il primo risultato
                     resultsTable.show();
-                    // Set up the header if it's empty
+                    // Imposta l'header se è vuoto
+                    const resultsHeader = $('#results-header');
                     if (resultsHeader.is(":empty")) {
                         let headerHtml = '<th>Test ID</th>';
                         testResult.results[0].forEach(header => {
@@ -119,7 +119,7 @@
                 }
 
                 const rowHtml = generateResultRow(testResult);
-                resultsBody.append(rowHtml);
+                $('#results-body').append(rowHtml);
             };
 
             eventSource.onerror = function(event) {
