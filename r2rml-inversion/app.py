@@ -57,9 +57,7 @@ def run_single_test(test_id, database_system):
     test_dir = os.path.join(TEST_CASES_DIR)
     os.chdir(test_dir)
 
-    try:
-        container = db_manager.get_container(database_system)
-        
+    try:        
         # Reset the database for the new test
         db_manager.reset_database(database_system)
         

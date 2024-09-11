@@ -56,7 +56,16 @@
             <h2>R2RML Mapping</h2>
             <pre><code id="mappingCode"></code></pre>
         </div>
-        <div id="results"></div>
+        <div id="results">
+            <h2>All Test Results:</h2>
+            <div id="waiting-message" style="display: none;">Please wait, running tests...</div>
+            <table id="results-table" class="table table-striped" style="display: none;">
+                <thead>
+                    <tr id="results-header"></tr>
+                </thead>
+                <tbody id="results-body"></tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -81,19 +90,36 @@
         function runAllTests() {
             const dbSystem = $('#dbSelect').val();
             const resultsDiv = $('#results');
-            resultsDiv.html('<h2>All Test Results:</h2>');
+            const waitingMessage = $('#waiting-message');
+            const resultsTable = $('#results-table');
+            const resultsHeader = $('#results-header');
+            const resultsBody = $('#results-body');
+
+            resultsBody.empty();
+            resultsHeader.empty();
+            waitingMessage.show();
+            resultsTable.hide();
 
             const eventSource = new EventSource(`/run_all_tests?database_system=${dbSystem}`);
 
             eventSource.onmessage = function(event) {
                 const testResult = JSON.parse(event.data);
-                const testResultHtml = `
-                    <div id="${testResult.test_id}">
-                        <h3>${testResult.test_id}</h3>
-                        ${generateResultTable(testResult)}
-                    </div>
-                `;
-                resultsDiv.append(testResultHtml);
+                
+                if (waitingMessage.is(":visible")) {
+                    waitingMessage.hide();
+                    resultsTable.show();
+                    // Set up the header if it's empty
+                    if (resultsHeader.is(":empty")) {
+                        let headerHtml = '<th>Test ID</th>';
+                        testResult.results[0].forEach(header => {
+                            headerHtml += `<th>${header}</th>`;
+                        });
+                        resultsHeader.html(headerHtml);
+                    }
+                }
+
+                const rowHtml = generateResultRow(testResult);
+                resultsBody.append(rowHtml);
             };
 
             eventSource.onerror = function(event) {
@@ -122,6 +148,21 @@
                 }
                 resultsDiv.html(errorHtml);
             }
+        }
+
+        function generateResultRow(response) {
+            let rowHtml = `<tr><td>${response.test_id}</td>`;
+            response.results.slice(1).forEach(row => {
+                row.forEach((cell, index) => {
+                    if (index === 4) { // 'result' column
+                        rowHtml += `<td class="result-${cell.toLowerCase()}">${cell}</td>`;
+                    } else {
+                        rowHtml += `<td>${cell}</td>`;
+                    }
+                });
+            });
+            rowHtml += '</tr>';
+            return rowHtml;
         }
 
         function generateResultTable(response) {

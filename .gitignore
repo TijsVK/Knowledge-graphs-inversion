@@ -20,3 +20,5 @@ meeting_notes.md
 *.pyc
 
 engine_output*
+results-postgresql*
+output.nt
