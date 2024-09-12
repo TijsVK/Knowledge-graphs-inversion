@@ -197,7 +197,7 @@ def run_single_test(test_id, database_system):
         raw_results = test_one(test_id, database_system, config, manifest_graph)        
                 
         inversion_result = inversion(MORPH_KCG_CONFIG_FILEPATH, test_id)
-        
+
         processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose, inversion_result)
         generate_results(database_system, config, raw_results)
         
@@ -206,8 +206,7 @@ def run_single_test(test_id, database_system):
         return {
             'status': 'success', 
             'test_id': test_id, 
-            'results': processed_results,
-            'inversion_result': 'passed' if inversion_result else 'failed'
+            'results': processed_results
         }
     except Exception as e:
         error_traceback = traceback.format_exc()
@@ -221,13 +220,13 @@ def run_single_test(test_id, database_system):
 
 def process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose, inversion_result):
     processed_results = {
-        'headers': ['Test ID', 'Purpose', 'Result'],
+        'headers': ['Test ID', 'Purpose', 'Result', 'Inversion Query'],
         'data': []
     }
     
     for row in raw_results[1:]:  # Skip the header row
         expected_content, actual_content = get_file_contents(test_id, database_system, config)
-        
+                            
         processed_row = {
             'testid': row[3] if len(row) > 3 else 'N/A',
             'purpose': purpose,
@@ -235,7 +234,8 @@ def process_results(raw_results, db_content, mapping_content, test_id, database_
             'expected_result': expected_content,
             'actual_result': actual_content,
             'db_content': db_content,
-            'mapping': mapping_content
+            'mapping': mapping_content,
+            'inversion_query': json.dumps(inversion_result)
         }
         processed_results['data'].append(processed_row)
     

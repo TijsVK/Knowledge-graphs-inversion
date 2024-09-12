@@ -302,7 +302,7 @@
         function generateResultTable(results) {
             let tableHtml = '<table class="table table-striped">';
             tableHtml += '<thead><tr>';
-            ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Structure', 'Mapping'].forEach(header => {
+            ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Structure', 'Mapping', 'Inversion Query'].forEach(header => {
                 tableHtml += `<th>${header}</th>`;
             });
             tableHtml += '</tr></thead><tbody>';
@@ -316,7 +316,7 @@
         function generateResultRow(response) {
             if (!response || !response.results || !Array.isArray(response.results.data) || response.results.data.length === 0) {
                 console.error('Invalid response structure:', response);
-                return `<tr><td colspan="7">Error: Invalid test result structure</td></tr>`;
+                return `<tr><td colspan="8">Error: Invalid test result structure</td></tr>`;
             }
 
             const row = response.results.data[0];
@@ -328,6 +328,7 @@
             rowHtml += `<td><button onclick="showFileContent('${row.testid}', 'actual')">View</button></td>`;
             rowHtml += `<td><button onclick="showDBContent('${row.testid}')">View</button></td>`;
             rowHtml += `<td><button onclick="showMapping('${row.testid}')">View</button></td>`;
+            rowHtml += `<td><button onclick="showInversionQuery('${row.testid}')">View</button></td>`;
             rowHtml += '</tr>';
             return rowHtml;
         }
@@ -342,6 +343,16 @@
             }
         }
 
+        function showInversionQuery(testId) {
+            const response = testResults[testId];
+            if (response && response.results && response.results.data && response.results.data[0]) {
+                const inversionQuery = response.results.data[0].inversion_query;
+                showModal('Inversion Query', `<pre>${escapeHtml(inversionQuery)}</pre>`);
+            } else {
+                showModal('Error', 'Unable to display inversion query. Invalid data structure.');
+            }
+        }
+
         function escapeHtml(unsafe) {
             return unsafe
                 .replace(/&/g, "&amp;")
@@ -352,7 +363,7 @@
         }
 
         function updateHeaderRow() {
-            const headerHtml = ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Content', 'Mapping']
+            const headerHtml = ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Content', 'Mapping', 'Inversion Query']
                 .map(header => `<th>${header}</th>`)
                 .join('');
             $('#results-header').html(headerHtml);

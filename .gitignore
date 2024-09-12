@@ -24,3 +24,6 @@ results-postgresql*
 output.nt
 metadata.csv
 r2rml.ttl
+individual-logs/
+*_table.csv
+new_mapping_rules.csv

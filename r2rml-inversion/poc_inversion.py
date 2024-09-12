@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import functools
 import time
-from typing import Any
+from typing import Any, Dict
 
 import morph_kgc.config
 from morph_kgc.mapping.mapping_parser import retrieve_mappings
@@ -122,7 +122,7 @@ class Template(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def fill_data(self, data: pd.DataFrame) -> str:
+    def fill_data(self, data: pd.DataFrame, source_name: str) -> str:
         raise NotImplementedError
 
 # endregion
@@ -185,7 +185,9 @@ class Identifier:
                 object_identifier = JSONPathFunctions.extend_string_path(rule["iterator"], value)
             except Exception as e:
                 return value
-                
+        elif source_type == "RDB":
+            table_name = rule.get("logical_source_value", "")
+            object_identifier = f"{table_name}.{value}"                
         else:
             inversion_logger.error(f"Unsupported source type: {source_type}")
             return None
@@ -574,7 +576,8 @@ class RemoteEndpoint(Endpoint):
 class LocalSparqlGraphStore(Endpoint):
     def __init__(self, url: str, delete_after_use: bool = False):
         self.delete_after_use = delete_after_use
-        data = open(url, "r", encoding="utf-8").read()
+        with open(url, "r", encoding="utf-8") as f:
+            data = f.read()
         self._repoid = hashlib.md5(data.encode("utf-8")).hexdigest()
         inversion_logger.debug(f"Creating repository: {self._repoid}")
         rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
@@ -710,7 +713,7 @@ class CSVTemplate(Template):
     def create_template(self) -> str:
         return "No real CSV template is created as we can just dump the dataframe to csv"
     
-    def fill_data(self, data: pd.DataFrame) -> str:
+    def fill_data(self, data: pd.DataFrame, source_name: str) -> str:
         return data.to_csv(index=False)
     
     @property
@@ -851,7 +854,7 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
         """           
         return self.root.to_template()
     
-    def fill_data(self, data: pd.DataFrame) -> str:
+    def fill_data(self, data: pd.DataFrame, source_name: str) -> str:
         """Fill the template with data
         
         Args:
@@ -865,12 +868,38 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
     def __str__(self):
         return f"JSONTemplate({self.paths})"
 
-class RDBTemplate(CSVTemplate):
+class RDBTemplate(Template):
     def __init__(self):
-        super().__init__()
-    
+        pass
+
     def create_template(self) -> str:
         return "RDB template: structure will be determined by the database schema"
+
+    def fill_data(self, data: pd.DataFrame, table_name: str) -> str:
+        create_table_sql = self.generate_create_table_sql(table_name, data)
+        insert_data_sql = self.generate_insert_data_sql(table_name, data)
+        return create_table_sql + "\n\n" + insert_data_sql
+
+    def generate_create_table_sql(self, table_name: str, df: pd.DataFrame) -> str:
+        columns = [f"{col} TEXT" for col in df.columns]  # Assuming all columns are TEXT for simplicity
+        columns_str = ", ".join(columns)
+        return f"CREATE TABLE {table_name} ({columns_str});"
+
+    def generate_insert_data_sql(self, table_name: str, df: pd.DataFrame) -> str:
+        insert_statements = []
+        for _, row in df.iterrows():
+            values = [f"'{str(value).replace('', '')}'" for value in row]
+            values_str = ", ".join(values)
+            insert_statements.append(f"INSERT INTO {table_name} VALUES ({values_str});")
+        return "\n".join(insert_statements)
+
+    @property
+    def columns_decoded(self) -> bool:
+        return True
+
+    @property
+    def columns_decoded(self) -> bool:
+        return True
 
 class Object(Node):
     def __init__(self, children: dict[str, Node] = None, values: list[str] = None):
@@ -1173,7 +1202,6 @@ def retrieve_data(
     )
     query = Query(triples)
     generated_query = query.generate(mapping_rules)
-    # query = generate_query(mapping_rules, iterator_rules)
     if generated_query is None:
         inversion_logger.warning("No query generated (no references found)")
         return None
@@ -1229,7 +1257,7 @@ def generate_template(source_rules: pd.DataFrame) -> Template | None:
 def test_logging_setup(testID: str):
     if not os.path.exists(TEST_LOG_FOLDER):
         os.mkdir(TEST_LOG_FOLDER)
-        
+
     if os.path.exists(TEST_LOG_FOLDER / f"{testID}.log"):
         os.remove(TEST_LOG_FOLDER / f"{testID}.log")
     inversion_logger.setLevel(logging.DEBUG)
@@ -1266,7 +1294,7 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
         try:
             template_filling_start_time = time.time()
             inversion_logger.debug(f"Starting template filling, {template_filling_start_time - data_retrieval_start_time}s used for data retrieval")
-            filled_source = template.fill_data(source_data)
+            filled_source = template.fill_data(source_data, source)
             # inversion_logger.debug(filled_source)
             results[source] = filled_source
         except AttributeError as e:
