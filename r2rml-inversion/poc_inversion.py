@@ -1187,48 +1187,63 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
     return df
 
 def retrieve_data(
-        mapping_rules: pd.DataFrame, source_rules: pd.DataFrame, endpoint: Endpoint,  decode_columns: bool = False, try_cached: bool = False
+    mapping_rules: pd.DataFrame,
+    source_rules: pd.DataFrame,
+    endpoint: Endpoint,
+    decode_columns: bool = False,
+    try_cached: bool = False
 ) -> pd.DataFrame | None:
     retrieve_data_start_time = time.time()
-    inversion_logger.debug(f"Processing source {source_rules.iloc[0]['logical_source_value']}")
+    source = source_rules.iloc[0]['logical_source_value']
+    inversion_logger.debug(f"Processing source {source}")
+
+    # Generate a hash of the source to use as a filename
+    source_hash = hashlib.md5(source.encode()).hexdigest()
+    filename = f"{source_hash}_table.csv"
+
     triples: list[QueryTriple] = [
-        QueryTriple(rule) for _, rule in source_rules.iterrows() if not rule["object_map_type"] in [RML_BLANK_NODE]
+        QueryTriple(rule) for _, rule in source_rules.iterrows() if rule["object_map_type"] not in [RML_BLANK_NODE]
     ]
     triples.extend(
         SubjectTriple(subject_rules.iloc[0])
-        for subject, subject_rules in source_rules.groupby(
-            "subject_map_value", dropna=False
-        )
+        for subject, subject_rules in source_rules.groupby("subject_map_value", dropna=False)
     )
+
     query = Query(triples)
     generated_query = query.generate(mapping_rules)
+
     if generated_query is None:
         inversion_logger.warning("No query generated (no references found)")
         return None
-    else:
-        inversion_logger.debug(generated_query)
-        try:
-            source = source_rules.iloc[0]["logical_source_value"]
-            if try_cached and pathlib.Path(f"{source}_table.csv").exists():
-                inversion_logger.info(f"Using cached data for {source}")
-                end_query_time = time.time()
-            else:
-                start_query_time = time.time()
-                inversion_logger.debug(f"Time to generate query: {start_query_time - retrieve_data_start_time}s")
-                result = endpoint.query(generated_query)
-                end_query_time = time.time()
-                inversion_logger.debug(f"Time to query endpoint: {end_query_time - start_query_time}s")
-                with open(f"{source}_table.csv", "w") as file:
-                    file.write(result)
-            df = pd.read_csv(f"{source}_table.csv", dtype=str) # huge files would die when directly importing with StringIO
-            if decode_columns:
-                df = query.decode_dataframe(df)
-            convert_time = time.time()
-            inversion_logger.debug(f"Time to convert data: {convert_time - end_query_time}s")
-            return df
-        except Exception as e:
-            inversion_logger.warning(f"Error while querying endpoint: {e}")
-            raise
+
+    inversion_logger.debug(generated_query)
+
+    try:
+        if try_cached and pathlib.Path(filename).exists():
+            inversion_logger.info(f"Using cached data for {source}")
+            end_query_time = time.time()
+        else:
+            start_query_time = time.time()
+            inversion_logger.debug(f"Time to generate query: {start_query_time - retrieve_data_start_time}s")
+            result = endpoint.query(generated_query)
+            end_query_time = time.time()
+            inversion_logger.debug(f"Time to query endpoint: {end_query_time - start_query_time}s")
+
+            with open(filename, "w", encoding="utf-8") as file:
+                file.write(result)
+
+        df = pd.read_csv(filename, dtype=str)
+
+        if decode_columns:
+            df = query.decode_dataframe(df)
+
+        convert_time = time.time()
+        inversion_logger.debug(f"Time to convert data: {convert_time - end_query_time}s")
+        return df
+
+    except Exception as e:
+        inversion_logger.warning(f"Error while querying endpoint: {e}")
+        raise
 
 def generate_template(source_rules: pd.DataFrame) -> Template | None:
     source_type = source_rules.iloc[0]["source_type"]
