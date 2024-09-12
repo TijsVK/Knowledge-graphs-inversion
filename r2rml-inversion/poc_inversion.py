@@ -282,6 +282,8 @@ class QueryTriple(Triple):
             elif object_term_type == RML_BLANK_NODE:
                 # raise NotImplementedError("Blank nodes are not implemented, and will not be implemented due to their nature.")
                 return None
+            elif object_term_type == RML_LITERAL:
+                object_map_value = f'"{object_map_value}"'
             return f"?{subject_reference} {predicate} {object_map_value} ."
 
         
@@ -604,7 +606,10 @@ class LocalSparqlGraphStore(Endpoint):
         """
         
         rdf4jconnector.create_repository(self._repoid, config=config, accept_existing=True)
-        rdf4jconnector.add_data_to_repo(self._repoid, data, "text/x-nquads")
+        try:
+            rdf4jconnector.add_data_to_repo(self._repoid, data, "text/x-nquads")
+        except pyrdf4j.errors.TerminatingError as e:
+            logging.error("Invalid RDF data")
         time.sleep(1)
         self._sparql = SPARQLWrapper(
             f"http://localhost:7200/repositories/{self._repoid}"
@@ -1296,6 +1301,10 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
         if str(e) == "Not supported query type!":
             inversion_logger.warning(f"Invalid SQL query in mapping")
         return results
+    except KeyError as e:
+        if str(e) == "'object_map'":
+            inversion_logger.warning(f"Mapping with missing information. Skipping.")
+        return results
     try:
         endpoint = EndpointFactory.create(config)
     except FileNotFoundError:
@@ -1319,7 +1328,6 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
             template_filling_start_time = time.time()
             inversion_logger.debug(f"Starting template filling, {template_filling_start_time - data_retrieval_start_time}s used for data retrieval")
             filled_source = template.fill_data(source_data, source)
-            # inversion_logger.debug(filled_source)
             results[source] = filled_source
         except AttributeError as e:
             inversion_logger.error(f"Error while filling template: {e}")
