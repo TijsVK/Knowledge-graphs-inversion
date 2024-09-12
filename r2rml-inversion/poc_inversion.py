@@ -1269,15 +1269,19 @@ def test_logging_setup(testID: str):
     inversion_logger.setLevel(logging.DEBUG)
     
 def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, str]:
+    results = {}
     start_time = time.time()
     if testID is not None:
         test_logging_setup(testID)
     config = load_config_from_argument(config_file)
     mappings: pd.DataFrame
     mappings, _ = retrieve_mappings(config)
-    endpoint = EndpointFactory.create(config)
+    try:
+        endpoint = EndpointFactory.create(config)
+    except FileNotFoundError:
+        inversion_logger.warning(f"Output file not found. Skipping inversion.")
+        return results
     insert_columns(mappings)
-    results = {}
     setup_done_time = time.time()
     inversion_logger.debug(f"Starting sources generation, {setup_done_time - start_time}s used for setup")
     for source, source_rules in mappings.groupby("logical_source_value"):
