@@ -1272,10 +1272,15 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
     results = {}
     start_time = time.time()
     if testID is not None:
-        test_logging_setup(testID)
+        test_logging_setup(testID)  
     config = load_config_from_argument(config_file)
     mappings: pd.DataFrame
-    mappings, _ = retrieve_mappings(config)
+    try:
+        mappings, _ = retrieve_mappings(config)
+    except ValueError as e:
+        if str(e) == "Not supported query type!":
+            inversion_logger.warning(f"Invalid SQL query in mapping")
+        return results
     try:
         endpoint = EndpointFactory.create(config)
     except FileNotFoundError:
