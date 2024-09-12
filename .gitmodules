@@ -1,6 +1,3 @@
 [submodule "Implementation/rml-test-cases"]
 	path = Implementation/rml-test-cases
 	url = https://github.com/kg-construct/rml-test-cases.git
-[submodule "Implementation/pyrdf4j"]
-	path = Implementation/pyrdf4j
-	url = https://github.com/BB-Open/pyrdf4j.git

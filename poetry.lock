@@ -1050,6 +1050,20 @@ files = [
 tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
 
 [[package]]
+name = "pyrdf4j"
+version = "0.1.1"
+description = ""
+optional = false
+python-versions = "<4.0,>=3.7"
+files = [
+    {file = "pyrdf4j-0.1.1-py3-none-any.whl", hash = "sha256:edd25f234efd59b68cc15dec9c56734462217cd740d352f38fae2c349610d16c"},
+    {file = "pyrdf4j-0.1.1.tar.gz", hash = "sha256:79a1895755c2dd4b7bf2fd80b56e44ea0b6b7dada3bc73d37a4768845a709995"},
+]
+
+[package.dependencies]
+SPARQLWrapper = ">=2.0.0,<3.0.0"
+
+[[package]]
 name = "pyreadline3"
 version = "3.4.1"
 description = "A python implementation of GNU readline."
@@ -1581,4 +1595,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "d2837a7bb31b20378dc2ba51ba62bec3bcfdaf6415c3dbca798ec4c4ce5382e6"
+content-hash = "f4439ffabb78da4b81ba7d1a8082cbb92803431ce639a4be023a8eaea299e5cc"

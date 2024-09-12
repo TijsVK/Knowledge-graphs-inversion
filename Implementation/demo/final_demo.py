@@ -154,4 +154,4 @@ def format_if_json(data):
         return data
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

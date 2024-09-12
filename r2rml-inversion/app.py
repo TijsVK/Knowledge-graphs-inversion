@@ -10,6 +10,9 @@ import threading
 import base64
 from datetime import date, datetime
 import math
+from poc_inversion import inversion
+from morph_kgc.mapping.mapping_parser import retrieve_mappings
+from morph_kgc.args_parser import load_config_from_argument
 
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -40,6 +43,8 @@ config.read('config.ini')
 
 TEST_CASES_DIR = os.path.join(os.path.dirname(__file__), 'r2rml_test_cases')
 
+MORPH_KCG_CONFIG_FILEPATH = os.path.join(os.path.dirname(__file__), 'morph_kgc_config.ini')
+
 RDB2RDFTEST = Namespace("http://purl.org/NET/rdb2rdf-test#")
 TESTDEC = Namespace("http://www.w3.org/2006/03/test-description#")
 DCELEMENTS = Namespace("http://purl.org/dc/terms/")
@@ -49,6 +54,7 @@ manifest_graph = ConjunctiveGraph()
 manifest_graph.parse(os.path.join(TEST_CASES_DIR, "manifest.ttl"), format='turtle')
 
 db_manager = DatabaseManager()
+db_manager.get_container('graphdb')
 
 # Add a flag to track if tests are running
 tests_running = threading.Event()
@@ -91,7 +97,7 @@ def run_test():
     tests_running.set()
     result = run_single_test(test_id, database_system)
     tests_running.clear()
-    
+
     try:
         sanitized_result = sanitize_data(result)
         json_result = json.dumps(sanitized_result, cls=CustomJSONEncoder)
@@ -188,8 +194,11 @@ def run_single_test(test_id, database_system):
         purpose = manifest_graph.value(subject=test_uri, predicate=TESTDEC.purpose, object=None)
         purpose = purpose.toPython() if purpose else "Purpose not specified"
         
-        raw_results = test_one(test_id, database_system, config, manifest_graph)
-        processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose)
+        raw_results = test_one(test_id, database_system, config, manifest_graph)        
+                
+        inversion_result = inversion(MORPH_KCG_CONFIG_FILEPATH, test_id)
+        
+        processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose, inversion_result)
         generate_results(database_system, config, raw_results)
         
         os.chdir(os.path.dirname(__file__))
@@ -198,6 +207,7 @@ def run_single_test(test_id, database_system):
             'status': 'success', 
             'test_id': test_id, 
             'results': processed_results,
+            'inversion_result': 'passed' if inversion_result else 'failed'
         }
     except Exception as e:
         error_traceback = traceback.format_exc()
@@ -209,7 +219,7 @@ def run_single_test(test_id, database_system):
             'traceback': error_traceback
         }
 
-def process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose):
+def process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose, inversion_result):
     processed_results = {
         'headers': ['Test ID', 'Purpose', 'Result'],
         'data': []

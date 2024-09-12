@@ -865,6 +865,13 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
     def __str__(self):
         return f"JSONTemplate({self.paths})"
 
+class RDBTemplate(CSVTemplate):
+    def __init__(self):
+        super().__init__()
+    
+    def create_template(self) -> str:
+        return "RDB template: structure will be determined by the database schema"
+
 class Object(Node):
     def __init__(self, children: dict[str, Node] = None, values: list[str] = None):
         self._parent_path = ""
@@ -1214,8 +1221,15 @@ def generate_template(source_rules: pd.DataFrame) -> Template | None:
         return template
     elif source_type == "CSV":
         return CSVTemplate()
+    elif source_type == "RDB":
+        return RDBTemplate()
+    else:
+        raise ValueError(f"Unsupported source type: {source_type}")
 
 def test_logging_setup(testID: str):
+    if not os.path.exists(TEST_LOG_FOLDER):
+        os.mkdir(TEST_LOG_FOLDER)
+        
     if os.path.exists(TEST_LOG_FOLDER / f"{testID}.log"):
         os.remove(TEST_LOG_FOLDER / f"{testID}.log")
     inversion_logger.setLevel(logging.DEBUG)
@@ -1242,7 +1256,6 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
         inversion_logger.info(f"Processing source {source}")
         template_generation_start_time = time.time()
         template = generate_template(source_rules)
-        print(template)
         data_retrieval_start_time = time.time()
         inversion_logger.debug(f"Starting data retrieval, {data_retrieval_start_time - template_generation_start_time}s used for template generation")
         source_data = retrieve_data(mappings, source_rules, endpoint, decode_columns=True)

@@ -11,7 +11,8 @@ class DatabaseManager:
     def __init__(self):
         self.client = docker.from_env()
         self.containers = {}
-        self.ports = {'postgresql': 5432, 'mysql': 3306}
+        self.ports = {'postgresql': 5432, 'mysql': 3306, 'graphdb': 7200}
+        self.graphdb_initialized = False
 
     def create_engine(self, connection_string):
         return create_engine(connection_string)
@@ -26,6 +27,9 @@ class DatabaseManager:
         max_attempts = 5
         for attempt in range(max_attempts):
             try:
+                if database_system == 'graphdb':
+                    return self.start_graphdb_container()
+                
                 image = 'postgres:13' if database_system == 'postgresql' else 'mysql:8'
                 port = self.ports[database_system]
                 container = self.client.containers.run(
@@ -46,7 +50,7 @@ class DatabaseManager:
                 )
                 print(f"Container started for {database_system}: {container.id}")
                 self.containers[database_system] = container
-                time.sleep(10)  # Wait for the database to be ready
+                time.sleep(5)
                 return
             except docker.errors.APIError as e:
                 if "port is already allocated" in str(e) and attempt < max_attempts - 1:
@@ -57,6 +61,24 @@ class DatabaseManager:
                     print(f"Error starting container: {e}")
                     raise
         raise Exception(f"Failed to start {database_system} container after {max_attempts} attempts")
+
+    def start_graphdb_container(self):
+        if not self.graphdb_initialized:
+            port = self.ports['graphdb']
+            container = self.client.containers.run(
+                'ontotext/graphdb:10.7.3',
+                detach=True,
+                remove=True,
+                ports={f'{port}/tcp': port},
+                environment={
+                    'GDB_JAVA_OPTS': '-Xmx2g -Xms2g',
+                    'GDB_HEAP_SIZE': '2g'
+                }
+            )
+            print(f"GraphDB container started: {container.id}")
+            self.containers['graphdb'] = container
+            self.graphdb_initialized = True
+        return self.containers['graphdb']
 
     def stop_existing_services(self, database_system):
         port = self.ports[database_system]
@@ -82,17 +104,6 @@ class DatabaseManager:
             self._stop_postgresql_service()
         elif database_system == 'mysql':
             self._stop_mysql_service()
-
-        # Kill any remaining processes using the port
-        for conn in psutil.net_connections():
-            if conn.laddr.port == port:
-                try:
-                    process = psutil.Process(conn.pid)
-                    print(f"Killing process {process.pid} using port {port}")
-                    process.terminate()
-                    process.wait(timeout=10)
-                except psutil.NoSuchProcess:
-                    pass
 
     def _stop_postgresql_service(self):
         try:
@@ -121,15 +132,19 @@ class DatabaseManager:
         container = self.get_container(database_system)
         if database_system == 'postgresql':
             container.exec_run("psql -U r2rml -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'")
-        else:  # MySQL
+        elif database_system == 'mysql':
             container.exec_run("mysql -u r2rml -pr2rml -e 'DROP DATABASE r2rml; CREATE DATABASE r2rml;'")
+        elif database_system == 'graphdb':
+            pass
 
     def get_connection_string(self, database_system):
         port = self.ports[database_system]
         if database_system == 'postgresql':
             return f"postgresql://r2rml:r2rml@localhost:{port}/r2rml"
-        else:
+        elif database_system == 'mysql':
             return f"mysql+pymysql://r2rml:r2rml@localhost:{port}/r2rml"
+        elif database_system == 'graphdb':
+            return f"http://localhost:{port}"
             
     def get_database_content(self, database_system):
         connection_string = self.get_connection_string(database_system)
