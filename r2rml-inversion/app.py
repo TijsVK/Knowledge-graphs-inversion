@@ -226,7 +226,12 @@ def process_results(raw_results, db_content, mapping_content, test_id, database_
     
     for row in raw_results[1:]:  # Skip the header row
         expected_content, actual_content = get_file_contents(test_id, database_system, config)
-                            
+
+        formatted_queries = []
+        for source, query in inversion_result.items():
+            formatted_queries.append(query.strip())
+        formatted_inversion_result = "\n\n".join(formatted_queries)
+
         processed_row = {
             'testid': row[3] if len(row) > 3 else 'N/A',
             'purpose': purpose,
@@ -235,7 +240,7 @@ def process_results(raw_results, db_content, mapping_content, test_id, database_
             'actual_result': actual_content,
             'db_content': db_content,
             'mapping': mapping_content,
-            'inversion_query': json.dumps(inversion_result)
+            'inversion_query': formatted_inversion_result
         }
         processed_results['data'].append(processed_row)
     
