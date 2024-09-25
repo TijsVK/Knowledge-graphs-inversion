@@ -147,18 +147,23 @@ class DatabaseManager:
     def reset_database(self, database_system):
         container = self.get_container(database_system)
         if database_system in ['postgresql', 'dest_postgresql']:
-            # Terminate all connections, drop and recreate the database
+            # Terminate all connections
             container.exec_run("""
                 psql -U postgres -c "
                 SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
                 WHERE pg_stat_activity.datname = 'r2rml'
                 AND pid <> pg_backend_pid();
+                "
+            """)
+            # Drop and recreate the database
+            container.exec_run("""
+                psql -U postgres -c "
                 DROP DATABASE IF EXISTS r2rml;
                 CREATE DATABASE r2rml;
                 "
             """)
-            # Reconnect to the new database and set up permissions
+            # Reconnect and set permissions
             container.exec_run("""
                 psql -U postgres -d r2rml -c "
                 CREATE SCHEMA IF NOT EXISTS public;

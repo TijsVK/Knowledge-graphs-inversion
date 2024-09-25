@@ -58,10 +58,6 @@ manifest_graph.parse(os.path.join(TEST_CASES_DIR, "manifest.ttl"), format='turtl
 db_manager = DatabaseManager()
 db_manager.get_container(DEST_DB_SYSTEM)
 
-# Add a flag to track if tests are running
-tests_running = threading.Event()
-cancel_tests = threading.Event()
-
 def get_mapping_filename(test_id):
     letter: str = test_id[-1].lower()
     return f'r2rml{letter}.ttl' if letter.isalpha() else 'r2rml.ttl'
@@ -88,17 +84,10 @@ def index():
 
 @app.route('/run_test', methods=['POST'])
 def run_test():
-    if tests_running.is_set():
-        cancel_tests.set()
-        tests_running.clear()
-    
     test_id = request.form['test_id']
     database_system = request.form['database_system']
     
-    cancel_tests.clear()
-    tests_running.set()
     result = run_single_test(test_id, database_system)
-    tests_running.clear()
 
     try:
         sanitized_result = sanitize_data(result)
@@ -118,21 +107,11 @@ def run_test():
 
 @app.route('/run_all_tests', methods=['GET'])
 def run_all_tests():
-    if tests_running.is_set():
-        cancel_tests.set()
-        tests_running.clear()
-    
     database_system = request.args.get('database_system')
     tests = sorted([f for f in os.listdir(TEST_CASES_DIR) if os.path.isdir(os.path.join(TEST_CASES_DIR, f)) and f.startswith('R2RMLTC')])
-    
-    cancel_tests.clear()
-    tests_running.set()
-    
+        
     def generate():
         for test_id in tests:
-            if cancel_tests.is_set():
-                yield f"data: {json.dumps({'status': 'cancelled', 'message': 'Tests cancelled by user'})}\n\n"
-                break
             result = run_single_test(test_id, database_system)
             try:
                 sanitized_result = sanitize_data(result)
@@ -141,7 +120,6 @@ def run_all_tests():
             except Exception as e:
                 error_msg = f"Error serializing result for test {test_id}: {str(e)}"
                 yield f"data: {json.dumps({'status': 'error', 'test_id': test_id, 'message': error_msg})}\n\n"
-        tests_running.clear()
         yield "event: complete\ndata: All tests completed\n\n"
     
     return Response(stream_with_context(generate()), content_type='text/event-stream')
@@ -171,9 +149,6 @@ def run_single_test(test_id, database_system):
     os.chdir(test_dir)
 
     try:
-        if cancel_tests.is_set():
-            return {'status': 'cancelled', 'test_id': test_id, 'message': 'Test cancelled by user'}
-                
         # Reset the database for the new test
         db_manager.reset_database(database_system)
         db_manager.reset_database(DEST_DB_SYSTEM)

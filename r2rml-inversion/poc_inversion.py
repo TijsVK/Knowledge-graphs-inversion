@@ -865,7 +865,6 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
 class RDBTemplate(Template):
     def __init__(self, db_url):
         self.db_url = db_url
-        self.engine = self.create_engine()
 
     def create_engine(self):
         return sqlalchemy.create_engine(self.db_url)
@@ -874,10 +873,11 @@ class RDBTemplate(Template):
         return "RDB template: structure will be determined by the database schema"
 
     def fill_data(self, data: pd.DataFrame, table_name: str) -> str:
+        engine = self.create_engine()
         table = self.get_sqla_table(data, table_name)
         
         # Generate CREATE TABLE statement
-        create_table_query = str(CreateTable(table).compile(self.engine))
+        create_table_query = str(CreateTable(table).compile(engine))
         
         data = data.applymap(lambda x: x.isoformat() if isinstance(x, (date, datetime)) else x)
         
@@ -889,14 +889,19 @@ class RDBTemplate(Template):
         ))
         full_query = f"{create_table_query};{insert_query};"
 
-        # with self.engine.begin() as connection:
-        #     table_exists = connection.dialect.has_table(connection, table_name)
-        #     if not table_exists:
-        #         connection.execute(sqlalchemy.text(create_table_query))
-        #     connection.execute(insert_stmt)
+        if not self.is_sql_query(table_name):
+            with engine.begin() as connection:
+                connection.execute(sqlalchemy.text(f'DROP TABLE IF EXISTS "{table_name}"'))
+                connection.execute(sqlalchemy.text(create_table_query))
+                connection.execute(insert_stmt)
 
-        full_query = f"CREATE TABLE IF NOT EXISTS {table_name} (\n{create_table_query.split('(', 1)[1]}\n{insert_query};"
+        engine.dispose()
         return full_query
+
+    def is_sql_query(self, table_name: str) -> bool:
+        # Basic check for SQL keywords. This can be expanded for more complex detection.
+        sql_keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'GROUP BY', 'ORDER BY']
+        return any(keyword in table_name.upper() for keyword in sql_keywords)
 
     def get_sqla_table(self, df: pd.DataFrame, table_name: str):        
         metadata = MetaData()
