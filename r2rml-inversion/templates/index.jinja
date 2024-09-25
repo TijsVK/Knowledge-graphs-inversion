@@ -135,12 +135,12 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-6">
+            {# <div class="col-md-6">
                 <select id="dbSelect" class="form-select mb-3">
                     <option value="postgresql">PostgreSQL</option>
                     <option value="mysql">MySQL</option>
                 </select>
-            </div>
+            </div> #}
         </div>
         <div class="row mb-3">
             <div class="col">
@@ -216,7 +216,8 @@
 
         function runTest() {
             const testId = $('#testSelect').val();
-            const dbSystem = $('#dbSelect').val();
+            // const dbSystem = $('#dbSelect').val();
+            dbSystem = 'postgresql';
             const resultsDiv = $('#results');
             
             // Clear previous results and show spinner
@@ -243,7 +244,8 @@
         }
 
         function runAllTests() {
-            const dbSystem = $('#dbSelect').val();
+            // const dbSystem = $('#dbSelect').val();
+            const dbSystem = 'postgresql';
             const resultsDiv = $('#results');
             resultsDiv.empty();
             
@@ -475,11 +477,6 @@
                 } else {
                     $('#runTestBtn').prop('disabled', true);
                 }
-            });
-
-            // Event listener for database system selection
-            $('#dbSelect').change(function() {
-                // You can add any specific logic here if needed when the database system changes
             });
 
             // Initialize button states

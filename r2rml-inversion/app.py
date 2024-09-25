@@ -49,12 +49,14 @@ RDB2RDFTEST = Namespace("http://purl.org/NET/rdb2rdf-test#")
 TESTDEC = Namespace("http://www.w3.org/2006/03/test-description#")
 DCELEMENTS = Namespace("http://purl.org/dc/terms/")
 
+DEST_DB_SYSTEM = 'dest_postgresql'
+
 # Load manifest graph
 manifest_graph = ConjunctiveGraph()
 manifest_graph.parse(os.path.join(TEST_CASES_DIR, "manifest.ttl"), format='turtle')
 
 db_manager = DatabaseManager()
-db_manager.get_container('graphdb')
+db_manager.get_container(DEST_DB_SYSTEM)
 
 # Add a flag to track if tests are running
 tests_running = threading.Event()
@@ -174,6 +176,7 @@ def run_single_test(test_id, database_system):
                 
         # Reset the database for the new test
         db_manager.reset_database(database_system)
+        db_manager.reset_database(DEST_DB_SYSTEM)
         
         # Load the specific test database
         test_uri = manifest_graph.value(subject=None, predicate=DCELEMENTS.identifier, object=Literal(test_id))
@@ -195,8 +198,9 @@ def run_single_test(test_id, database_system):
         purpose = purpose.toPython() if purpose else "Purpose not specified"
         
         raw_results = test_one(test_id, database_system, config, manifest_graph)        
-                
-        inversion_result = inversion(MORPH_KCG_CONFIG_FILEPATH, test_id)
+        
+        dest_db_url = db_manager.get_connection_string(DEST_DB_SYSTEM)
+        inversion_result = inversion(MORPH_KCG_CONFIG_FILEPATH, test_id, dest_db_url)
 
         processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose, inversion_result)
         generate_results(database_system, config, raw_results)

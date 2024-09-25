@@ -1,28 +1,39 @@
-from abc import ABC, abstractmethod
 import functools
-import time
-from typing import Any, Dict
-
-import morph_kgc.config
-from morph_kgc.mapping.mapping_parser import retrieve_mappings
-from morph_kgc.args_parser import load_config_from_argument
-from morph_kgc.constants import RML_IRI, RML_LITERAL, RML_BLANK_NODE, RML_TEMPLATE, RML_REFERENCE, RML_CONSTANT, RML_PARENT_TRIPLES_MAP
-import pathlib
-import json
-import pandas as pd
-import warnings
-import os
-import pyrdf4j.rdf4j
-import pyrdf4j.errors
-import pyrdf4j.repo_types
-from SPARQLWrapper import SPARQLWrapper, CSV
-import re
-from urllib.parse import ParseResult, urlparse, unquote
-from io import StringIO
 import hashlib
+import io
+import json
 import logging
+import os
+import pathlib
+import re
+import time
+import warnings
+from abc import ABC, abstractmethod
+from datetime import date, datetime
+from decimal import Decimal
+from io import StringIO
+from typing import Any, Self
+from urllib.parse import ParseResult, unquote, urlparse
+
 import jsonpath_ng
-from typing import Self  
+import morph_kgc.config
+import pandas as pd
+import pyrdf4j.errors
+import pyrdf4j.rdf4j
+import pyrdf4j.repo_types
+import sqlalchemy
+from morph_kgc.args_parser import load_config_from_argument
+from morph_kgc.constants import (RML_BLANK_NODE, RML_CONSTANT, RML_IRI,
+                                 RML_LITERAL, RML_PARENT_TRIPLES_MAP,
+                                 RML_REFERENCE, RML_TEMPLATE)
+from morph_kgc.mapping.mapping_parser import retrieve_mappings
+from rdflib import ConjunctiveGraph, Literal, URIRef
+from SPARQLWrapper import CSV, SPARQLWrapper
+from sqlalchemy import Column, MetaData, Table
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.schema import CreateTable
+from sqlalchemy.sql.sqltypes import (Boolean, Date, DateTime, Integer, Numeric,
+                                     String)
 
 # region Constants
 
@@ -575,61 +586,39 @@ class RemoteEndpoint(Endpoint):
         return f"RemoteSparqlEndpoint({self._sparql.endpoint})"
 
 
-class LocalSparqlGraphStore(Endpoint):
+class LocalSparqlGraphStore:
     def __init__(self, url: str, delete_after_use: bool = False):
         self.delete_after_use = delete_after_use
         with open(url, "r", encoding="utf-8") as f:
             data = f.read()
         self._repoid = hashlib.md5(data.encode("utf-8")).hexdigest()
-        inversion_logger.debug(f"Creating repository: {self._repoid}")
-        rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
-        rdf4jconnector.empty_repository(self._repoid)
+        logging.debug(f"Creating in-memory graph: {self._repoid}")
         
-        # Create GraphDB repository configuration
-        config = f"""
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
-        @prefix rep: <http://www.openrdf.org/config/repository#>.
-        @prefix sr: <http://www.openrdf.org/config/repository/sail#>.
-        @prefix sail: <http://www.openrdf.org/config/sail#>.
-        @prefix graphdb: <http://www.ontotext.com/config/graphdb#>.
-
-        [] a rep:Repository ;
-            rep:repositoryID "{self._repoid}" ;
-            rdfs:label "GraphDB Repository" ;
-            rep:repositoryImpl [
-                rep:repositoryType "graphdb:SailRepository" ;
-                sr:sailImpl [
-                    sail:sailType "graphdb:Sail" ;
-                    graphdb:entity-id-size  "32" ;
-                ]
-            ].
-        """
-        
-        rdf4jconnector.create_repository(self._repoid, config=config, accept_existing=True)
+        self._graph = ConjunctiveGraph()
         try:
-            rdf4jconnector.add_data_to_repo(self._repoid, data, "text/x-nquads")
-        except pyrdf4j.errors.TerminatingError as e:
-            logging.error("Invalid RDF data")
-        time.sleep(1)
-        self._sparql = SPARQLWrapper(
-            f"http://localhost:7200/repositories/{self._repoid}"
-        )
-        self._sparql.setReturnFormat(CSV)
-        self._sparql.setMethod("POST")
-        self._sparql.setRequestMethod("postdirectly")
+            self._graph.parse(data=data, format="ntriples")
+        except Exception as e:
+            logging.error(f"Invalid RDF data: {e}")
 
-    def query(self, query: str) -> str:
-        self._sparql.setQuery(query)
-        query_result = self._sparql.query()
-        converted: Any = query_result.convert()
-        decoded = converted.decode("utf-8")
-        return decoded
+    def query(self, query: str):
+        try:
+            results = self._graph.query(query)
+            if results.type == 'SELECT':
+                return results.serialize(format='json')
+            elif results.type == 'CONSTRUCT' or results.type == 'DESCRIBE':
+                return results.serialize(format='nt')
+            elif results.type == 'ASK':
+                return str(results.boolean)
+            else:
+                return ""
+        except Exception as e:
+            logging.error(f"Query execution error: {e}")
+            return ""
 
     def __del__(self):
         if self.delete_after_use:
-            inversion_logger.debug(f"Dropping repository: {self._repoid}")
-            rdf4jconnector = pyrdf4j.rdf4j.RDF4J(rdf4j_base="http://localhost:7200/")
-            rdf4jconnector.drop_repository(self._repoid, accept_not_exist=True)
+            logging.debug(f"Clearing in-memory graph: {self._repoid}")
+            self._graph = None
 
     def __repr__(self):
         return f"LocalSparqlGraphStore({self._repoid})"
@@ -874,29 +863,62 @@ class JSONTemplate(Template): # TODO: cleanup (split non-class dependent functio
         return f"JSONTemplate({self.paths})"
 
 class RDBTemplate(Template):
-    def __init__(self):
-        pass
+    def __init__(self, db_url):
+        self.db_url = db_url
+        self.engine = self.create_engine()
+
+    def create_engine(self):
+        return sqlalchemy.create_engine(self.db_url)
 
     def create_template(self) -> str:
         return "RDB template: structure will be determined by the database schema"
 
     def fill_data(self, data: pd.DataFrame, table_name: str) -> str:
-        create_table_sql = self.generate_create_table_sql(table_name, data)
-        insert_data_sql = self.generate_insert_data_sql(table_name, data)
-        return create_table_sql + "\n\n" + insert_data_sql
+        table = self.get_sqla_table(data, table_name)
+        
+        # Generate CREATE TABLE statement
+        create_table_query = str(CreateTable(table).compile(self.engine))
+        
+        data = data.applymap(lambda x: x.isoformat() if isinstance(x, (date, datetime)) else x)
+        
+        # Generate INSERT statements
+        insert_stmt = postgresql.insert(table).values(data.to_dict(orient='records'))
+        insert_query = str(insert_stmt.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
+        full_query = f"{create_table_query};{insert_query};"
 
-    def generate_create_table_sql(self, table_name: str, df: pd.DataFrame) -> str:
-        columns = [f"{col} TEXT" for col in df.columns]  # Assuming all columns are TEXT for simplicity
-        columns_str = ", ".join(columns)
-        return f"CREATE TABLE {table_name} ({columns_str});"
+        # with self.engine.begin() as connection:
+        #     table_exists = connection.dialect.has_table(connection, table_name)
+        #     if not table_exists:
+        #         connection.execute(sqlalchemy.text(create_table_query))
+        #     connection.execute(insert_stmt)
 
-    def generate_insert_data_sql(self, table_name: str, df: pd.DataFrame) -> str:
-        insert_statements = []
-        for _, row in df.iterrows():
-            values = [f"'{str(value).replace('', '')}'" for value in row]
-            values_str = ", ".join(values)
-            insert_statements.append(f"INSERT INTO {table_name} VALUES ({values_str});")
-        return "\n".join(insert_statements)
+        full_query = f"CREATE TABLE IF NOT EXISTS {table_name} (\n{create_table_query.split('(', 1)[1]}\n{insert_query};"
+        return full_query
+
+    def get_sqla_table(self, df: pd.DataFrame, table_name: str):        
+        metadata = MetaData()
+        columns = []
+        
+        for column_name, dtype in df.dtypes.items():
+            if "int" in str(dtype):
+                col_type = Integer()
+            elif "float" in str(dtype):
+                col_type = Numeric()
+            elif "bool" in str(dtype):
+                col_type = Boolean()
+            elif "datetime" in str(dtype):
+                col_type = DateTime()
+            elif "date" in str(dtype):
+                col_type = Date()
+            else:
+                col_type = String()
+            
+            columns.append(Column(column_name, col_type))
+        
+        return Table(table_name, metadata, *columns)
 
     @property
     def columns_decoded(self) -> bool:
@@ -1191,20 +1213,33 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
 
     return df
 
+def sparql_to_python_type(value, datatype):
+    if datatype == 'http://www.w3.org/2001/XMLSchema#integer':
+        return int(value)
+    elif datatype == 'http://www.w3.org/2001/XMLSchema#decimal':
+        return Decimal(value)
+    elif datatype == 'http://www.w3.org/2001/XMLSchema#float':
+        return float(value)
+    elif datatype == 'http://www.w3.org/2001/XMLSchema#double':
+        return float(value)
+    elif datatype == 'http://www.w3.org/2001/XMLSchema#boolean':
+        return value.lower() == 'true'
+    elif datatype == 'http://www.w3.org/2001/XMLSchema#dateTime':
+        return datetime.fromisoformat(value)
+    elif datatype == 'http://www.w3.org/2001/XMLSchema#date':
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    else:
+        return value  # Default to string for unknown types
+
 def retrieve_data(
     mapping_rules: pd.DataFrame,
     source_rules: pd.DataFrame,
     endpoint: Endpoint,
     decode_columns: bool = False,
-    try_cached: bool = False
 ) -> pd.DataFrame | None:
     retrieve_data_start_time = time.time()
     source = source_rules.iloc[0]['logical_source_value']
     inversion_logger.debug(f"Processing source {source}")
-
-    # Generate a hash of the source to use as a filename
-    source_hash = hashlib.md5(source.encode()).hexdigest()
-    filename = f"{source_hash}_table.csv"
 
     triples: list[QueryTriple] = [
         QueryTriple(rule) for _, rule in source_rules.iterrows() if rule["object_map_type"] not in [RML_BLANK_NODE]
@@ -1224,20 +1259,33 @@ def retrieve_data(
     inversion_logger.debug(generated_query)
 
     try:
-        if try_cached and pathlib.Path(filename).exists():
-            inversion_logger.info(f"Using cached data for {source}")
-            end_query_time = time.time()
+        start_query_time = time.time()
+        inversion_logger.debug(f"Time to generate query: {start_query_time - retrieve_data_start_time}s")
+        result = endpoint.query(generated_query)
+        end_query_time = time.time()
+        inversion_logger.debug(f"Time to query endpoint: {end_query_time - start_query_time}s")
+
+        if not result.strip():
+            inversion_logger.info("Query returned empty result")
+            return pd.DataFrame()
+
+        if isinstance(endpoint, LocalSparqlGraphStore):
+            result_data = json.loads(result)
+            columns = result_data['head']['vars']
+            data = []
+            for binding in result_data['results']['bindings']:
+                row = {}
+                for col in columns:
+                    if col in binding:
+                        value = binding[col]['value']
+                        datatype = binding[col].get('datatype')
+                        row[col] = sparql_to_python_type(value, datatype)
+                    else:
+                        row[col] = None
+                data.append(row)
+            df = pd.DataFrame(data, columns=columns)
         else:
-            start_query_time = time.time()
-            inversion_logger.debug(f"Time to generate query: {start_query_time - retrieve_data_start_time}s")
-            result = endpoint.query(generated_query)
-            end_query_time = time.time()
-            inversion_logger.debug(f"Time to query endpoint: {end_query_time - start_query_time}s")
-
-            with open(filename, "w", encoding="utf-8") as file:
-                file.write(result)
-
-        df = pd.read_csv(filename, dtype=str)
+            df = pd.read_csv(StringIO(result))
 
         if decode_columns:
             df = query.decode_dataframe(df)
@@ -1250,7 +1298,7 @@ def retrieve_data(
         inversion_logger.warning(f"Error while querying endpoint: {e}")
         raise
 
-def generate_template(source_rules: pd.DataFrame) -> Template | None:
+def generate_template(source_rules: pd.DataFrame, db_url: str = None) -> Template:
     source_type = source_rules.iloc[0]["source_type"]
     inversion_logger.info(f"Generating template for source type {source_type}")
 
@@ -1270,7 +1318,7 @@ def generate_template(source_rules: pd.DataFrame) -> Template | None:
     elif source_type == "CSV":
         return CSVTemplate()
     elif source_type == "RDB":
-        return RDBTemplate()
+        return RDBTemplate(db_url)
     else:
         raise ValueError(f"Unsupported source type: {source_type}")
 
@@ -1288,7 +1336,7 @@ def test_logging_setup(testID: str):
     inversion_logger.addHandler(file_logger)
     inversion_logger.setLevel(logging.DEBUG)
     
-def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, str]:
+def inversion(config_file: str | pathlib.Path, testID: str = None, dest_db_url: str = None) -> dict[str, str]:
     results = {}
     start_time = time.time()
     if testID is not None:
@@ -1313,10 +1361,18 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
     insert_columns(mappings)
     setup_done_time = time.time()
     inversion_logger.debug(f"Starting sources generation, {setup_done_time - start_time}s used for setup")
+    
+    db_configs = extract_db_config(config)
+
     for source, source_rules in mappings.groupby("logical_source_value"):
         inversion_logger.info(f"Processing source {source}")
+        
         template_generation_start_time = time.time()
-        template = generate_template(source_rules)
+        source_section = source_rules.iloc[0].get('source_section', 'DataSource1')
+        db_config = db_configs.get(source_section, db_configs.get('DataSource1', {}))
+        db_url = db_config.get('db_url') if not dest_db_url else dest_db_url
+        template = generate_template(source_rules, db_url)
+        
         data_retrieval_start_time = time.time()
         inversion_logger.debug(f"Starting data retrieval, {data_retrieval_start_time - template_generation_start_time}s used for template generation")
         source_data = retrieve_data(mappings, source_rules, endpoint, decode_columns=True)
@@ -1336,7 +1392,22 @@ def inversion(config_file: str | pathlib.Path, testID: str = None) -> dict[str, 
         inversion_logger.info(f"Source filled in {source_end_time - template_filling_start_time}s")
         inversion_logger.info(f"Source {source} processed in {source_end_time - template_generation_start_time}s")
     return results
+
+def extract_db_config(config: morph_kgc.config.Config) -> dict:
+    # Extract database configuration from Morph-KGC config
+    db_configs = {}
+    for section in config.get_data_sources_sections():
+        try:
+            if config.has_database_url(section):
+                db_url = config.get_database_url(section)
+                db_configs[section] = {'db_url': db_url}
+        except Exception as e:
+            inversion_logger.warning(f"Could not extract database URL for section {section}: {str(e)}")
     
+    if not db_configs:
+        raise ValueError("No valid database configurations found in Morph-KGC config")
+    return db_configs
+
 def url_decode(url):
     try:
         # check if url is a string

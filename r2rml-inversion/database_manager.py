@@ -11,7 +11,7 @@ class DatabaseManager:
     def __init__(self):
         self.client = docker.from_env()
         self.containers = {}
-        self.ports = {'postgresql': 5432, 'mysql': 3306, 'graphdb': 7200}
+        self.ports = {'postgresql': 5432, 'mysql': 3306, 'graphdb': 7200, 'dest_postgresql': 5433}
         self.graphdb_initialized = False
 
     def create_engine(self, connection_string):
@@ -30,24 +30,40 @@ class DatabaseManager:
                 if database_system == 'graphdb':
                     return self.start_graphdb_container()
                 
-                image = 'postgres:13' if database_system == 'postgresql' else 'mysql:8'
+                image = 'postgres:13' if database_system in ['postgresql', 'dest_postgresql'] else 'mysql:8'
                 port = self.ports[database_system]
-                container = self.client.containers.run(
-                    image,
-                    detach=True,
-                    remove=True,
-                    environment={
-                        'POSTGRES_PASSWORD': 'r2rml',
-                        'POSTGRES_USER': 'r2rml',
-                        'POSTGRES_DB': 'r2rml'
-                    } if database_system == 'postgresql' else {
-                        'MYSQL_ROOT_PASSWORD': 'r2rml',
-                        'MYSQL_USER': 'r2rml',
-                        'MYSQL_PASSWORD': 'r2rml',
-                        'MYSQL_DATABASE': 'r2rml'
-                    },
-                    ports={f'{port}/tcp': port}
-                )
+                
+                environment = {
+                    'POSTGRES_PASSWORD': 'r2rml',
+                    'POSTGRES_USER': 'r2rml',
+                    'POSTGRES_DB': 'r2rml'
+                } if database_system in ['postgresql', 'dest_postgresql'] else {
+                    'MYSQL_ROOT_PASSWORD': 'r2rml',
+                    'MYSQL_USER': 'r2rml',
+                    'MYSQL_PASSWORD': 'r2rml',
+                    'MYSQL_DATABASE': 'r2rml'
+                }
+                
+                if database_system == 'dest_postgresql':
+                    # Use a custom command to change the port
+                    command = f"-c port={port}"
+                    container = self.client.containers.run(
+                        image,
+                        command=command,
+                        detach=True,
+                        remove=True,
+                        environment=environment,
+                        ports={f'{port}/tcp': port}
+                    )
+                else:
+                    container = self.client.containers.run(
+                        image,
+                        detach=True,
+                        remove=True,
+                        environment=environment,
+                        ports={f'{port}/tcp': port}
+                    )
+                
                 print(f"Container started for {database_system}: {container.id}")
                 self.containers[database_system] = container
                 time.sleep(5)
@@ -130,16 +146,44 @@ class DatabaseManager:
 
     def reset_database(self, database_system):
         container = self.get_container(database_system)
-        if database_system == 'postgresql':
-            container.exec_run("psql -U r2rml -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'")
+        if database_system in ['postgresql', 'dest_postgresql']:
+            # Terminate all connections, drop and recreate the database
+            container.exec_run("""
+                psql -U postgres -c "
+                SELECT pg_terminate_backend(pg_stat_activity.pid)
+                FROM pg_stat_activity
+                WHERE pg_stat_activity.datname = 'r2rml'
+                AND pid <> pg_backend_pid();
+                DROP DATABASE IF EXISTS r2rml;
+                CREATE DATABASE r2rml;
+                "
+            """)
+            # Reconnect to the new database and set up permissions
+            container.exec_run("""
+                psql -U postgres -d r2rml -c "
+                CREATE SCHEMA IF NOT EXISTS public;
+                GRANT ALL ON SCHEMA public TO r2rml;
+                GRANT ALL ON SCHEMA public TO public;
+                ALTER DATABASE r2rml OWNER TO r2rml;
+                "
+            """)
         elif database_system == 'mysql':
-            container.exec_run("mysql -u r2rml -pr2rml -e 'DROP DATABASE r2rml; CREATE DATABASE r2rml;'")
+            container.exec_run("""
+                mysql -u root -pr2rml -e '
+                DROP DATABASE IF EXISTS r2rml;
+                CREATE DATABASE r2rml;
+                GRANT ALL PRIVILEGES ON r2rml.* TO 'r2rml'@'%';
+                FLUSH PRIVILEGES;
+                '
+            """)
         elif database_system == 'graphdb':
             pass
 
+        print(f"Database {database_system} has been reset.")
+
     def get_connection_string(self, database_system):
         port = self.ports[database_system]
-        if database_system == 'postgresql':
+        if database_system in ['postgresql', 'dest_postgresql']:
             return f"postgresql://r2rml:r2rml@localhost:{port}/r2rml"
         elif database_system == 'mysql':
             return f"mysql+pymysql://r2rml:r2rml@localhost:{port}/r2rml"
