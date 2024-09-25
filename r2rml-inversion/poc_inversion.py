@@ -875,25 +875,45 @@ class RDBTemplate(Template):
     def fill_data(self, data: pd.DataFrame, table_name: str) -> str:
         engine = self.create_engine()
         table = self.get_sqla_table(data, table_name)
-        
-        # Generate CREATE TABLE statement
-        create_table_query = str(CreateTable(table).compile(engine))
-        
-        data = data.applymap(lambda x: x.isoformat() if isinstance(x, (date, datetime)) else x)
-        
-        # Generate INSERT statements
         insert_stmt = postgresql.insert(table).values(data.to_dict(orient='records'))
+        
+        if not self.is_sql_query(table_name):
+            with engine.begin() as connection:
+                inspector = sqlalchemy.inspect(engine)
+                if inspector.has_table(table_name):
+                    existing_columns = inspector.get_columns(table_name)
+                    existing_column_names = set(col['name'] for col in existing_columns)
+                    new_column_names = set(col.name for col in table.columns)
+
+                    # Add missing columns
+                    for col in table.columns:
+                        if col.name not in existing_column_names:
+                            connection.execute(sqlalchemy.text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col.type}'))
+
+                    # Remove extra columns
+                    for col_name in existing_column_names - new_column_names:
+                        connection.execute(sqlalchemy.text(f'ALTER TABLE "{table_name}" DROP COLUMN "{col_name}"'))
+
+                    # Update column types if necessary
+                    for col in table.columns:
+                        existing_col = next((c for c in existing_columns if c['name'] == col.name), None)
+                        if existing_col and not isinstance(existing_col['type'], col.type.__class__):
+                            connection.execute(sqlalchemy.text(f'ALTER TABLE "{table_name}" ALTER COLUMN "{col.name}" TYPE {col.type}'))
+                else:
+                    # Create table if it doesn't exist
+                    table.create(connection)
+
+                # Generate INSERT statements
+                data = data.applymap(lambda x: x.isoformat() if isinstance(x, (date, datetime)) else x)
+                connection.execute(insert_stmt)
+
+        # Generate full query for logging purposes
+        create_table_query = str(CreateTable(table).compile(engine))
         insert_query = str(insert_stmt.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
         full_query = f"{create_table_query};{insert_query};"
-
-        if not self.is_sql_query(table_name):
-            with engine.begin() as connection:
-                connection.execute(sqlalchemy.text(f'DROP TABLE IF EXISTS "{table_name}"'))
-                connection.execute(sqlalchemy.text(create_table_query))
-                connection.execute(insert_stmt)
 
         engine.dispose()
         return full_query
