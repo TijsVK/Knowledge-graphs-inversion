@@ -1,18 +1,19 @@
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
-from configparser import ConfigParser
-import os
-from rdflib import ConjunctiveGraph, Namespace, Literal
-import traceback
-from r2rml_test_cases.test import test_one, generate_results, database_load
-from database_manager import DatabaseManager
 import json
-import threading
-import base64
-from datetime import date, datetime
 import math
+import os
+import traceback
+from configparser import ConfigParser
+from datetime import date, datetime
+
+import pandas as pd
+import sqlalchemy
+from flask import (Flask, Response, jsonify, render_template, request,
+                   stream_with_context)
+from rdflib import ConjunctiveGraph, Literal, Namespace
+
+from database_manager import DatabaseManager
 from poc_inversion import inversion
-from morph_kgc.mapping.mapping_parser import retrieve_mappings
-from morph_kgc.args_parser import load_config_from_argument
+from r2rml_test_cases.test import database_load, generate_results, test_one
 
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -57,6 +58,7 @@ manifest_graph.parse(os.path.join(TEST_CASES_DIR, "manifest.ttl"), format='turtl
 
 db_manager = DatabaseManager()
 db_manager.get_container(DEST_DB_SYSTEM)
+db_manager.get_container('postgresql')
 
 def get_mapping_filename(test_id):
     letter: str = test_id[-1].lower()
@@ -92,6 +94,7 @@ def run_test():
     try:
         sanitized_result = sanitize_data(result)
         json_result = json.dumps(sanitized_result, cls=CustomJSONEncoder)
+
         return app.response_class(
             response=json_result,
             status=200,
@@ -144,24 +147,41 @@ def get_file_content():
     except FileNotFoundError:
         return jsonify({'error': 'File not found'}), 404
 
+def drop_tables(db_manager: DatabaseManager, database_system):
+    try:
+        connection_string = db_manager.get_connection_string(database_system)
+        engine = db_manager.create_engine(connection_string)
+        with engine.begin() as connection:
+            # Get the metadata
+            metadata = sqlalchemy.MetaData()
+            metadata.reflect(bind=engine)
+            
+            # Drop all tables
+            metadata.drop_all(engine)
+            
+        print(f"All tables dropped for {database_system}")
+    except Exception as e:
+        print(f"Error dropping tables for {database_system}: {str(e)}")
+    finally:
+        engine.dispose()
+
 def run_single_test(test_id, database_system):
     test_dir = os.path.join(TEST_CASES_DIR)
     os.chdir(test_dir)
 
     try:
-        # Reset the database for the new test
-        db_manager.reset_database(database_system)
-        db_manager.reset_database(DEST_DB_SYSTEM)
-        
-        # Load the specific test database
+        # Reset databases for the new test
+        drop_tables(db_manager, database_system)
+        drop_tables(db_manager, DEST_DB_SYSTEM)
+
+        # Load test-specific data
         test_uri = manifest_graph.value(subject=None, predicate=DCELEMENTS.identifier, object=Literal(test_id))
         database_uri = manifest_graph.value(subject=test_uri, predicate=RDB2RDFTEST.database, object=None)
         database = manifest_graph.value(subject=database_uri, predicate=RDB2RDFTEST.sqlScriptFile, object=None)
+        
+        # Load the database for the test
         database_load(database, database_system)
-        
-        # Get database structure
-        db_content = db_manager.get_database_content(database_system)
-        
+
         # Get mapping content
         mapping_filename = get_mapping_filename(test_id)
         mapping_file = os.path.join(TEST_CASES_DIR, test_id, mapping_filename)
@@ -172,14 +192,25 @@ def run_single_test(test_id, database_system):
         purpose = manifest_graph.value(subject=test_uri, predicate=TESTDEC.purpose, object=None)
         purpose = purpose.toPython() if purpose else "Purpose not specified"
         
+        # Run the R2RML test
         raw_results = test_one(test_id, database_system, config, manifest_graph)        
         
+        # Perform inversion
         dest_db_url = db_manager.get_connection_string(DEST_DB_SYSTEM)
         inversion_result = inversion(MORPH_KCG_CONFIG_FILEPATH, test_id, dest_db_url)
 
-        processed_results = process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose, inversion_result)
+        # Compare original and inverted tables
+        databases_equal, comparison_message, source_content, dest_content = compare_databases(db_manager, database_system, DEST_DB_SYSTEM)
+
+        # Process and generate results
+        processed_results = process_results(
+            raw_results, mapping_content, test_id, database_system, 
+            config, purpose, inversion_result, databases_equal, comparison_message,
+            source_content, dest_content
+        )
         generate_results(database_system, config, raw_results)
         
+        # Return to original directory
         os.chdir(os.path.dirname(__file__))
         
         return {
@@ -197,9 +228,10 @@ def run_single_test(test_id, database_system):
             'traceback': error_traceback
         }
 
-def process_results(raw_results, db_content, mapping_content, test_id, database_system, config, purpose, inversion_result):
+def process_results(raw_results, mapping_content, test_id, database_system, config, purpose, inversion_result, 
+                    databases_equal, comparison_message, source_content, dest_content):
     processed_results = {
-        'headers': ['Test ID', 'Purpose', 'Result', 'Inversion Query'],
+        'headers': ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'Inversion Query', 'Inversion Success', 'Tables Comparison'],
         'data': []
     }
     
@@ -217,9 +249,13 @@ def process_results(raw_results, db_content, mapping_content, test_id, database_
             'result': row[4] if len(row) > 4 else 'N/A',
             'expected_result': expected_content,
             'actual_result': actual_content,
-            'db_content': db_content,
             'mapping': mapping_content,
-            'inversion_query': formatted_inversion_result
+            'inversion_query': formatted_inversion_result,
+            'inversion_success': databases_equal,
+            'tables_equal': databases_equal,
+            'comparison_message': comparison_message,
+            'original_tables': source_content,
+            'inverted_tables': dest_content
         }
         processed_results['data'].append(processed_row)
     
@@ -249,33 +285,52 @@ def read_file_content(file_path):
             return file.read()
     return "File not found"
 
-def process_db_content(db_content):
-    processed_content = {}
-    for table_name, table_data in db_content.items():
-        if isinstance(table_data, str):
-            # Se table_data è una stringa, è probabilmente un messaggio di errore
-            processed_content[table_name] = {
-                'error': table_data,
-                'columns': [],
-                'data': []
-            }
+def compare_databases(db_manager, source_system, dest_system):
+    try:
+        source_content = db_manager.get_database_content(source_system)
+        dest_content = db_manager.get_database_content(dest_system)
+
+        if not source_content or not dest_content:
+            return False, "One or both databases are empty or couldn't be accessed", None, None
+
+        if set(source_content.keys()) != set(dest_content.keys()):
+            return False, "Tables in source and destination databases do not match", source_content, dest_content
+
+        mismatched_tables = []
+        for table_name in source_content.keys():
+            source_table = source_content[table_name]
+            dest_table = dest_content[table_name]
+            
+            if set(source_table['columns']) != set(dest_table['columns']):
+                mismatched_tables.append(f"{table_name} (columns mismatch)")
+                continue
+            
+            source_df = pd.DataFrame(source_table['data'], columns=source_table['columns'])
+            dest_df = pd.DataFrame(dest_table['data'], columns=dest_table['columns'])
+            
+            # Handle empty dataframes
+            if source_df.empty and dest_df.empty:
+                continue
+            
+            # Remove rows with all NULL values
+            source_df = source_df.dropna(how='all')
+            dest_df = dest_df.dropna(how='all')
+            
+            # Reset index and sort
+            source_df.reset_index(drop=True, inplace=True)
+            dest_df.reset_index(drop=True, inplace=True)
+            source_df = source_df.sort_values(by=source_table['columns'])
+            dest_df = dest_df.sort_values(by=dest_table['columns'])
+            
+            if not source_df.equals(dest_df):
+                mismatched_tables.append(f"{table_name} (data mismatch)")
+        
+        if mismatched_tables:
+            return False, f"Mismatched tables: {', '.join(mismatched_tables)}", source_content, dest_content
         else:
-            # Assumiamo che table_data sia un dizionario con 'columns' e 'data'
-            processed_table = {
-                'columns': table_data.get('columns', []),
-                'data': []
-            }
-            for row in table_data.get('data', []):
-                processed_row = []
-                for value in row:
-                    if isinstance(value, memoryview):
-                        # Aggiungiamo un prefisso per indicare che si tratta di un'immagine PNG
-                        processed_row.append("data:image/png;base64," + base64.b64encode(value.tobytes()).decode('utf-8'))
-                    else:
-                        processed_row.append(value)
-                processed_table['data'].append(processed_row)
-            processed_content[table_name] = processed_table
-    return processed_content
+            return True, "All tables in source and destination databases are identical", source_content, dest_content
+    except Exception as e:
+        return False, f"Error comparing databases: {str(e)}", None, None
 
 
 if __name__ == '__main__':

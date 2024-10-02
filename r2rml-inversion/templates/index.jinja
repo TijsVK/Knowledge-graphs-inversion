@@ -329,7 +329,7 @@
         function generateResultTable(results) {
             let tableHtml = '<table class="table table-striped">';
             tableHtml += '<thead><tr>';
-            ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Structure', 'Mapping', 'Inversion Query'].forEach(header => {
+            ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'Inversion Query' , 'Inversion Success', 'Table Comparison'].forEach(header => {
                 tableHtml += `<th>${header}</th>`;
             });
             tableHtml += '</tr></thead><tbody>';
@@ -353,9 +353,10 @@
             rowHtml += `<td class="result-${(row.result || '').toLowerCase()}">${row.result || 'N/A'}</td>`;
             rowHtml += `<td><button onclick="showFileContent('${row.testid}', 'expected')">View</button></td>`;
             rowHtml += `<td><button onclick="showFileContent('${row.testid}', 'actual')">View</button></td>`;
-            rowHtml += `<td><button onclick="showDBContent('${row.testid}')">View</button></td>`;
             rowHtml += `<td><button onclick="showMapping('${row.testid}')">View</button></td>`;
             rowHtml += `<td><button onclick="showInversionQuery('${row.testid}')">View</button></td>`;
+            rowHtml += `<td class="result-${row.tables_equal ? 'passed' : 'failed'}">${row.tables_equal ? 'Success' : 'Failure'}</td>`;
+            rowHtml += `<td><button onclick="showTableComparison('${row.testid}')">View</button></td>`;
             rowHtml += '</tr>';
             return rowHtml;
         }
@@ -392,42 +393,10 @@
         }
 
         function updateHeaderRow() {
-            const headerHtml = ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'DB Content', 'Mapping', 'Inversion Query']
+            const headerHtml = ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'Inversion Query', 'Inversion Success', 'Table Comparison']
                 .map(header => `<th>${header}</th>`)
                 .join('');
             $('#results-header').html(headerHtml);
-        }
-
-        function showDBContent(testId) {
-            const response = testResults[testId];
-            if (response && response.results && response.results.data && response.results.data[0]) {
-                const dbContent = response.results.data[0].db_content;
-                let contentHtml = '';
-                for (const [tableName, tableData] of Object.entries(dbContent)) {
-                    contentHtml += `<h3 class="mt-4 mb-2 text-xl font-bold">${tableName}</h3>`;
-                    contentHtml += '<div class="overflow-x-auto"><table class="min-w-full bg-white border border-gray-300">';
-                    contentHtml += '<thead class="bg-gray-100"><tr>';
-                    tableData.columns.forEach(col => {
-                        contentHtml += `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${col}</th>`;
-                    });
-                    contentHtml += '</tr></thead><tbody class="divide-y divide-gray-200">';
-                    tableData.data.forEach(row => {
-                        contentHtml += '<tr>';
-                        row.forEach(cell => {
-                            if (typeof cell === 'string' && cell.startsWith('data:image')) {
-                                contentHtml += `<td class="px-4 py-2 whitespace-nowrap"><img src="${cell}" alt="Photo" style="max-width: 100px; max-height: 100px;"></td>`;
-                            } else {
-                                contentHtml += `<td class="px-4 py-2 whitespace-nowrap">${cell}</td>`;
-                            }
-                        });
-                        contentHtml += '</tr>';
-                    });
-                    contentHtml += '</tbody></table></div>';
-                }
-                showModal('Database Content', contentHtml);
-            } else {
-                showModal('Error', 'Unable to display database content. Invalid data structure.');
-            }
         }
         
         function showMapping(testId) {
@@ -447,7 +416,7 @@
             modalTitle.textContent = title;
             modalContent.innerHTML = content;
             
-            // Aggiusta lo stile per contenuti più grandi
+            // Adjust style for larger content
             modalContent.style.maxHeight = '70vh';
             modalContent.style.overflow = 'auto';
             
@@ -462,6 +431,31 @@
                 if (event.target == modal) {
                     modal.style.display = 'none';
                 }
+            }
+        }
+
+        function showTableComparison(testId) {
+            const response = testResults[testId];
+            if (response && response.results && response.results.data && response.results.data[0]) {
+                const originalTables = response.results.data[0].original_tables;
+                const invertedTables = response.results.data[0].inverted_tables;
+                const comparisonMessage = response.results.data[0].comparison_message;
+                
+                let content = '<h3>Original Tables:</h3>';
+                for (const [tableName, tableData] of Object.entries(originalTables)) {
+                    content += `<h4>${tableName}</h4>`;
+                    content += `<pre>${escapeHtml(JSON.stringify(tableData, null, 2))}</pre>`;
+                }
+                
+                content += '<h3>Inverted Tables:</h3>';
+                for (const [tableName, tableData] of Object.entries(invertedTables)) {
+                    content += `<h4>${tableName}</h4>`;
+                    content += `<pre>${escapeHtml(JSON.stringify(tableData, null, 2))}</pre>`;
+                }
+                                
+                showModal('Table Comparison', content);
+            } else {
+                showModal('Error', 'Unable to display table comparison. Invalid data structure.');
             }
         }
 

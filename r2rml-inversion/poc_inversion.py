@@ -197,8 +197,7 @@ class Identifier:
             except Exception as e:
                 return value
         elif source_type == "RDB":
-            table_name = rule.get("logical_source_value", "")
-            object_identifier = f"{table_name}.{value}"                
+            object_identifier = value          
         else:
             inversion_logger.error(f"Unsupported source type: {source_type}")
             return None
@@ -590,10 +589,7 @@ class LocalSparqlGraphStore:
     def __init__(self, url: str, delete_after_use: bool = False):
         self.delete_after_use = delete_after_use
         with open(url, "r", encoding="utf-8") as f:
-            data = f.read()
-        self._repoid = hashlib.md5(data.encode("utf-8")).hexdigest()
-        logging.debug(f"Creating in-memory graph: {self._repoid}")
-        
+            data = f.read()        
         self._graph = ConjunctiveGraph()
         try:
             self._graph.parse(data=data, format="ntriples")
@@ -602,6 +598,9 @@ class LocalSparqlGraphStore:
 
     def query(self, query: str):
         try:
+            for triple in self._graph:
+                print(triple)
+            print(query)
             results = self._graph.query(query)
             if results.type == 'SELECT':
                 return results.serialize(format='json')
@@ -617,11 +616,8 @@ class LocalSparqlGraphStore:
 
     def __del__(self):
         if self.delete_after_use:
-            logging.debug(f"Clearing in-memory graph: {self._repoid}")
             self._graph = None
 
-    def __repr__(self):
-        return f"LocalSparqlGraphStore({self._repoid})"
 
 class EndpointFactory:
     @classmethod
@@ -877,6 +873,14 @@ class RDBTemplate(Template):
         table = self.get_sqla_table(data, table_name)
         insert_stmt = postgresql.insert(table).values(data.to_dict(orient='records'))
         
+        if data.empty:
+            # Se il DataFrame è vuoto, crea solo la tabella senza inserire dati
+            with engine.begin() as connection:
+                inspector = sqlalchemy.inspect(engine)
+                if not inspector.has_table(table_name):
+                    table.create(connection)
+            return str(CreateTable(table).compile(engine)) 
+
         if not self.is_sql_query(table_name):
             with engine.begin() as connection:
                 inspector = sqlalchemy.inspect(engine)
@@ -904,7 +908,7 @@ class RDBTemplate(Template):
                     table.create(connection)
 
                 # Generate INSERT statements
-                data = data.applymap(lambda x: x.isoformat() if isinstance(x, (date, datetime)) else x)
+                data = data.apply(lambda col: col.map(lambda x: x.isoformat() if isinstance(x, (date, datetime)) else x))
                 connection.execute(insert_stmt)
 
         # Generate full query for logging purposes

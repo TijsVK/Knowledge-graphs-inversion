@@ -19,18 +19,17 @@ yatter = "^1.1.4"
 pyyaml = "^6.0"
 rdflib = "^6.0.0"
 jsonpath-ng = "^1.6.1"
-psycopg2 = "^2.9.9"
 sqlalchemy = "^2.0.34"
 docker = "^7.1.0"
 sql-metadata = "^2.13.0"
 psutil = "^6.0.0"
 pymysql = "^1.1.1"
 pyrdf4j = "0.1.1"
+psycopg2-binary = "^2.9.9"
 
 
 [tool.poetry.group.test.dependencies]
 mysql-connector-python = "8.0.22"
-psycopg2-binary = "2.8.6"
 
 [build-system]
 requires = ["poetry-core"]

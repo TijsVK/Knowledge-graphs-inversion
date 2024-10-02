@@ -194,15 +194,14 @@ class DatabaseManager:
             return f"mysql+pymysql://r2rml:r2rml@localhost:{port}/r2rml"
         elif database_system == 'graphdb':
             return f"http://localhost:{port}"
-            
+
     def get_database_content(self, database_system):
         connection_string = self.get_connection_string(database_system)
         engine = self.create_engine(connection_string)
         
         try:
             with engine.connect() as connection:
-                # Get all table names
-                if database_system == 'postgresql':
+                if database_system in ['postgresql', 'dest_postgresql']:
                     table_query = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';"
                 else:  # MySQL
                     table_query = "SHOW TABLES;"
@@ -212,43 +211,50 @@ class DatabaseManager:
                 
                 db_content = {}
                 for table in table_names:
-                    try:
-                        # Get table content and data types
-                        if database_system == 'postgresql':
-                            content_query = f'SELECT * FROM "{table}";'
-                            datatype_query = f"""
-                                SELECT column_name, data_type 
-                                FROM information_schema.columns 
-                                WHERE table_name = '{table}';
-                            """
-                        else:  # MySQL
-                            content_query = f"SELECT * FROM `{table}`;"
-                            datatype_query = f"""
-                                SELECT column_name, data_type 
-                                FROM information_schema.columns 
-                                WHERE table_name = '{table}' AND table_schema = DATABASE();
-                            """
-                        
-                        content = pd.read_sql(content_query, connection)
-                        datatypes = pd.read_sql(datatype_query, connection)
-                        
-                        if datatypes.empty:
-                            raise Exception(f"No columns found for table {table}")
-                        
-                        datatypes = datatypes.set_index('column_name')['data_type']
-                        
-                        # Add datatypes to column names
-                        content.columns = [f"{col} ({datatypes[col]})" for col in content.columns]
-                        
-                        db_content[table] = {
-                            'columns': content.columns.tolist(),
-                            'data': content.values.tolist()
-                        }
-                    except Exception as e:
-                        db_content[table] = f"Error reading table {table}: {str(e)}"
+                    db_content[table] = self.get_table_content(database_system, table)
                 
                 return db_content
         except Exception as e:
-            return {"error": f"Error getting database content: {str(e)}"}
+            print(f"Error getting database content: {str(e)}")
+            return None
+        finally:
+            engine.dispose()
+
+    def get_table_content(self, database_system, table_name):
+        connection_string = self.get_connection_string(database_system)
+        engine = self.create_engine(connection_string)
+        
+        try:
+            with engine.connect() as connection:
+                if database_system in ['postgresql', 'dest_postgresql']:
+                    content_query = f'SELECT * FROM "{table_name}";'
+                    datatype_query = f"""
+                        SELECT column_name, data_type 
+                        FROM information_schema.columns 
+                        WHERE table_name = '{table_name}';
+                    """
+                else:  # MySQL
+                    content_query = f"SELECT * FROM `{table_name}`;"
+                    datatype_query = f"""
+                        SELECT column_name, data_type 
+                        FROM information_schema.columns 
+                        WHERE table_name = '{table_name}' AND table_schema = DATABASE();
+                    """
+                
+                content = pd.read_sql(content_query, connection)
+                datatypes = pd.read_sql(datatype_query, connection)
+                
+                if datatypes.empty:
+                    return None
+                
+                datatypes = datatypes.set_index('column_name')['data_type']
+                
+                return {
+                    'columns': content.columns.tolist(),
+                    'data': content.values.tolist()
+                }
+        except Exception as e:
+            print(f"Error getting table content: {str(e)}")
+            return None
         finally:
             engine.dispose()
