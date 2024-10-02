@@ -305,11 +305,11 @@ class QueryTriple(Triple):
                 lines = []
                 plain_object_reference, already_bound = codex.get_id_and_is_bound(f"{object_identifier}_plain_{IdGenerator.get_id()}")
                 if already_bound:
-                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference}}}")
+                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference}. BIND(DATATYPE(?{plain_object_reference}) AS ?{object_reference}_datatype)}}")
                     lines.append(f"OPTIONAL{{BIND(ENCODE_FOR_URI(STR(?{plain_object_reference})) as ?{object_reference}_encoded)}}")
                     lines.append(f"FILTER(!BOUND(?{object_reference}_encoded) || !BOUND(?{plain_object_reference}) || ENCODE_FOR_URI(STR(?{plain_object_reference})) = ?{object_reference}_encoded)")
                 else:
-                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference} . BIND(ENCODE_FOR_URI(STR(?{plain_object_reference})) as ?{object_reference}_encoded)}}")
+                    lines.append(f"OPTIONAL{{?{subject_reference} {predicate} ?{plain_object_reference}. BIND(DATATYPE(?{plain_object_reference}) AS ?{object_reference}_datatype). BIND(ENCODE_FOR_URI(STR(?{plain_object_reference})) as ?{object_reference}_encoded)}}")
                 return "\n".join(lines)
             else:
                 lines = []
@@ -540,15 +540,15 @@ class Query:
                 triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex, all_mapping_rules)
                 if triple_string is not None:
                     triple_strings.append(triple_string)
-        
-        # for triple in selected_triples:
-        #     triple_string = triple.generate(uri_encoded_references, self.idGenerator, self.codex, all_mapping_rules)
-        #     if triple_string is not None:
-        #         triple_strings.append(triple_string)
-                
+                        
         pure_references = [f'?{self.codex.get_id(reference)}' for reference in self.pure_references]
         
-        select_part = "SELECT " + " ".join(pure_references + [f'?{self.codex.get_id(reference)}_encoded' for reference in uri_encoded_references]) + " WHERE {"
+        select_part = "SELECT " + " ".join(
+            pure_references + [
+                f'?{self.codex.get_id(reference)}_encoded ?{self.codex.get_id(reference)}_datatype'
+                for reference in uri_encoded_references
+            ]
+        ) + " WHERE {"
         generated_query = select_part + "\n".join(triple_strings) + "}"
         inversion_logger.debug(self.codex.codex)
         return generated_query.replace("\\", "\\\\")
@@ -557,9 +557,19 @@ class Query:
         df = df.copy(deep=True)
         for reference in self.uri_encoded_references:
             column_reference = self.codex.get_id(reference)
-            column = f"{column_reference}_encoded" 
-            df[column] = df[column].apply(url_decode)
-            df.rename(columns={column: reference}, inplace=True)
+            encoded_column = f"{column_reference}_encoded"
+            datatype_column = f"{column_reference}_datatype"
+            # Decode the encoded column
+            df[encoded_column] = df[encoded_column].apply(url_decode)
+            # Apply datatype to the data
+            if datatype_column in df.columns:
+                df[encoded_column] = df.apply(
+                    lambda row: sparql_to_python_type(row[encoded_column], row[datatype_column]),
+                    axis=1
+                )
+                df.drop(columns=[datatype_column], inplace=True)
+            # Rename the column
+            df.rename(columns={encoded_column: reference}, inplace=True)
         for reference in self.pure_references:
             column_reference = self.codex.get_id(reference)
             df.rename(columns={column_reference: reference}, inplace=True)
@@ -598,9 +608,6 @@ class LocalSparqlGraphStore:
 
     def query(self, query: str):
         try:
-            for triple in self._graph:
-                print(triple)
-            print(query)
             results = self._graph.query(query)
             if results.type == 'SELECT':
                 return results.serialize(format='json')
@@ -1243,6 +1250,7 @@ def insert_columns(df: pd.DataFrame, pure=False) -> pd.DataFrame:
     return df
 
 def sparql_to_python_type(value, datatype):
+    datatype = str(datatype)
     if datatype == 'http://www.w3.org/2001/XMLSchema#integer':
         return int(value)
     elif datatype == 'http://www.w3.org/2001/XMLSchema#decimal':
