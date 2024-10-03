@@ -441,21 +441,39 @@
                 const invertedTables = response.results.data[0].inverted_tables;
                 const comparisonMessage = response.results.data[0].comparison_message;
                 
-                let content = '<h3>Original Tables:</h3>';
-                for (const [tableName, tableData] of Object.entries(originalTables)) {
-                    content += `<h4>${tableName}</h4>`;
-                    content += `<pre>${escapeHtml(JSON.stringify(tableData, null, 2))}</pre>`;
+                let content = '';
+
+                if (comparisonMessage) {
+                    content += `<h3>Comparison Message:</h3><p>${escapeHtml(comparisonMessage)}</p>`;
+                }
+
+                if (originalTables && typeof originalTables === 'object' && Object.keys(originalTables).length > 0) {
+                    content += '<h3>Original Tables:</h3>';
+                    for (const [tableName, tableData] of Object.entries(originalTables)) {
+                        content += `<h4>${tableName}</h4>`;
+                        content += `<pre>${escapeHtml(JSON.stringify(tableData, null, 2))}</pre>`;
+                    }
+                } else {
+                    content += '<h3>Original Tables:</h3><p>No original table data available.</p>';
                 }
                 
-                content += '<h3>Inverted Tables:</h3>';
-                for (const [tableName, tableData] of Object.entries(invertedTables)) {
-                    content += `<h4>${tableName}</h4>`;
-                    content += `<pre>${escapeHtml(JSON.stringify(tableData, null, 2))}</pre>`;
+                if (invertedTables && typeof invertedTables === 'object' && Object.keys(invertedTables).length > 0) {
+                    content += '<h3>Inverted Tables:</h3>';
+                    for (const [tableName, tableData] of Object.entries(invertedTables)) {
+                        content += `<h4>${tableName}</h4>`;
+                        content += `<pre>${escapeHtml(JSON.stringify(tableData, null, 2))}</pre>`;
+                    }
+                } else {
+                    content += '<h3>Inverted Tables:</h3><p>No inverted table data available. The inversion process might have failed or been skipped.</p>';
+                }
+                
+                if (content === '') {
+                    content = '<p>No table comparison data available.</p>';
                 }
                                 
                 showModal('Table Comparison', content);
             } else {
-                showModal('Error', 'Unable to display table comparison. Invalid data structure.');
+                showModal('Error', 'Unable to display table comparison. Invalid or missing data structure.');
             }
         }
 

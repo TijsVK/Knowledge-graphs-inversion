@@ -27,7 +27,9 @@ from morph_kgc.constants import (RML_BLANK_NODE, RML_CONSTANT, RML_IRI,
                                  RML_LITERAL, RML_PARENT_TRIPLES_MAP,
                                  RML_REFERENCE, RML_TEMPLATE)
 from morph_kgc.mapping.mapping_parser import retrieve_mappings
-from rdflib import ConjunctiveGraph, Literal, URIRef
+from rdflib import BNode, ConjunctiveGraph, Graph, Literal, URIRef
+from rdflib.plugins.parsers.nquads import NQuadsParser
+from rdflib.plugins.parsers.ntriples import W3CNTriplesParser
 from SPARQLWrapper import CSV, SPARQLWrapper
 from sqlalchemy import Column, MetaData, Table
 from sqlalchemy.dialects import postgresql
@@ -387,16 +389,23 @@ class SubjectTriple(QueryTriple):
     def plain_references(self) -> set[str]:
         return set()
 
-    def generate(self, encoded_references: set[str], IdGenerator: IdGenerator, codex: Codex, all_mapping_rules: pd.DataFrame) -> str | None:
-        subject_map_value = self.rule["subject_map_value"]
+    def generate(self, encoded_references: set[str], IdGenerator: IdGenerator, codex: Codex, all_mapping_rules: pd.DataFrame) -> str | None:      
         subject_map_type = self.rule["subject_map_type"]
         subject_term_type = self.rule["subject_termtype"]
+        
+        if subject_map_type == RML_TEMPLATE:
+            if subject_term_type == RML_IRI:
+                return self._generate_iri_template(codex, IdGenerator)
+            elif subject_term_type == RML_BLANK_NODE:
+                return self._generate_blank_node_template(codex, IdGenerator)
+        
+        get_logger().error(f"Unsupported subject map type: {subject_map_type} or subject term type: {subject_term_type}")
+        return None
+    
+    def _generate_iri_template(self, codex: Codex, IdGenerator: IdGenerator):
+        subject_map_value = self.rule["subject_map_value"]
         subject_references_template = self.rule["subject_references_template"]
-        
-        if subject_map_type != RML_TEMPLATE or subject_term_type != RML_IRI:
-            get_logger().error(f"Unsupported subject map type: {subject_map_type} or subject term type: {subject_term_type}")
-            return None
-        
+
         subject_reference = codex.get_id(subject_map_value)
         
         lines = []
@@ -425,6 +434,59 @@ class SubjectTriple(QueryTriple):
                 lines.append(f"FILTER(!BOUND(?{current_reference}_encoded) || !BOUND(?{reference_placeholder}) || ?{reference_placeholder} = ?{current_reference}_encoded)")
             evaluated_template = current_post_string
             current_slice_reference = next_slice_reference
+        return "\n".join(lines)
+
+    def _generate_blank_node_template(self, codex: Codex, IdGenerator: IdGenerator):
+        subject_map_value = self.rule["subject_map_value"]
+        subject_references_template = self.rule["subject_references_template"]
+
+        # Even though the subject is a blank node, we need to extract the variables used in the template
+        # to retrieve the necessary data
+
+        lines = []
+        # Since we cannot match the blank node identifier, we bind it to a variable but do not use it directly
+        subject_reference = codex.get_id(self.rule["subject_map_value"])
+
+        # Generate filters and bindings for the variables used in the template
+        evaluated_template = subject_references_template
+        current_slice_reference = subject_reference
+
+        for reference in self.rule["subject_references"]:
+            current_pre_string = evaluated_template.split("(", 1)[0]
+            current_post_string = evaluated_template.split(")", 1)[1] if ')' in evaluated_template else ''
+
+            # Prepare the next slice reference
+            next_slice_reference_identifier = f"{subject_map_value}_slice_{IdGenerator.get_id()}"
+            next_slice_reference = codex.get_id(next_slice_reference_identifier)
+
+            # Get the identifier for the current reference
+            reference_identifier = Identifier.generate_plain_identifier(self.rule, reference)
+            current_reference = codex.get_id(reference_identifier)
+
+            # Build the SPARQL query parts to extract the variable
+            unescaped_current_pre_string = current_pre_string.replace('\\', "")
+            if current_post_string == "":
+                # Last variable in the template
+                lines.append(f"BIND(STRAFTER(STR(?{current_slice_reference}), '{unescaped_current_pre_string}') as ?{current_reference}_encoded)")
+                # No need to proceed further
+            else:
+                unescaped_next_pre_string = current_post_string.split("(", 1)[0].replace('\\', "")
+                temp_reference_identifier = f"{reference_identifier}_temp_{IdGenerator.get_id()}"
+                temp_reference = codex.get_id(temp_reference_identifier)
+
+                # Extract the part of the template corresponding to the current reference
+                lines.append(f"BIND(STRAFTER(STR(?{current_slice_reference}), '{unescaped_current_pre_string}') as ?{next_slice_reference})")
+                lines.append(f"BIND(STRBEFORE(STR(?{next_slice_reference}), '{unescaped_next_pre_string}') AS ?{temp_reference})")
+                lines.append(f"BIND(?{temp_reference} as ?{current_reference}_encoded)")
+
+                # Update the current slice reference for the next iteration
+                current_slice_reference = next_slice_reference
+
+            evaluated_template = current_post_string
+
+        # Since we cannot bind the blank node to a specific value, we only focus on extracting the variables
+        # The blank node acts as a placeholder in the query
+
         return "\n".join(lines)
 
 # endregion
@@ -594,17 +656,100 @@ class RemoteEndpoint(Endpoint):
     def __repr__(self):
         return f"RemoteSparqlEndpoint({self._sparql.endpoint})"
 
+class PreserveBNodeNTriplesParser(W3CNTriplesParser):
+    def __init__(self, sink):
+        super().__init__(sink)
+        self.bnodes = {}
 
-class LocalSparqlGraphStore:
+    def parse(self, source):
+        super().parse(source)
+
+    def _bnode(self, id_):
+        # Preserve original blank node IDs
+        return BNode(id_)
+
+    def triple(self, subject, predicate, object):
+        # Instead of calling self.sink.triple, add the triple directly to the graph
+        self.sink.add((subject, predicate, object))
+
+class LocalSparqlGraphStore(Endpoint):
     def __init__(self, url: str, delete_after_use: bool = False):
         self.delete_after_use = delete_after_use
         with open(url, "r", encoding="utf-8") as f:
-            data = f.read()        
+            data = f.read()
         self._graph = ConjunctiveGraph()
         try:
-            self._graph.parse(data=data, format="ntriples")
+            self.parse_ntriples_preserve_bnode_ids(data)
+            for triple in self._graph:
+                print(triple)
         except Exception as e:
             logging.error(f"Invalid RDF data: {e}")
+
+    def parse_ntriples_preserve_bnode_ids(self, data: str):
+        for line in data.strip().splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            # Remove the final dot
+            if line.endswith('.'):
+                line = line[:-1].strip()
+
+            # Regex pattern for N-Triples
+            pattern = r'(\S+)\s+(\S+)\s+(.*)'
+            match = re.match(pattern, line)
+            if not match:
+                continue  # or raise an error
+
+            s_str, p_str, o_str = match.groups()
+
+            # Parse subject
+            if s_str.startswith('<') and s_str.endswith('>'):
+                s_node = URIRef(s_str[1:-1])
+            elif s_str.startswith('_:'):
+                s_node = BNode(s_str[2:])
+            else:
+                continue  # invalid subject
+
+            # Parse predicate
+            if p_str.startswith('<') and p_str.endswith('>'):
+                p_node = URIRef(p_str[1:-1])
+            else:
+                continue  # invalid predicate
+
+            # Parse object
+            if o_str.startswith('<') and o_str.endswith('>'):
+                o_node = URIRef(o_str[1:-1])
+            elif o_str.startswith('_:'):
+                o_node = BNode(o_str[2:])
+            elif o_str.startswith('"'):
+                # Literal
+                literal_pattern = r'^"([^"]*)"(@[a-z]+(-[a-z0-9]+)*)?(\^\^<([^>]*)>)?$'
+                lit_match = re.match(literal_pattern, o_str)
+                if not lit_match:
+                    continue  # invalid literal
+                lit_value, lang, _, _, datatype = lit_match.groups()
+                if datatype:
+                    o_node = Literal(lit_value, datatype=URIRef(datatype))
+                elif lang:
+                    o_node = Literal(lit_value, lang=lang[1:])
+                else:
+                    o_node = Literal(lit_value)
+            else:
+                continue  # invalid object
+
+            self._graph.add((s_node, p_node, o_node))
+
+    def get_format(self, url: str):
+        # Determine the RDF format based on the file extension
+        extension = url.split('.')[-1].lower()
+        if extension in ['nt', 'ntriples']:
+            return 'nt'
+        elif extension in ['nq', 'nquads']:
+            return 'nquads'
+        elif extension in ['ttl', 'turtle']:
+            return 'turtle'
+        else:
+            raise ValueError(f"Unsupported RDF format for file: {url}")
 
     def query(self, query: str):
         try:
@@ -1299,6 +1444,7 @@ def retrieve_data(
         start_query_time = time.time()
         inversion_logger.debug(f"Time to generate query: {start_query_time - retrieve_data_start_time}s")
         result = endpoint.query(generated_query)
+        print("RESULT: ", result)
         end_query_time = time.time()
         inversion_logger.debug(f"Time to query endpoint: {end_query_time - start_query_time}s")
 

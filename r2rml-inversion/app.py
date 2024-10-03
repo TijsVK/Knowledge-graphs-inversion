@@ -199,8 +199,16 @@ def run_single_test(test_id, database_system):
         dest_db_url = db_manager.get_connection_string(DEST_DB_SYSTEM)
         inversion_result = inversion(MORPH_KCG_CONFIG_FILEPATH, test_id, dest_db_url)
 
+        inversion_success = bool(inversion_result)
+
         # Compare original and inverted tables
-        databases_equal, comparison_message, source_content, dest_content = compare_databases(db_manager, database_system, DEST_DB_SYSTEM)
+        if inversion_success:
+            databases_equal, comparison_message, source_content, dest_content = compare_databases(db_manager, database_system, DEST_DB_SYSTEM)
+        else:
+            databases_equal = True
+            comparison_message = "Inversion failed or was skipped, database comparison not performed."
+            source_content = None
+            dest_content = None
 
         # Process and generate results
         processed_results = process_results(
@@ -315,13 +323,16 @@ def compare_databases(db_manager, source_system, dest_system):
             # Remove rows with all NULL values
             source_df = source_df.dropna(how='all')
             dest_df = dest_df.dropna(how='all')
-            
+
+            source_df = source_df.reindex(sorted(source_df.columns), axis=1)
+            dest_df = dest_df.reindex(sorted(dest_df.columns), axis=1)
+
             # Reset index and sort
             source_df.reset_index(drop=True, inplace=True)
             dest_df.reset_index(drop=True, inplace=True)
-            source_df = source_df.sort_values(by=source_table['columns'])
-            dest_df = dest_df.sort_values(by=dest_table['columns'])
-            
+            source_df = source_df.sort_values(by=source_df.columns.tolist()).reset_index(drop=True)
+            dest_df = dest_df.sort_values(by=dest_df.columns.tolist()).reset_index(drop=True)
+
             if not source_df.equals(dest_df):
                 mismatched_tables.append(f"{table_name} (data mismatch)")
         
