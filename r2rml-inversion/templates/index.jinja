@@ -329,7 +329,7 @@
         function generateResultTable(results) {
             let tableHtml = '<table class="table table-striped">';
             tableHtml += '<thead><tr>';
-            ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'Inversion Query' , 'Inversion Success', 'Table Comparison'].forEach(header => {
+            ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'SPARQL Query', 'Inversion Query', 'Inversion Success', 'Table Comparison'].forEach(header => {
                 tableHtml += `<th>${header}</th>`;
             });
             tableHtml += '</tr></thead><tbody>';
@@ -343,7 +343,7 @@
         function generateResultRow(response) {
             if (!response || !response.results || !Array.isArray(response.results.data) || response.results.data.length === 0) {
                 console.error('Invalid response structure:', response);
-                return `<tr><td colspan="8">Error: Invalid test result structure</td></tr>`;
+                return `<tr><td colspan="9">Error: Invalid test result structure</td></tr>`;
             }
 
             const row = response.results.data[0];
@@ -354,11 +354,24 @@
             rowHtml += `<td><button onclick="showFileContent('${row.testid}', 'expected')">View</button></td>`;
             rowHtml += `<td><button onclick="showFileContent('${row.testid}', 'actual')">View</button></td>`;
             rowHtml += `<td><button onclick="showMapping('${row.testid}')">View</button></td>`;
+            rowHtml += `<td><button onclick="showSparqlQuery('${row.testid}')">View</button></td>`;
             rowHtml += `<td><button onclick="showInversionQuery('${row.testid}')">View</button></td>`;
             rowHtml += `<td class="result-${row.tables_equal ? 'passed' : 'failed'}">${row.tables_equal ? 'Success' : 'Failure'}</td>`;
             rowHtml += `<td><button onclick="showTableComparison('${row.testid}')">View</button></td>`;
             rowHtml += '</tr>';
             return rowHtml;
+        }
+
+        function showSparqlQuery(testId) {
+            const response = testResults[testId];
+            if (response && response.results && response.results.data && response.results.data[0]) {
+                const sparqlQuery = response.results.data[0].sparql_query;
+                const content = `<pre><code class="language-sparql">${escapeHtml(sparqlQuery)}</code></pre>`;
+                showModal('SPARQL Query', content);
+                Prism.highlightAll();
+            } else {
+                showModal('Error', 'Unable to display SPARQL query. Invalid data structure.');
+            }
         }
 
         function showFileContent(testId, fileType) {
@@ -393,7 +406,7 @@
         }
 
         function updateHeaderRow() {
-            const headerHtml = ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'Inversion Query', 'Inversion Success', 'Table Comparison']
+            const headerHtml = ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'SPARQL Query', 'Inversion Query', 'Inversion Success', 'Table Comparison']
                 .map(header => `<th>${header}</th>`)
                 .join('');
             $('#results-header').html(headerHtml);

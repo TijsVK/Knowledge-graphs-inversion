@@ -239,7 +239,7 @@ def run_single_test(test_id, database_system):
 def process_results(raw_results, mapping_content, test_id, database_system, config, purpose, inversion_result, 
                     databases_equal, comparison_message, source_content, dest_content):
     processed_results = {
-        'headers': ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'Inversion Query', 'Inversion Success', 'Tables Comparison'],
+        'headers': ['Test ID', 'Purpose', 'Result', 'Expected Result', 'Actual Result', 'Mapping', 'SPARQL Query', 'Inversion Query', 'Inversion Success', 'Tables Comparison'],
         'data': []
     }
     
@@ -247,9 +247,13 @@ def process_results(raw_results, mapping_content, test_id, database_system, conf
         expected_content, actual_content = get_file_contents(test_id, database_system, config)
 
         formatted_queries = []
-        for source, query in inversion_result.items():
-            formatted_queries.append(query.strip())
+        sparql_queries = []
+        for source, result in inversion_result.items():
+            formatted_queries.append(result['inverted_query'].strip())
+            sparql_queries.append(result['sparql_query'])
+                
         formatted_inversion_result = "\n\n".join(formatted_queries)
+        formatted_sparql_queries = "\n\n".join(filter(None, sparql_queries))
 
         processed_row = {
             'testid': row[3] if len(row) > 3 else 'N/A',
@@ -258,6 +262,7 @@ def process_results(raw_results, mapping_content, test_id, database_system, conf
             'expected_result': expected_content,
             'actual_result': actual_content,
             'mapping': mapping_content,
+            'sparql_query': formatted_sparql_queries,
             'inversion_query': formatted_inversion_result,
             'inversion_success': databases_equal,
             'tables_equal': databases_equal,

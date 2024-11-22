@@ -537,6 +537,7 @@ class Query:
             self.selector = selector
         self.idGenerator = IdGenerator()
         self.codex = Codex()
+        self.generated_query = None
 
     @property
     def references(self) -> list[str]:
@@ -613,7 +614,9 @@ class Query:
         ) + " WHERE {"
         generated_query = select_part + "\n".join(triple_strings) + "}"
         inversion_logger.debug(self.codex.codex)
-        return generated_query.replace("\\", "\\\\")
+        inversion_logger.debug(self.codex.codex)
+        self.generated_query = generated_query.replace("\\", "\\\\")
+        return self.generated_query
 
     def decode_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy(deep=True)
@@ -638,8 +641,8 @@ class Query:
         return df
 
     def execute_on_endpoint(self, endpoint: Endpoint) -> pd.DataFrame:
-        generated_query = self.generate()
-        csv_result = endpoint.query(generated_query)
+        self.generated_query = self.generate()
+        csv_result = endpoint.query(self.generated_query)
         df = pd.read_csv(StringIO(csv_result))
         return self.decode_dataframe(df)
 
@@ -1418,7 +1421,7 @@ def retrieve_data(
     source_rules: pd.DataFrame,
     endpoint: Endpoint,
     decode_columns: bool = False,
-) -> pd.DataFrame | None:
+) -> tuple[pd.DataFrame | None, str | None]:
     retrieve_data_start_time = time.time()
     source = source_rules.iloc[0]['logical_source_value']
     inversion_logger.debug(f"Processing source {source}")
@@ -1436,7 +1439,7 @@ def retrieve_data(
 
     if generated_query is None:
         inversion_logger.warning("No query generated (no references found)")
-        return None
+        return None, None
 
     inversion_logger.debug(generated_query)
 
@@ -1450,7 +1453,7 @@ def retrieve_data(
 
         if not result.strip():
             inversion_logger.info("Query returned empty result")
-            return pd.DataFrame()
+            return pd.DataFrame(), generated_query
 
         if isinstance(endpoint, LocalSparqlGraphStore):
             result_data = json.loads(result)
@@ -1475,7 +1478,7 @@ def retrieve_data(
 
         convert_time = time.time()
         inversion_logger.debug(f"Time to convert data: {convert_time - end_query_time}s")
-        return df
+        return df, generated_query
 
     except Exception as e:
         inversion_logger.warning(f"Error while querying endpoint: {e}")
@@ -1519,13 +1522,13 @@ def test_logging_setup(testID: str):
     inversion_logger.addHandler(file_logger)
     inversion_logger.setLevel(logging.DEBUG)
     
-def inversion(config_file: str | pathlib.Path, testID: str = None, dest_db_url: str = None) -> dict[str, str]:
+def inversion(config_file: str | pathlib.Path, testID: str = None, dest_db_url: str = None) -> dict[str, dict[str, str]]:
     results = {}
     start_time = time.time()
     if testID is not None:
         test_logging_setup(testID)  
     config = load_config_from_argument(config_file)
-    mappings: pd.DataFrame
+    
     try:
         mappings, _ = retrieve_mappings(config)
     except ValueError as e:
@@ -1536,11 +1539,13 @@ def inversion(config_file: str | pathlib.Path, testID: str = None, dest_db_url: 
         if str(e) == "'object_map'":
             inversion_logger.warning(f"Mapping with missing information. Skipping.")
         return results
+        
     try:
         endpoint = EndpointFactory.create(config)
     except FileNotFoundError:
         inversion_logger.warning(f"Output file not found. Skipping inversion.")
         return results
+        
     insert_columns(mappings)
     setup_done_time = time.time()
     inversion_logger.debug(f"Starting sources generation, {setup_done_time - start_time}s used for setup")
@@ -1558,22 +1563,29 @@ def inversion(config_file: str | pathlib.Path, testID: str = None, dest_db_url: 
         
         data_retrieval_start_time = time.time()
         inversion_logger.debug(f"Starting data retrieval, {data_retrieval_start_time - template_generation_start_time}s used for template generation")
-        source_data = retrieve_data(mappings, source_rules, endpoint, decode_columns=True)
+        source_data, sparql_query = retrieve_data(mappings, source_rules, endpoint, decode_columns=True)
+        
         if source_data is None:
-            results[source] = ""
+            results[source] = {"inverted_query": "", "sparql_query": ""}
             inversion_logger.warning(f"No data generated for {source}")
             continue
+            
         try:
             template_filling_start_time = time.time()
             inversion_logger.debug(f"Starting template filling, {template_filling_start_time - data_retrieval_start_time}s used for data retrieval")
             filled_source = template.fill_data(source_data, source)
-            results[source] = filled_source
+            results[source] = {
+                "inverted_query": filled_source,
+                "sparql_query": sparql_query
+            }
         except AttributeError as e:
             inversion_logger.error(f"Error while filling template: {e}")
             raise e
+            
         source_end_time = time.time()
         inversion_logger.info(f"Source filled in {source_end_time - template_filling_start_time}s")
         inversion_logger.info(f"Source {source} processed in {source_end_time - template_generation_start_time}s")
+        
     return results
 
 def extract_db_config(config: morph_kgc.config.Config) -> dict:
